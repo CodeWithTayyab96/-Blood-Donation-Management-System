@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+        <EditText android:id="@+id/etPatient" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Patient name *" android:inputType="textPersonName" />
+        <EditText android:id="@+id/etHospital" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Hospital *" android:inputType="text" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blood group needed" android:layout_marginTop="10dp" />
+        <Spinner android:id="@+id/spReqGroup" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/etUnits" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Units needed *" android:inputType="number" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Urgency" android:layout_marginTop="10dp" />
+        <Spinner android:id="@+id/spUrgency" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/etContact" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Contact number *" android:inputType="phone" />
+        <Button android:id="@+id/btnSaveRequest" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Save Request" android:layout_marginTop="16dp" />
+    </LinearLayout>
+</ScrollView>

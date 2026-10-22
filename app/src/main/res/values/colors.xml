@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="blood_red">#B71C1C</color>
+    <color name="blood_red_dark">#7F0000</color>
+    <color name="blood_red_light">#FFEBEE</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="grey_text">#5F6368</color>
+    <color name="green_ok">#2E7D32</color>
+    <color name="orange_warn">#E65100</color>
+</resources>
