@@ -18,6 +18,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.Session
 
 class DonorListActivity : AppCompatActivity() {
 
@@ -25,6 +26,7 @@ class DonorListActivity : AppCompatActivity() {
     private lateinit var adapter: DonorAdapter
     private var allDonors: List<Donor> = emptyList()
     private var groupFilter = "All groups"
+    private var cityFilter = "All cities"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,7 +60,11 @@ class DonorListActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
         })
 
-        findViewById<FloatingActionButton>(R.id.fabAddDonor).setOnClickListener {
+        // Donors browse and search; only managers add new donor records.
+        Session.load(this)
+        val fab = findViewById<FloatingActionButton>(R.id.fabAddDonor)
+        fab.visibility = if (Session.isManager) View.VISIBLE else View.GONE
+        fab.setOnClickListener {
             startActivity(Intent(this, AddDonorActivity::class.java))
         }
     }
@@ -66,13 +72,32 @@ class DonorListActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         allDonors = db.getAllDonors()
+        refreshCityFilter()
         applyFilters()
+    }
+
+    /** City list comes from the donors themselves, so it always matches real data. */
+    private fun refreshCityFilter() {
+        val cities = listOf("All cities") + allDonors.map { it.city }.distinct().sorted()
+        val previous = cityFilter
+        val sp = findViewById<Spinner>(R.id.spCityFilter)
+        sp.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, cities)
+        cityFilter = if (previous in cities) previous else "All cities"
+        sp.setSelection(cities.indexOf(cityFilter))
+        sp.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                cityFilter = cities[pos]
+                applyFilters()
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
     }
 
     private fun applyFilters() {
         val q = findViewById<EditText>(R.id.etSearch).text.toString().trim().lowercase()
         val filtered = allDonors.filter { d ->
             (groupFilter == "All groups" || d.bloodGroup == groupFilter) &&
+                (cityFilter == "All cities" || d.city == cityFilter) &&
                 (q.isEmpty() || d.name.lowercase().contains(q) || d.city.lowercase().contains(q))
         }
         adapter.submit(filtered)

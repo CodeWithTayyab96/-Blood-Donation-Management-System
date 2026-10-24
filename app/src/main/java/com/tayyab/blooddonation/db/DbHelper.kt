@@ -7,14 +7,16 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.tayyab.blooddonation.model.BloodRequest
 import com.tayyab.blooddonation.model.Donation
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.model.UserAccount
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.Session
 import java.time.LocalDate
 
 class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
 
     companion object {
         private const val DB_NAME = "blood_donation.db"
-        private const val DB_VERSION = 1
+        private const val DB_VERSION = 2
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -47,14 +49,76 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             db.execSQL("INSERT INTO stock(blood_group, units) VALUES('$g', 0)")
         }
         seed(db)
+        createUsersTable(db)
+        seedManager(db)
+    }
+
+    /** Accounts table, added in v2. Existing installs are migrated, not wiped. */
+    private fun createUsersTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS users(
+                username TEXT PRIMARY KEY, password_hash TEXT NOT NULL,
+                role TEXT NOT NULL, donor_id INTEGER)"""
+        )
+    }
+
+    /** Demo manager account for the teacher demo: manager / manager123. */
+    private fun seedManager(db: SQLiteDatabase) {
+        val existing = db.rawQuery(
+            "SELECT COUNT(*) FROM users WHERE username='manager'", null
+        ).use { if (it.moveToFirst()) it.getInt(0) else 0 }
+        if (existing == 0) {
+            val v = ContentValues().apply {
+                put("username", "manager")
+                put("password_hash", Session.hashPassword("manager", "manager123"))
+                put("role", Session.ROLE_MANAGER)
+            }
+            db.insert("users", null, v)
+        }
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS donors")
-        db.execSQL("DROP TABLE IF EXISTS donations")
-        db.execSQL("DROP TABLE IF EXISTS requests")
-        db.execSQL("DROP TABLE IF EXISTS stock")
-        onCreate(db)
+        if (oldVersion < 2) {
+            // v1 -> v2: only add accounts, keep all existing donors/stock/requests.
+            createUsersTable(db)
+            seedManager(db)
+        } else {
+            db.execSQL("DROP TABLE IF EXISTS donors")
+            db.execSQL("DROP TABLE IF EXISTS donations")
+            db.execSQL("DROP TABLE IF EXISTS requests")
+            db.execSQL("DROP TABLE IF EXISTS stock")
+            db.execSQL("DROP TABLE IF EXISTS users")
+            onCreate(db)
+        }
+    }
+
+    // ------------------------------------------------------------- accounts
+    fun addUser(a: UserAccount) {
+        val v = ContentValues().apply {
+            put("username", a.username); put("password_hash", a.passwordHash)
+            put("role", a.role); put("donor_id", a.donorId)
+        }
+        writableDatabase.insert("users", null, v)
+    }
+
+    fun getUser(username: String): UserAccount? {
+        return readableDatabase.rawQuery(
+            "SELECT username, password_hash, role, donor_id FROM users WHERE username = ?",
+            arrayOf(username)
+        ).use { c ->
+            if (!c.moveToFirst()) null else UserAccount(
+                username = c.getString(0), passwordHash = c.getString(1),
+                role = c.getString(2),
+                donorId = if (c.isNull(3)) null else c.getLong(3)
+            )
+        }
+    }
+
+    /** Registers a donor AND their login account together (used by RegisterActivity). */
+    fun registerDonorAccount(donor: Donor, username: String, passwordHash: String): Long {
+        val donorId = addDonor(donor)
+        addUser(UserAccount(username, passwordHash, Session.ROLE_DONOR, donorId))
+        return donorId
     }
 
     /** A few sample donors so the app is demonstrable on first launch. */

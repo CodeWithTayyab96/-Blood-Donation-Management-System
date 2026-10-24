@@ -27,6 +27,14 @@ object BloodCompatibility {
     fun isCompatible(donorGroup: String, patientGroup: String): Boolean =
         canDonateTo[donorGroup]?.contains(patientGroup) == true
 
+    /** The date this donor becomes eligible again, or null if eligible right now
+     *  (never donated, or the 90-day gap has already passed). */
+    fun nextEligibleDate(donor: Donor, today: LocalDate = LocalDate.now()): LocalDate? {
+        val last = donor.lastDonationDate?.takeIf { it.isNotBlank() } ?: return null
+        val next = LocalDate.parse(last).plusDays(MIN_GAP_DAYS)
+        return if (next.isAfter(today)) next else null
+    }
+
     const val MIN_AGE = 18
     const val MAX_AGE = 65
     const val MIN_WEIGHT_KG = 50.0

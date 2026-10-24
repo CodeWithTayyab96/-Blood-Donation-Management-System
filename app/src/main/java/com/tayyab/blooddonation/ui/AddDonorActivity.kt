@@ -12,6 +12,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.Session
 import java.time.LocalDate
 import java.util.Calendar
 
@@ -21,6 +22,12 @@ class AddDonorActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.load(this)
+        if (!Session.isManager) {
+            Toast.makeText(this, "Only managers can add donors", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         setContentView(R.layout.activity_add_donor)
         title = "Register Donor"
         val db = DbHelper(this)

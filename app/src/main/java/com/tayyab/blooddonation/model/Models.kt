@@ -21,6 +21,15 @@ data class Donation(
     val units: Int
 )
 
+/** Local app account. Roles: MANAGER (full access) or DONOR (own profile only
+ *  for edits). Passwords are never stored in plain text — see Session.hashPassword. */
+data class UserAccount(
+    val username: String,
+    val passwordHash: String,
+    val role: String,           // MANAGER / DONOR
+    val donorId: Long? = null   // the donor profile this account belongs to (donors only)
+)
+
 data class BloodRequest(
     val id: Long = 0,
     val patientName: String,

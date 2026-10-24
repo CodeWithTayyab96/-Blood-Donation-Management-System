@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.Session
 
 class DonorDetailActivity : AppCompatActivity() {
 
@@ -25,8 +26,17 @@ class DonorDetailActivity : AppCompatActivity() {
         title = "Donor Detail"
         db = DbHelper(this)
         donorId = intent.getLongExtra("donorId", -1)
+        Session.load(this)
+        // Only managers delete donors; a donor may only record their own donation.
+        if (!Session.isManager) {
+            findViewById<Button>(R.id.btnDeleteDonor).visibility = View.GONE
+        }
 
         findViewById<Button>(R.id.btnRecordDonation).setOnClickListener {
+            if (!Session.isManager && Session.donorId != donorId) {
+                Toast.makeText(this, "You can only record your own donation", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             val donor = db.getDonor(donorId) ?: return@setOnClickListener
             val (eligible, reason) = BloodCompatibility.eligibility(donor)
             if (!eligible) {

@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.Session
 
 class MainActivity : AppCompatActivity() {
 
@@ -15,9 +16,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.load(this)
+        if (!Session.isLoggedIn) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
         setContentView(R.layout.activity_main)
         db = DbHelper(this)
 
+        findViewById<TextView>(R.id.tvSignedIn).text = "Signed in as ${Session.label()}"
         findViewById<Button>(R.id.btnDonors).setOnClickListener {
             startActivity(Intent(this, DonorListActivity::class.java))
         }
@@ -26,6 +34,14 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnRequests).setOnClickListener {
             startActivity(Intent(this, RequestListActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnProfile).setOnClickListener {
+            startActivity(Intent(this, ProfileActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnLogout).setOnClickListener {
+            Session.logout(this)
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
         }
     }
 

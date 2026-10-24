@@ -71,12 +71,20 @@
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
+        <TextView android:id="@+id/tvSignedIn" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="14sp"
+            android:textColor="@color/grey_text" android:layout_marginBottom="4dp" />
+
         <Button android:id="@+id/btnDonors" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="👥  Manage Donors" android:layout_marginTop="20dp" />
         <Button android:id="@+id/btnStock" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="🏥  Blood Stock" android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnRequests" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="📋  Blood Requests" android:layout_marginTop="10dp" />
+        <Button android:id="@+id/btnProfile" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="👤  My Profile" android:layout_marginTop="10dp" />
+        <Button android:id="@+id/btnLogout" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Log Out" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Stock by blood group" android:textSize="16sp" android:textStyle="bold"
