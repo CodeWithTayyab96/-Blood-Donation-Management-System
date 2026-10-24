@@ -19,16 +19,15 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Set up Gradle 8.7
+      # No separate Android SDK setup step: ubuntu-latest runners already
+      # ship the Android SDK (ANDROID_SDK_ROOT is pre-set), and the
+      # android-actions/setup-android step was the step failing the run.
+      # The Android Gradle Plugin finds the preinstalled SDK on its own.
+      - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: "8.7"
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
