@@ -1,0 +1,110 @@
+name: Generate Release Signing Key
+
+# ONE-TIME setup workflow. Run it manually, exactly once, from
+# GitHub > Actions > Generate Release Signing Key > Run workflow.
+#
+# What it does:
+#   1. Refuses to run if a release key already exists in Secrets, because
+#      generating a second key would break in-place updates for everyone
+#      who already installed the app (Android rejects an update signed
+#      with a different key).
+#   2. Generates a new release.keystore with keytool (RSA 2048, valid
+#      for 10000 days) and two random passwords.
+#   3. Uploads ONE artifact, "release-signing-key", containing the
+#      keystore and a signing-secrets.txt with the alias and passwords.
+#      The artifact is kept for 1 day only.
+#
+# What YOU must do right after it runs (see SIGNING.md):
+#   1. Download the artifact immediately.
+#   2. Add these four GitHub Secrets (repo > Settings > Secrets and
+#      variables > Actions):
+#        RELEASE_KEYSTORE_BASE64 = base64 of release.keystore
+#        RELEASE_KEY_ALIAS       = blooddonation
+#        RELEASE_STORE_PASSWORD  = value from signing-secrets.txt
+#        RELEASE_KEY_PASSWORD    = value from signing-secrets.txt
+#   3. Delete the workflow artifact.
+#   4. Keep a backup of the keystore + passwords somewhere safe and
+#      offline. If this key is lost, existing users can never update
+#      in place again - they would have to uninstall and lose their data.
+#
+# NEVER commit release.keystore, signing-secrets.txt, or any password
+# to the repo, and never share them in chat or screenshots. This
+# workflow never prints a password to the log.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-key:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Refuse if a release key already exists
+        env:
+          EXISTING_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$EXISTING_KEYSTORE" ]; then
+            echo "A release key already exists in Secrets. Generating a new one would break in-place updates."
+            echo "If you really need to replace the key, delete the four RELEASE_* secrets first, and warn users that they will have to uninstall and reinstall."
+            exit 1
+          fi
+
+      - name: Set up JDK 17 (for keytool)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate keystore and passwords
+        run: |
+          STORE_PASS=$(openssl rand -hex 24)
+          KEY_PASS=$(openssl rand -hex 24)
+          echo "::add-mask::$STORE_PASS"
+          echo "::add-mask::$KEY_PASS"
+          echo "STORE_PASS=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_PASS=$KEY_PASS" >> "$GITHUB_ENV"
+          keytool -genkeypair -v \
+            -keystore release.keystore \
+            -alias blooddonation \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
+            -dname "CN=Blood Donation App, OU=Development, O=Tayyab, L=Faisalabad, ST=Punjab, C=PK"
+          echo "--- Certificate fingerprint (safe to share, this is public) ---"
+          keytool -list -v -keystore release.keystore -storepass "$STORE_PASS" | grep -E 'SHA256|Alias|Valid'
+
+      - name: Write signing-secrets.txt (goes into the artifact only)
+        run: |
+          cat > signing-secrets.txt <<EOF
+          Blood Donation - release signing secrets
+          =========================================
+          Keep this file safe and offline. Never commit it to git.
+          Add these to GitHub Secrets, then delete the workflow artifact.
+
+          RELEASE_KEY_ALIAS=blooddonation
+          RELEASE_STORE_PASSWORD=${STORE_PASS}
+          RELEASE_KEY_PASSWORD=${KEY_PASS}
+
+          To make RELEASE_KEYSTORE_BASE64 yourself:
+            base64 -w0 release.keystore
+          (on macOS: base64 -i release.keystore)
+          EOF
+          # The keystore itself is never printed or committed.
+          ls -l release.keystore signing-secrets.txt
+
+      - name: Upload keystore artifact (1 day only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-signing-key
+          path: |
+            release.keystore
+            signing-secrets.txt
+          retention-days: 1
+
+      - name: Next steps
+        run: |
+          echo "Done. Download the 'release-signing-key' artifact NOW, add the four RELEASE_* secrets, then delete the artifact and back up the keystore offline. See SIGNING.md."

@@ -11,14 +11,39 @@ android {
         applicationId = "com.tayyab.blooddonation"
         minSdk = 26          // Android 8.0 and above
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
+    }
+
+    // Release signing. The keystore itself is NEVER committed: it lives in
+    // GitHub Secrets (see .github/workflows/generate-key.yml and release.yml).
+    // The workflow decodes it to app/release.keystore and passes the
+    // passwords as -P properties. Without those properties, a release build
+    // simply has no signing config, so a local debug build is unaffected.
+    val releaseKeystoreFile = file("release.keystore")
+    val releaseStorePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String?
+    val releaseKeyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String?
+    val releaseKeyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String?
+    val hasReleaseSigning = releaseKeystoreFile.exists() && releaseStorePassword != null &&
+        releaseKeyAlias != null && releaseKeyPassword != null
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

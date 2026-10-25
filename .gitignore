@@ -5,3 +5,10 @@
 /app/build
 /.idea
 .DS_Store
+# Release signing key - NEVER commit this. It is the key that lets users
+# update the app in place. If it leaks or is lost, in-place updates break.
+release.keystore
+*.jks
+*.keystore
+keystore.properties
+app/release.keystore
