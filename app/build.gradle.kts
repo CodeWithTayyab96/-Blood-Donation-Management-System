@@ -55,6 +55,11 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        // AGP 8 does NOT generate BuildConfig by default. The in-app updater
+        // (AppUpdater.kt, MainActivity.kt) reads BuildConfig.VERSION_NAME /
+        // VERSION_CODE, so without this the release build fails with
+        // "unresolved reference: BuildConfig" — this was the v1.2 run #2 failure.
+        buildConfig = true
     }
 }
 
