@@ -11,8 +11,24 @@ android {
         applicationId = "com.tayyab.blooddonation"
         minSdk = 26          // Android 8.0 and above
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
+
+        // Supabase (v1.3): the PostgREST client reads these BuildConfig
+        // fields. They come from Gradle project properties of the same
+        // names — in CI, from GitHub Secrets SUPABASE_URL and
+        // SUPABASE_ANON_KEY (see .github/workflows/release.yml). No key
+        // or token value is ever written in this file: with no property
+        // set, the URL falls back to this project's public URL and the
+        // key falls back to empty, which makes SupabaseClient report
+        // "not configured" and the app run fully offline on SQLite.
+        val supabaseUrl = (project.findProperty("SUPABASE_URL") as String?)
+            ?.trim()?.takeIf { it.isNotBlank() }
+            ?: "https://lwxfvxemhboxpoicrpbx.supabase.co"
+        val supabaseAnonKey = (project.findProperty("SUPABASE_ANON_KEY") as String?)
+            ?.trim() ?: ""
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     // Release signing. The keystore itself is NEVER committed: it lives in

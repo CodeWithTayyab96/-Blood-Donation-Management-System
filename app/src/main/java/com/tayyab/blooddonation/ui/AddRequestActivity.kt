@@ -11,6 +11,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.BloodRequest
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 
 class AddRequestActivity : AppCompatActivity() {
@@ -47,9 +48,31 @@ class AddRequestActivity : AppCompatActivity() {
                 contact = contact,
                 createdAt = LocalDate.now().toString()
             )
-            db.addRequest(req)
-            Toast.makeText(this, "Request created for $patient", Toast.LENGTH_SHORT).show()
-            finish()
+            if (SupabaseSync.isOnline) {
+                // Online first so the request keeps its server id locally;
+                // unreachable Supabase = saved locally only.
+                Thread {
+                    val remoteId = SupabaseSync.addRequestRemote(req)
+                    if (remoteId != null) {
+                        db.insertRequestWithId(req.copy(id = remoteId))
+                    } else {
+                        db.addRequest(req)
+                    }
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            if (remoteId != null) "Request created for $patient"
+                            else "Request saved on this phone (not synced to Supabase).",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        finish()
+                    }
+                }.start()
+            } else {
+                db.addRequest(req)
+                Toast.makeText(this, "Request created for $patient", Toast.LENGTH_SHORT).show()
+                finish()
+            }
         }
     }
 }

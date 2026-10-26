@@ -13,6 +13,7 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 import java.util.Calendar
 
@@ -69,9 +70,31 @@ class AddDonorActivity : AppCompatActivity() {
                 weightKg = weightText.toDouble(),
                 lastDonationDate = lastDonation?.toString()
             )
-            db.addDonor(donor)
-            Toast.makeText(this, "Donor registered: ${donor.name}", Toast.LENGTH_SHORT).show()
-            finish()
+            if (SupabaseSync.isOnline) {
+                // Online first so the donor keeps its server id locally
+                // too; if Supabase is unreachable, save locally only.
+                Thread {
+                    val remoteId = SupabaseSync.addDonorRemote(donor)
+                    if (remoteId != null) {
+                        db.insertDonorWithId(donor.copy(id = remoteId))
+                    } else {
+                        db.addDonor(donor)
+                    }
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            if (remoteId != null) "Donor registered: ${donor.name}"
+                            else "Donor saved on this phone (not synced to Supabase).",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        finish()
+                    }
+                }.start()
+            } else {
+                db.addDonor(donor)
+                Toast.makeText(this, "Donor registered: ${donor.name}", Toast.LENGTH_SHORT).show()
+                finish()
+            }
         }
     }
 }

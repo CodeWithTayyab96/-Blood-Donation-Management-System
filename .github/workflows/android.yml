@@ -26,8 +26,16 @@ jobs:
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v3
 
+      # Supabase secrets (v1.3): same names as in release.yml. A debug
+      # build without them still works — the app just runs offline.
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          ./gradlew assembleDebug --stacktrace \
+            -PSUPABASE_URL="$SUPABASE_URL" \
+            -PSUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

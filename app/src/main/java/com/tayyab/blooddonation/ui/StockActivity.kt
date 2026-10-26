@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.util.SupabaseSync
 
 class StockActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -13,9 +14,19 @@ class StockActivity : AppCompatActivity() {
         setContentView(R.layout.activity_stock)
         title = "Blood Stock"
         val db = DbHelper(this)
-        val rows = db.stockLevels().toList()
         val rv = findViewById<RecyclerView>(R.id.rvStock)
         rv.layoutManager = LinearLayoutManager(this)
-        rv.adapter = StockAdapter(rows)
+        // Local stock first, then a quiet online refresh (unreachable
+        // Supabase = local stock stays, same rule as everywhere else).
+        rv.adapter = StockAdapter(db.stockLevels().toList())
+        if (SupabaseSync.isOnline) {
+            Thread {
+                SupabaseSync.pullStock(db)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    rv.adapter = StockAdapter(db.stockLevels().toList())
+                }
+            }.start()
+        }
     }
 }

@@ -19,6 +19,7 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 
 class DonorListActivity : AppCompatActivity() {
 
@@ -71,6 +72,18 @@ class DonorListActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Local list first, then a quiet online refresh (same fallback
+        // rule as the dashboard: unreachable Supabase = local list stays).
+        renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            Thread {
+                SupabaseSync.pullDonors(db)
+                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+            }.start()
+        }
+    }
+
+    private fun renderFromLocal() {
         allDonors = db.getAllDonors()
         refreshCityFilter()
         applyFilters()

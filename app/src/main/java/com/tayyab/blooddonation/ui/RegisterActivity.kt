@@ -13,6 +13,7 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -53,13 +54,42 @@ class RegisterActivity : AppCompatActivity() {
                 bloodGroup = spGroup.selectedItem.toString(), phone = phone,
                 city = city, weightKg = weight, lastDonationDate = null
             )
-            val donorId = db.registerDonorAccount(
-                donor, username, Session.hashPassword(username, password)
-            )
-            Session.save(this, username, Session.ROLE_DONOR, donorId)
-            Toast.makeText(this, "Account created. Welcome, $name", Toast.LENGTH_SHORT).show()
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
+            // The account itself always stays local (no Supabase Auth);
+            // only the donor profile goes online, same as AddDonor.
+            if (SupabaseSync.isOnline) {
+                Thread {
+                    val remoteId = SupabaseSync.addDonorRemote(donor)
+                    val donorId = if (remoteId != null) {
+                        db.registerDonorAccountWithId(
+                            donor.copy(id = remoteId), username,
+                            Session.hashPassword(username, password)
+                        )
+                    } else {
+                        db.registerDonorAccount(
+                            donor, username, Session.hashPassword(username, password)
+                        )
+                    }
+                    runOnUiThread {
+                        Session.save(this, username, Session.ROLE_DONOR, donorId)
+                        Toast.makeText(
+                            this,
+                            if (remoteId != null) "Account created. Welcome, $name"
+                            else "Account created on this phone (not synced to Supabase).",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        startActivity(Intent(this, MainActivity::class.java))
+                        finish()
+                    }
+                }.start()
+            } else {
+                val donorId = db.registerDonorAccount(
+                    donor, username, Session.hashPassword(username, password)
+                )
+                Session.save(this, username, Session.ROLE_DONOR, donorId)
+                Toast.makeText(this, "Account created. Welcome, $name", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
+            }
         }
     }
 }

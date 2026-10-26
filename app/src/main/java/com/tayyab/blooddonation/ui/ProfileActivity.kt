@@ -11,16 +11,36 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 
 class ProfileActivity : AppCompatActivity() {
+
+    private lateinit var db: DbHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Session.load(this)
         setContentView(R.layout.activity_profile)
         title = "My Profile"
-        val db = DbHelper(this)
+        db = DbHelper(this)
 
+        // Local profile first, then a quiet online refresh (unreachable
+        // Supabase = local profile stays, same rule as everywhere else).
+        renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            Thread {
+                val donorId = Session.donorId
+                if (donorId != null) {
+                    SupabaseSync.pullDonorDetail(db, donorId)
+                } else {
+                    SupabaseSync.pullAll(db)
+                }
+                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+            }.start()
+        }
+    }
+
+    private fun renderFromLocal() {
         val donorId = Session.donorId
         if (donorId == null) {
             // Manager account: no donor profile, show account + overall counts.

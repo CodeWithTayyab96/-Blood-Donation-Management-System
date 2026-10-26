@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.SupabaseSync
 
 class RequestDetailActivity : AppCompatActivity() {
 
@@ -30,13 +31,53 @@ class RequestDetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "Already fulfilled.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val ok = db.fulfillRequest(req)
-            Toast.makeText(
-                this,
-                if (ok) "Request fulfilled from stock." else "Not enough ${req.bloodGroup} units in stock.",
-                Toast.LENGTH_LONG
-            ).show()
-            refresh()
+            if (SupabaseSync.isOnline) {
+                // Online stock is the source of truth when reachable:
+                // a short online stock means "not enough", full stop.
+                // An online error falls back to the old local behaviour.
+                Thread {
+                    when (SupabaseSync.fulfilRequestRemote(req)) {
+                        is SupabaseSync.FulfilResult.Success -> {
+                            db.fulfillRequest(req)
+                            runOnUiThread {
+                            if (isFinishing || isDestroyed) return@runOnUiThread
+                                Toast.makeText(this, "Request fulfilled from stock.", Toast.LENGTH_LONG).show()
+                                refresh()
+                            }
+                        }
+                        is SupabaseSync.FulfilResult.Insufficient -> runOnUiThread {
+                                if (isFinishing || isDestroyed) return@runOnUiThread
+                            Toast.makeText(
+                                this,
+                                "Not enough ${req.bloodGroup} units in stock.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            refresh()
+                        }
+                        is SupabaseSync.FulfilResult.Error -> {
+                            val ok = db.fulfillRequest(req)
+                            runOnUiThread {
+                            if (isFinishing || isDestroyed) return@runOnUiThread
+                                Toast.makeText(
+                                    this,
+                                    if (ok) "Request fulfilled on this phone (not synced to Supabase)."
+                                    else "Not enough ${req.bloodGroup} units in stock.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                refresh()
+                            }
+                        }
+                    }
+                }.start()
+            } else {
+                val ok = db.fulfillRequest(req)
+                Toast.makeText(
+                    this,
+                    if (ok) "Request fulfilled from stock." else "Not enough ${req.bloodGroup} units in stock.",
+                    Toast.LENGTH_LONG
+                ).show()
+                refresh()
+            }
         }
     }
 
@@ -46,6 +87,16 @@ class RequestDetailActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
+        renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            Thread {
+                SupabaseSync.pullRequestDetail(db, requestId)
+                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+            }.start()
+        }
+    }
+
+    private fun renderFromLocal() {
         val req = db.getRequest(requestId) ?: run { finish(); return }
         findViewById<TextView>(R.id.tvReqDetailTitle).text =
             "${req.patientName}  (${req.bloodGroup})"

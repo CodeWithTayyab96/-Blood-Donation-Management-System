@@ -12,6 +12,11 @@ name: Release APK
 #   RELEASE_KEY_ALIAS       - key alias, e.g. blooddonation
 #   RELEASE_STORE_PASSWORD  - keystore password
 #   RELEASE_KEY_PASSWORD    - key password
+# Supabase secrets (v1.3, repo > Settings > Secrets and variables > Actions):
+#   SUPABASE_URL      - the Supabase project URL
+#   SUPABASE_ANON_KEY - the project's legacy anon public key (NOT service_role)
+# If the Supabase secrets are missing, the build still succeeds, but the
+# baked-in anon key is empty and the app runs fully offline on SQLite.
 # If any secret is missing, the job fails on purpose instead of
 # publishing an unsigned APK that users could never update in place.
 on:
@@ -54,11 +59,15 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           ./gradlew assembleRelease --stacktrace \
             -PRELEASE_STORE_PASSWORD="$RELEASE_STORE_PASSWORD" \
             -PRELEASE_KEY_ALIAS="$RELEASE_KEY_ALIAS" \
-            -PRELEASE_KEY_PASSWORD="$RELEASE_KEY_PASSWORD"
+            -PRELEASE_KEY_PASSWORD="$RELEASE_KEY_PASSWORD" \
+            -PSUPABASE_URL="$SUPABASE_URL" \
+            -PSUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
           # The keystore must not survive in the workspace after the build.
           rm -f app/release.keystore
 

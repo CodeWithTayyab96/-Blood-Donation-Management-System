@@ -1,0 +1,166 @@
+package com.tayyab.blooddonation.util
+
+import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.model.BloodRequest
+import com.tayyab.blooddonation.model.Donor
+import java.time.LocalDate
+
+/**
+ * Bridges the local SQLite copy ([DbHelper]) and Supabase ([SupabaseClient]).
+ *
+ * Every function here blocks on network I/O and must be called on a
+ * background thread — activities do exactly that (Thread + runOnUiThread,
+ * the same pattern MainActivity already uses for AppUpdater).
+ *
+ * Design, in one paragraph: the online copy is the source of truth
+ * whenever it can be reached, and the local copy is the offline
+ * fallback. Reads pull the online rows down and merge them into SQLite
+ * (upsert by id, so local-only rows survive). Writes go online first
+ * and then into SQLite with the server-assigned id, so both copies stay
+ * in step; if the online write fails, the write still lands in SQLite
+ * and the user is told it was saved on this phone only. Accounts are
+ * never synced — the users table stays local only.
+ *
+ * Known limits, stated honestly (also in SUPABASE_SETUP.md):
+ * - A multi-step online write (donation = donation row + donor date +
+ *   stock, fulfil = stock + status) is not one transaction: if the
+ *   network drops halfway, part of it may be online and part not. The
+ *   next pull merges what is online, and the local copy still has the
+ *   full change, so nothing the user saw disappear — but the two copies
+ *   can briefly disagree until the next successful write.
+ * - A row created while offline gets a local-only id. If a different
+ *   row later arrives online with that same id, the upsert will replace
+ *   it. In normal online use this never happens, because online writes
+ *   always take the server id first.
+ */
+object SupabaseSync {
+
+    /** True when a project URL and anon key were baked into this build. */
+    val isOnline: Boolean get() = SupabaseClient.isConfigured
+
+    // ------------------------------------------------------------- pulls
+
+    /** Downloads all donors and merges them into SQLite. False on failure. */
+    fun pullDonors(db: DbHelper): Boolean {
+        val donors = SupabaseClient.getDonors() ?: return false
+        for (d in donors) db.upsertDonor(d)
+        return true
+    }
+
+    /** Downloads all requests and merges them into SQLite. False on failure. */
+    fun pullRequests(db: DbHelper): Boolean {
+        val requests = SupabaseClient.getRequests() ?: return false
+        for (r in requests) db.upsertRequest(r)
+        return true
+    }
+
+    /** Downloads stock levels and writes them into SQLite. False on failure. */
+    fun pullStock(db: DbHelper): Boolean {
+        val stock = SupabaseClient.getStock() ?: return false
+        for ((group, units) in stock) db.setStock(group, units)
+        return true
+    }
+
+    /** Downloads one donor and their donation history. False if the donor
+     *  itself could not be fetched (a history failure alone still counts
+     *  as success, since the donor row is what the screen needs most). */
+    fun pullDonorDetail(db: DbHelper, donorId: Long): Boolean {
+        val donor = SupabaseClient.getDonor(donorId) ?: return false
+        db.upsertDonor(donor)
+        val history = SupabaseClient.getDonationsForDonor(donorId)
+        if (history != null) {
+            for (d in history) {
+                // The donation rows embed their donor (name, group), but
+                // if that embed ever comes back empty, fill it from the
+                // donor row we already have — otherwise the history list
+                // would show blank names.
+                val complete = if (d.donorName.isBlank()) {
+                    d.copy(donorName = donor.name, bloodGroup = donor.bloodGroup)
+                } else {
+                    d
+                }
+                db.upsertDonation(complete)
+            }
+        }
+        return true
+    }
+
+    /** Downloads donors, requests and stock. True if at least one landed. */
+    fun pullAll(db: DbHelper): Boolean {
+        var ok = false
+        if (pullDonors(db)) ok = true
+        if (pullRequests(db)) ok = true
+        if (pullStock(db)) ok = true
+        return ok
+    }
+
+    /** Downloads one request, plus the stock and donors its screen needs. */
+    fun pullRequestDetail(db: DbHelper, requestId: Long): Boolean {
+        val req = SupabaseClient.getRequest(requestId) ?: return false
+        db.upsertRequest(req)
+        pullStock(db)
+        pullDonors(db)
+        return true
+    }
+
+    // ------------------------------------------------------------- pushes
+
+    /** Creates a donor online; returns the server id, or null on failure. */
+    fun addDonorRemote(donor: Donor): Long? = SupabaseClient.insertDonor(donor)
+
+    /** Deletes a donor online. False on failure (caller still deletes locally). */
+    fun deleteDonorRemote(donorId: Long): Boolean = SupabaseClient.deleteDonor(donorId)
+
+    /**
+     * Records a donation online: donation row, donor's last-donation date,
+     * and stock +units. True only if all three steps succeeded; the
+     * caller still records it locally either way.
+     */
+    fun recordDonationRemote(
+        donor: Donor,
+        units: Int,
+        date: LocalDate = LocalDate.now()
+    ): Boolean {
+        val dateStr = date.toString()
+        val donationId = SupabaseClient.insertDonation(donor.id, dateStr, units) ?: return false
+        if (donationId <= 0) return false
+        val dateOk = SupabaseClient.updateDonorLastDonation(donor.id, dateStr)
+        val stock = SupabaseClient.getStock()
+        val stockOk = if (stock != null) {
+            val current = stock[donor.bloodGroup] ?: 0
+            SupabaseClient.updateStock(donor.bloodGroup, current + units)
+        } else {
+            false
+        }
+        return dateOk && stockOk
+    }
+
+    /** Creates a request online; returns the server id, or null on failure. */
+    fun addRequestRemote(req: BloodRequest): Long? = SupabaseClient.insertRequest(req)
+
+    sealed class FulfilResult {
+        object Success : FulfilResult()
+        object Insufficient : FulfilResult()
+        object Error : FulfilResult()
+    }
+
+    /**
+     * Fulfils a request online: checks stock, subtracts the units, and
+     * marks the request Fulfilled. [Insufficient] means the online stock
+     * really is short (caller must NOT fulfil locally either, or the two
+     * copies would disagree). [Error] means the online state is unknown
+     * (network/permission failure) — the caller falls back to local-only.
+     */
+    fun fulfilRequestRemote(req: BloodRequest): FulfilResult {
+        val stock = SupabaseClient.getStock() ?: return FulfilResult.Error
+        val available = stock[req.bloodGroup] ?: 0
+        if (available < req.unitsNeeded) return FulfilResult.Insufficient
+        if (!SupabaseClient.updateStock(req.bloodGroup, available - req.unitsNeeded)) {
+            return FulfilResult.Error
+        }
+        if (!SupabaseClient.updateRequestStatus(req.id, "Fulfilled")) {
+            return FulfilResult.Error
+        }
+        return FulfilResult.Success
+    }
+}

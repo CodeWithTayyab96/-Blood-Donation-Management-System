@@ -14,6 +14,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 
 class DonorDetailActivity : AppCompatActivity() {
 
@@ -43,9 +44,32 @@ class DonorDetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "Not eligible: $reason", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-            db.recordDonation(donor, 1)
-            Toast.makeText(this, "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock.", Toast.LENGTH_LONG).show()
-            refresh()
+            if (SupabaseSync.isOnline) {
+                // Online first (donation row + donor date + stock), then
+                // the same change locally. If the online step fails, the
+                // local record still stands and the user is told so.
+                Thread {
+                    val onlineOk = SupabaseSync.recordDonationRemote(donor, 1)
+                    db.recordDonation(donor, 1)
+                    runOnUiThread {
+                        if (isFinishing || isDestroyed) return@runOnUiThread
+                        Toast.makeText(
+                            this,
+                            if (onlineOk) {
+                                "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock."
+                            } else {
+                                "Donation saved on this phone (not synced to Supabase)."
+                            },
+                            Toast.LENGTH_LONG
+                        ).show()
+                        refresh()
+                    }
+                }.start()
+            } else {
+                db.recordDonation(donor, 1)
+                Toast.makeText(this, "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock.", Toast.LENGTH_LONG).show()
+                refresh()
+            }
         }
 
         findViewById<Button>(R.id.btnDeleteDonor).setOnClickListener {
@@ -53,8 +77,16 @@ class DonorDetailActivity : AppCompatActivity() {
                 .setTitle("Delete donor")
                 .setMessage("Remove this donor permanently?")
                 .setPositiveButton("Delete") { _, _ ->
-                    db.deleteDonor(donorId)
-                    finish()
+                    if (SupabaseSync.isOnline) {
+                        Thread {
+                            SupabaseSync.deleteDonorRemote(donorId)
+                            db.deleteDonor(donorId)
+                            runOnUiThread { finish() }
+                        }.start()
+                    } else {
+                        db.deleteDonor(donorId)
+                        finish()
+                    }
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
@@ -67,6 +99,16 @@ class DonorDetailActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
+        renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            Thread {
+                SupabaseSync.pullDonorDetail(db, donorId)
+                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+            }.start()
+        }
+    }
+
+    private fun renderFromLocal() {
         val donor = db.getDonor(donorId) ?: run { finish(); return }
         findViewById<TextView>(R.id.tvDetailName).text = "${donor.name}  (${donor.bloodGroup})"
         findViewById<TextView>(R.id.tvDetailInfo).text =

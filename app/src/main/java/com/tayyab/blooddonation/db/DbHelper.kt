@@ -121,6 +121,74 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         return donorId
     }
 
+    // ------------------------------------------- Supabase merge helpers (v1.3)
+    // These exist so the online copy and the local copy can share ids.
+    // A row downloaded from Supabase keeps its server id here (SQLite
+    // allows an explicit id in an INTEGER PRIMARY KEY column), so the
+    // local users table (donor_id) and donation rows keep pointing at
+    // the same donor. Upserts merge: a downloaded row replaces the local
+    // row with the same id, and local-only rows are left untouched.
+    // The users table is never synced — accounts stay local only.
+    fun insertDonorWithId(d: Donor): Long {
+        if (d.id <= 0) return addDonor(d)
+        val v = ContentValues().apply {
+            put("id", d.id); put("name", d.name); put("age", d.age); put("gender", d.gender)
+            put("blood_group", d.bloodGroup); put("phone", d.phone); put("city", d.city)
+            put("weight", d.weightKg); put("last_donation_date", d.lastDonationDate)
+        }
+        writableDatabase.insertWithOnConflict(
+            "donors", null, v, SQLiteDatabase.CONFLICT_REPLACE
+        )
+        return d.id
+    }
+
+    fun upsertDonor(d: Donor) {
+        if (d.id <= 0) return
+        insertDonorWithId(d)
+    }
+
+    fun upsertDonation(d: Donation) {
+        if (d.id <= 0) return
+        val v = ContentValues().apply {
+            put("id", d.id); put("donor_id", d.donorId)
+            put("date", d.date); put("units", d.units)
+        }
+        writableDatabase.insertWithOnConflict(
+            "donations", null, v, SQLiteDatabase.CONFLICT_REPLACE
+        )
+    }
+
+    fun insertRequestWithId(r: BloodRequest): Long {
+        if (r.id <= 0) return addRequest(r)
+        val v = ContentValues().apply {
+            put("id", r.id); put("patient_name", r.patientName); put("hospital", r.hospital)
+            put("blood_group", r.bloodGroup); put("units_needed", r.unitsNeeded)
+            put("urgency", r.urgency); put("contact", r.contact)
+            put("status", r.status); put("created_at", r.createdAt)
+        }
+        writableDatabase.insertWithOnConflict(
+            "requests", null, v, SQLiteDatabase.CONFLICT_REPLACE
+        )
+        return r.id
+    }
+
+    fun upsertRequest(r: BloodRequest) {
+        if (r.id <= 0) return
+        insertRequestWithId(r)
+    }
+
+    fun setStock(bloodGroup: String, units: Int) {
+        val v = ContentValues().apply { put("units", units) }
+        writableDatabase.update("stock", v, "blood_group=?", arrayOf(bloodGroup))
+    }
+
+    /** Same as registerDonorAccount, but keeps a server-assigned donor id. */
+    fun registerDonorAccountWithId(donor: Donor, username: String, passwordHash: String): Long {
+        val donorId = insertDonorWithId(donor)
+        addUser(UserAccount(username, passwordHash, Session.ROLE_DONOR, donorId))
+        return donorId
+    }
+
     /** A few sample donors so the app is demonstrable on first launch. */
     private fun seed(db: SQLiteDatabase) {
         val samples = listOf(

@@ -14,6 +14,7 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.AppUpdater
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 
 class MainActivity : AppCompatActivity() {
 
@@ -145,6 +146,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
+        // Show the local copy immediately, then quietly refresh it from
+        // Supabase in the background and re-render. If Supabase is not
+        // configured or unreachable, the local numbers simply stay — the
+        // dashboard never waits on the network and never crashes.
+        renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            Thread {
+                SupabaseSync.pullAll(db)
+                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+            }.start()
+        }
+    }
+
+    private fun renderFromLocal() {
         findViewById<TextView>(R.id.tvStatDonors).text = db.donorCount().toString()
         findViewById<TextView>(R.id.tvStatUnits).text = db.totalUnitsInStock().toString()
         findViewById<TextView>(R.id.tvStatRequests).text = db.pendingRequestCount().toString()
