@@ -3,7 +3,9 @@ package com.tayyab.blooddonation.ui
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -27,6 +29,7 @@ class ProfileActivity : AppCompatActivity() {
         // Local profile first, then a quiet online refresh (unreachable
         // Supabase = local profile stays, same rule as everywhere else).
         renderFromLocal()
+        setupSyncRetry()
         if (SupabaseSync.isOnline) {
             Thread {
                 val donorId = Session.donorId
@@ -36,6 +39,64 @@ class ProfileActivity : AppCompatActivity() {
                     SupabaseSync.pullAll(db)
                 }
                 runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+            }.start()
+        }
+    }
+
+    /**
+     * The retry for a donor profile that failed to sync at
+     * registration (see RegisterActivity): shown only to a signed-in
+     * donor with an Auth session whose profile is still marked
+     * pending. On success the local row is re-linked to the
+     * server-assigned id (account row and any donations recorded
+     * meanwhile move with it) and the flag is cleared; on failure
+     * the button stays, and nothing is claimed.
+     */
+    private fun setupSyncRetry() {
+        val btn = findViewById<Button>(R.id.btnSyncProfile)
+        val show = Session.donorId != null &&
+            Session.authUserId != null &&
+            Session.profilePendingSync
+        btn.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+        btn.setOnClickListener {
+            btn.isEnabled = false
+            Thread {
+                val donorId = Session.donorId
+                val authId = Session.authUserId
+                val donor = donorId?.let { db.getDonor(it) }
+                val remoteId = if (donor != null && authId != null) {
+                    SupabaseSync.addDonorRemote(donor, authId)
+                } else {
+                    null
+                }
+                runOnUiThread {
+                    btn.isEnabled = true
+                    if (remoteId != null && donor != null) {
+                        val newId = db.relinkDonorProfile(donor.id, donor.copy(id = remoteId))
+                        val access = Session.accessToken
+                        val refresh = Session.refreshToken
+                        if (!access.isNullOrBlank() && !refresh.isNullOrBlank()) {
+                            Session.saveAuth(
+                                this, Session.username ?: "", Session.ROLE_DONOR, newId,
+                                Session.email ?: "", Session.authUserId, access, refresh
+                            )
+                        } else {
+                            // Tokens are gone (dead session): keep the
+                            // local login, just move it to the new id.
+                            Session.save(this, Session.username ?: "", Session.ROLE_DONOR, newId)
+                        }
+                        Session.setProfilePendingSync(this, false)
+                        btn.visibility = View.GONE
+                        renderFromLocal()
+                        Toast.makeText(this, "Profile synced to Supabase", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(
+                            this, "Profile sync failed — check your connection and try again",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }.start()
         }
     }

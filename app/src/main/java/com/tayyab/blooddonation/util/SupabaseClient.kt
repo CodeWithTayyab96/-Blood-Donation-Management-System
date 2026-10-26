@@ -29,7 +29,18 @@ import org.json.JSONObject
  *
  * Login/accounts are deliberately NOT here: they stay on local SQLite
  * exactly as in v1.2 (see Session / DbHelper). This client only moves
- * donors, donations, requests and stock. No Supabase Auth is used.
+ * donors, donations, requests and stock.
+ *
+ * v1.4: the Bearer token is no longer always the anon key. When the
+ * user is signed in through Supabase Auth (see SupabaseAuth), the
+ * user's own access token is sent instead — the "authenticated" RLS
+ * policies on the tables only accept those, and the anon key alone
+ * gets nothing back. When no Auth session exists, the anon key is
+ * still used as the fallback, exactly as in v1.3. If a call answers
+ * 401 (access token expired) and a refresh token exists, the client
+ * refreshes the session ONCE through SupabaseAuth, stores the new
+ * tokens, and retries the call once; if that also fails, the failure
+ * is returned and the caller falls back to local SQLite, as before.
  *
  * The anon key is never written in code: it arrives as the BuildConfig
  * field SUPABASE_ANON_KEY, which Gradle fills from the SUPABASE_ANON_KEY
@@ -60,8 +71,36 @@ object SupabaseClient {
     /**
      * One raw PostgREST call. Returns (HTTP status, response body or null).
      * Status -1 means the request never completed (no network, timeout...).
+     *
+     * Bearer rule: the signed-in user's access token when Session holds
+     * one, otherwise the anon key. On a 401 with a refresh token
+     * available, the session is refreshed once (see SupabaseAuth) and
+     * the call is retried exactly once; a second failure is returned
+     * as-is. A refresh that fails for a non-network reason means the
+     * session is dead, so the stored tokens are cleared and the user
+     * will sign in again next time instead of retrying a dead token
+     * on every call.
      */
     private fun request(method: String, path: String, body: JSONObject? = null): Pair<Int, String?> {
+        val (code, text) = requestOnce(method, path, body)
+        if (code == 401) {
+            val refresh = Session.refreshToken
+            if (!refresh.isNullOrBlank()) {
+                val refreshed = SupabaseAuth.refreshSession(refresh)
+                if (refreshed != null) {
+                    Session.updateTokens(refreshed.accessToken, refreshed.refreshToken)
+                    return requestOnce(method, path, body)
+                }
+                if (SupabaseAuth.lastError != "No internet connection") {
+                    Session.clearTokens()
+                }
+            }
+        }
+        return code to text
+    }
+
+    /** A single HTTP attempt, with no retry. See [request]. */
+    private fun requestOnce(method: String, path: String, body: JSONObject? = null): Pair<Int, String?> {
         if (!isConfigured) return -1 to null
         return try {
             val connection = URL(baseUrl() + path).openConnection() as HttpURLConnection
@@ -71,7 +110,8 @@ object SupabaseClient {
                 connection.readTimeout = READ_TIMEOUT_MS
                 connection.setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
                 connection.setRequestProperty(
-                    "Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}"
+                    "Authorization",
+                    "Bearer ${Session.accessToken ?: BuildConfig.SUPABASE_ANON_KEY}"
                 )
                 connection.setRequestProperty("Accept", "application/json")
                 if (body != null) {
@@ -87,7 +127,9 @@ object SupabaseClient {
                 val code = connection.responseCode
                 val stream = if (code in 200..299) connection.inputStream else connection.errorStream
                 val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                if (code !in 200..299) {
+                if (code in 200..299) {
+                    lastError = null
+                } else {
                     lastError = "Supabase $method $path -> HTTP $code"
                 }
                 code to text
@@ -198,8 +240,23 @@ object SupabaseClient {
         return donorFromJson(obj)
     }
 
-    /** Inserts a donor online; returns the server-assigned id, or null. */
-    fun insertDonor(donor: Donor): Long? {
+    /**
+     * The donor profile linked to an Auth user id, or null when there
+     * is none. Used at Auth sign-in to find a returning donor's
+     * profile (e.g. after reinstalling, when no local row exists yet).
+     */
+    fun getDonorByAuthId(authId: String): Donor? {
+        val obj = firstObject("/donors?auth_id=eq.$authId&select=*") ?: return null
+        return donorFromJson(obj)
+    }
+
+    /**
+     * Inserts a donor online; returns the server-assigned id, or null.
+     * [authId] links the profile to its Supabase Auth user (v1.4
+     * registration); it is omitted for manager-added donors, who have
+     * no Auth account of their own.
+     */
+    fun insertDonor(donor: Donor, authId: String? = null): Long? {
         val body = JSONObject().apply {
             put("name", donor.name)
             put("age", donor.age)
@@ -210,6 +267,7 @@ object SupabaseClient {
             put("weight", donor.weightKg)
             if (donor.lastDonationDate != null) put("last_donation_date", donor.lastDonationDate)
             else put("last_donation_date", JSONObject.NULL)
+            if (authId != null) put("auth_id", authId)
         }
         return insertRow("donors", body)
     }

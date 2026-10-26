@@ -15,6 +15,9 @@
         <TextView android:id="@+id/tvProfileNext" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:textSize="16sp"
             android:layout_marginTop="6dp" />
+        <Button android:id="@+id/btnSyncProfile" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Sync profile to Supabase"
+            android:visibility="gone" android:layout_marginTop="12dp" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Donation history" android:textSize="16sp" android:textStyle="bold"
             android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />

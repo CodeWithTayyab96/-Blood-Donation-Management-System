@@ -19,7 +19,9 @@ import java.time.LocalDate
  * and then into SQLite with the server-assigned id, so both copies stay
  * in step; if the online write fails, the write still lands in SQLite
  * and the user is told it was saved on this phone only. Accounts are
- * never synced — the users table stays local only.
+ * no longer local-only: v1.4 signs users in through Supabase Auth
+ * (see SupabaseAuth), while the local users table stays as the offline
+ * mirror and the offline-fallback login.
  *
  * Known limits, stated honestly (also in SUPABASE_SETUP.md):
  * - A multi-step online write (donation = donation row + donor date +
@@ -105,8 +107,13 @@ object SupabaseSync {
 
     // ------------------------------------------------------------- pushes
 
-    /** Creates a donor online; returns the server id, or null on failure. */
-    fun addDonorRemote(donor: Donor): Long? = SupabaseClient.insertDonor(donor)
+    /**
+     * Creates a donor online; returns the server id, or null on failure.
+     * [authId] links the profile to its Supabase Auth user (v1.4
+     * registration); manager-added donors pass nothing here.
+     */
+    fun addDonorRemote(donor: Donor, authId: String? = null): Long? =
+        SupabaseClient.insertDonor(donor, authId)
 
     /** Deletes a donor online. False on failure (caller still deletes locally). */
     fun deleteDonorRemote(donorId: Long): Boolean = SupabaseClient.deleteDonor(donorId)

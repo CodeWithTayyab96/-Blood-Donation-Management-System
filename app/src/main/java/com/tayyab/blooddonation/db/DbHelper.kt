@@ -16,7 +16,10 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
 
     companion object {
         private const val DB_NAME = "blood_donation.db"
-        private const val DB_VERSION = 2
+        // v3 (v1.4): adds the manager@blood.local seed row for the
+        // Supabase Auth manager login. Existing installs upgrade
+        // without losing data (see onUpgrade).
+        private const val DB_VERSION = 3
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -62,18 +65,31 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         )
     }
 
-    /** Demo manager account for the teacher demo: manager / manager123. */
+    /**
+     * Demo manager accounts for the teacher demo. "manager" is the
+     * original local-only login; "manager@blood.local" is the same
+     * manager through Supabase Auth (a matching Auth user exists in
+     * the project), so the manager can also sign in with an email.
+     * Both use the password manager123. The COUNT check keeps this
+     * idempotent, so upgrades never duplicate the rows.
+     */
     private fun seedManager(db: SQLiteDatabase) {
-        val existing = db.rawQuery(
-            "SELECT COUNT(*) FROM users WHERE username='manager'", null
-        ).use { if (it.moveToFirst()) it.getInt(0) else 0 }
-        if (existing == 0) {
-            val v = ContentValues().apply {
-                put("username", "manager")
-                put("password_hash", Session.hashPassword("manager", "manager123"))
-                put("role", Session.ROLE_MANAGER)
+        val seeds = listOf(
+            "manager" to Session.hashPassword("manager", "manager123"),
+            "manager@blood.local" to Session.hashPassword("manager@blood.local", "manager123")
+        )
+        for ((username, hash) in seeds) {
+            val existing = db.rawQuery(
+                "SELECT COUNT(*) FROM users WHERE username=?", arrayOf(username)
+            ).use { if (it.moveToFirst()) it.getInt(0) else 0 }
+            if (existing == 0) {
+                val v = ContentValues().apply {
+                    put("username", username)
+                    put("password_hash", hash)
+                    put("role", Session.ROLE_MANAGER)
+                }
+                db.insert("users", null, v)
             }
-            db.insert("users", null, v)
         }
     }
 
@@ -81,6 +97,10 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         if (oldVersion < 2) {
             // v1 -> v2: only add accounts, keep all existing donors/stock/requests.
             createUsersTable(db)
+            seedManager(db)
+        } else if (oldVersion < 3) {
+            // v2 -> v3 (v1.4): only add the manager@blood.local seed
+            // row; all existing data stays untouched.
             seedManager(db)
         } else {
             db.execSQL("DROP TABLE IF EXISTS donors")
@@ -128,7 +148,11 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
     // local users table (donor_id) and donation rows keep pointing at
     // the same donor. Upserts merge: a downloaded row replaces the local
     // row with the same id, and local-only rows are left untouched.
-    // The users table is never synced — accounts stay local only.
+    // The users table is the local mirror of accounts: v1.4 signs
+    // users in through Supabase Auth, and the local row (keyed by
+    // email) maps the Auth user to a role and a donor profile, and
+    // backs the offline-fallback login. The table itself is never
+    // pushed to Supabase — Auth owns the server-side account.
     fun insertDonorWithId(d: Donor): Long {
         if (d.id <= 0) return addDonor(d)
         val v = ContentValues().apply {
@@ -187,6 +211,29 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         val donorId = insertDonorWithId(donor)
         addUser(UserAccount(username, passwordHash, Session.ROLE_DONOR, donorId))
         return donorId
+    }
+
+    /**
+     * Re-links a donor profile that was created locally first (its
+     * profile insert failed at registration) to the id Supabase
+     * assigned when the profile finally synced: the local row is
+     * replaced by the server row, and the account row plus any
+     * donations recorded meanwhile are moved to the new id. If the
+     * server id happens to equal the local id, the row is just
+     * replaced in place and nothing is deleted.
+     */
+    fun relinkDonorProfile(oldId: Long, newDonor: Donor): Long {
+        if (newDonor.id == oldId) {
+            insertDonorWithId(newDonor)
+            return oldId
+        }
+        insertDonorWithId(newDonor)
+        val db = writableDatabase
+        val v = ContentValues().apply { put("donor_id", newDonor.id) }
+        db.update("users", v, "donor_id=?", arrayOf(oldId.toString()))
+        db.update("donations", v, "donor_id=?", arrayOf(oldId.toString()))
+        db.delete("donors", "id=?", arrayOf(oldId.toString()))
+        return newDonor.id
     }
 
     /** A few sample donors so the app is demonstrable on first launch. */

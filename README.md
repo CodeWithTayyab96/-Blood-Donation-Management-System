@@ -5,16 +5,24 @@ blood requests for a blood bank / hospital blood unit.
 
 **Platform:** Android 8.0 (API 26) and above
 **Language:** Kotlin · **Storage:** Supabase (online) with SQLite as the
-offline fallback — see "Supabase mode (v1.3)" below. Version 1.2
+offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
 (local SQLite only) remains the safe fallback release.
 
 ## Features
 
-- **Sign-in and roles** — local, offline accounts: a Manager (full access)
-  and Donors (view everything, but only edit their own profile/donations).
-  Demo manager account: `manager` / `manager123`. Donors register from the
-  sign-in screen, which creates their account and donor profile together.
-  Passwords are stored only as SHA-256 hashes, never in plain text.
+- **Sign-in and roles** — real accounts through Supabase Auth
+  (email + password). A Manager (full access) and Donors (view
+  everything, but only edit their own profile/donations). Demo
+  manager logins: `manager` / `manager123` (local-only, as before)
+  and `manager@blood.local` / `manager123` (through Supabase Auth).
+  Donors register from the sign-in screen with an email address,
+  which creates their Auth account and donor profile together.
+  Registration needs an internet connection — it never creates a
+  silent local-only account any more. Passwords are stored only as
+  SHA-256 hashes on the phone, never in plain text, and the Auth
+  tokens are kept in the app's private session store. Old
+  local-only accounts from v1.3 do NOT carry over: they must
+  re-register with an email to get an Auth account.
 - **My Profile** — a donor's own details, donation history, and their
   **next eligible date** (last donation + 90 days, or "eligible now").
 - **Dashboard** — live counts: registered donors, units in stock, pending
@@ -37,10 +45,12 @@ offline fallback — see "Supabase mode (v1.3)" below. Version 1.2
 
 _Add screenshots here after running the app._
 
-## Supabase mode (v1.3)
+## Supabase mode (v1.4)
 
-Donors, donations, requests and stock now live in Supabase (PostgREST)
-as well as in local SQLite:
+Donors, donations, requests and stock live in Supabase (PostgREST)
+as well as in local SQLite, and accounts are now real Supabase Auth
+accounts (v1.3 had local-only accounts — see SUPABASE_SETUP.md for
+what changed):
 
 - **Online first, offline safe.** Each screen shows the local copy
   immediately, then refreshes it from Supabase in the background.
@@ -48,9 +58,17 @@ as well as in local SQLite:
   Supabase cannot be reached, the change still saves on the phone and
   the app says so. The app never crashes because Supabase is down, and
   no network call ever runs on the main thread.
-- **Login stays local.** Sign-in, manager/donor roles and password
-  hashes remain on SQLite exactly as in v1.2. There is no Supabase
-  Auth in this version, and the `users` table is never synced.
+- **Sign-in is Supabase Auth.** Registering creates an Auth user and
+  a donor profile linked by `auth_id`, and every online call carries
+  that user's access token (refreshed automatically once when it
+  expires). The tables have Row Level Security for the
+  `authenticated` role (`supabase_auth_policies.sql`, applied), so
+  the anon key alone reads/writes nothing. Signing in with an email
+  on a new phone finds the donor profile by `auth_id` and recreates
+  the local account. If there is no network but the phone already
+  knows the email + password, the app signs in offline and says so.
+  The plain-username login (`manager` / `manager123`) still works
+  exactly as before, local-only.
 - **Where the key comes from.** The app reads the project URL and
   anon key from BuildConfig fields (`SUPABASE_URL`,
   `SUPABASE_ANON_KEY`), which Gradle fills from project properties of
@@ -60,14 +78,11 @@ as well as in local SQLite:
   key, never the service_role key. No key value is stored anywhere in
   this repo. Without an anon key, the app runs fully offline, exactly
   like v1.2.
-- **Row Level Security warning.** If RLS is enabled on the Supabase
-  tables without a policy for the anon role, PostgREST answers 401/403
-  and the app silently falls back to SQLite. A review-only policy file
-  is included (`supabase_policies_review.sql`) — it has NOT been
-  applied. Its policies are permissive (anyone with the project URL
-  and anon key could read/write the demo data), so do not enter real
-  donor phone numbers until proper authentication is added. Full
-  details, data flow and known limits: `SUPABASE_SETUP.md`.
+- **Row Level Security note.** The old review-only file
+  (`supabase_policies_review.sql`, permissive anon access) must NOT
+  be applied — v1.4 replaces it with authenticated-only policies.
+  Demo/sample data only: do not enter real donor phone numbers.
+  Full details, data flow and known limits: `SUPABASE_SETUP.md`.
 
 ## How to run
 
@@ -88,17 +103,24 @@ the online and local copies start in step.
 
 ```
 app/src/main/java/com/tayyab/blooddonation/
-├── db/DbHelper.kt            SQLite schema + all queries (v2 adds users)
-│                             + v1.3 upsert / explicit-id merge helpers
+├── db/DbHelper.kt            SQLite schema + all queries (v3 adds the
+│                             manager@blood.local seed) + v1.3 upsert /
+│                             explicit-id merge helpers + v1.4 profile relink
 ├── model/Models.kt           Donor, Donation, BloodRequest, UserAccount
 ├── util/BloodCompatibility.kt  Compatibility table + eligibility rules
-├── util/Session.kt           Signed-in account + password hashing
-├── util/SupabaseClient.kt    v1.3: PostgREST client (HttpURLConnection)
-├── util/SupabaseSync.kt      v1.3: online/offline pull + push logic
+├── util/Session.kt           Signed-in account + password hashing +
+│                             v1.4 Auth tokens + pending-profile flag
+├── util/SupabaseAuth.kt      v1.4: Supabase Auth client (HttpURLConnection)
+├── util/SupabaseClient.kt    PostgREST client (HttpURLConnection);
+│                             v1.4: user Bearer token + one 401 refresh
+├── util/SupabaseSync.kt      Online/offline pull + push logic
 └── ui/                       Activities and RecyclerView adapters
-    ├── LoginActivity.kt      Sign-in (launcher activity)
-    ├── RegisterActivity.kt   Donor account + profile creation
-    └── ProfileActivity.kt    Own profile + next eligible date
+    ├── LoginActivity.kt      Sign-in: email via Supabase Auth, or
+    │                         plain username local-only (launcher activity)
+    ├── RegisterActivity.kt   Email registration: Auth account + donor
+    │                         profile linked by auth_id
+    └── ProfileActivity.kt    Own profile + next eligible date +
+                              "Sync profile" retry for unsynced profiles
 ```
 
 ## Inspiration and attribution

@@ -1,4 +1,65 @@
-# Blood Donation v1.3 — Supabase setup
+# Blood Donation v1.4 — Supabase setup
+
+## What changed in v1.4 (Auth)
+
+Accounts are now real Supabase Auth accounts. Everything from v1.3
+below still applies to donors, donations, requests and stock; this
+section only covers what Auth adds.
+
+- **Sign-up / sign-in** (`util/SupabaseAuth.kt`, plain
+  HttpURLConnection + org.json, no new library): the app calls
+  GoTrue directly — `POST /auth/v1/signup` and
+  `POST /auth/v1/token?grant_type=password` — and stores the
+  session (user id, access token, refresh token) in `Session`.
+  Registration requires an email and an internet connection: with
+  no Supabase config it stops with "Registration needs an internet
+  connection" and creates nothing, and a failed sign-up (email
+  already registered, no network) also creates nothing. The old
+  v1.3 behaviour — a silent local-only account that looked synced
+  but was not — is gone.
+- **Donor profiles link by `auth_id`.** Registration inserts the
+  donor profile with `auth_id` = the new Auth user id (see
+  `supabase_auth_migration.sql`: `donors.auth_id uuid` + a partial
+  unique index, so one profile per Auth user; the 5 seeded demo
+  donors have no `auth_id` and are unaffected). Signing in on a new
+  phone looks the profile up by `auth_id` and recreates the local
+  account + profile, so a donor gets their own profile back on any
+  device. If the profile insert fails after a successful sign-up,
+  the account still works on the phone, the profile is marked
+  pending, and the profile screen offers a "Sync profile" retry
+  that re-links the local row to the server id.
+- **Every online call carries the user's token.**
+  `SupabaseClient` sends the signed-in user's access token as the
+  Bearer token (anon key only when no Auth session exists). On a
+  401 it refreshes the session once via the stored refresh token
+  and retries the call once; a dead session (refresh rejected for
+  a non-network reason) has its tokens cleared, so the user signs
+  in again instead of retrying a dead token forever. No network
+  call ever runs on the main thread, and no Auth function ever
+  throws — failures return null/false, and callers fall back to
+  local SQLite exactly as before.
+- **Row Level Security is authenticated-only**
+  (`supabase_auth_policies.sql`): RLS is ON for donors, donations,
+  requests and stock, and the `authenticated` role gets full access
+  to all rows. The anon key alone reads/writes nothing any more —
+  which is why the v1.3 review file below must NOT be applied.
+  Demo/sample data only: every signed-in user can read/write every
+  row (a classroom demo, not per-user row ownership). Do NOT enter
+  real donor phone numbers.
+- **Demo logins.** `manager` / `manager123` still works local-only
+  (unchanged v1.3 path). `manager@blood.local` / `manager123`
+  works through Supabase Auth (a matching Auth user exists in the
+  project, and the app seeds the local mirror row). Old local-only
+  v1.3 accounts do NOT carry over: their username + password hash
+  still exist on the phone, but they have no Auth user, so they
+  must re-register with an email to sign in through Auth. (A
+  v1.3 local username without "@" still signs in locally, exactly
+  as before — that path is untouched.)
+- **Dashboard Auth settings.** Email provider ON, "Confirm email"
+  OFF (so sign-up returns a session immediately). If Confirm email
+  is ever turned back ON, sign-up returns a user but no session,
+  and the app reports "Email confirmation is required" instead of
+  pretending the sign-up succeeded.
 
 ## What changed in v1.3
 
@@ -54,25 +115,47 @@ Known limits (see also `util/SupabaseSync.kt`):
    key, never the service_role key — service_role bypasses RLS and
    must never ship inside an app.
 
-## Before the app can actually read/write online
+## Before the app can actually read/write online (v1.4 setup steps)
 
 - Add the two secrets above (names only — never commit a key value).
-- If PostgREST answers 401/403, Row Level Security is the likely
-  cause: review `supabase_policies_review.sql` first. It contains
-  permissive anon policies for the five tables. It has NOT been
-  applied anywhere — applying it is a deliberate decision, because
-  with permissive anon policies anyone holding the project URL and
-  the anon key can read/write the demo data. Do not enter real donor
-  phone numbers until proper auth is added.
+- Run, in order, in the Supabase SQL editor: `supabase_migration.sql`
+  (already applied), then `supabase_auth_migration.sql` (adds
+  `donors.auth_id` + the partial unique index), then
+  `supabase_auth_policies.sql` (RLS ON + authenticated full access).
+  All three are one-time. The migration file is safe to re-run
+  (`if not exists` throughout); the policies file will error on a
+  duplicate policy name if re-run, which simply means the policies
+  are already there.
+- In Authentication → Providers: Email ON, "Confirm email" OFF.
+- Do NOT run `supabase_policies_review.sql`: it was the v1.3
+  review-only idea (permissive anon access), it was never applied,
+  and v1.4 replaces it with the authenticated policies above. With
+  the authenticated policies in place, a PostgREST 401 means the
+  access token expired (the app refreshes once and retries) or the
+  user is not signed in — not a missing anon policy.
 
 ## Files
 
+- `app/src/main/java/com/tayyab/blooddonation/util/SupabaseAuth.kt`
+  — v1.4: GoTrue sign-up / sign-in / refresh / profile-by-auth-id
+  (blocking; background threads only).
 - `app/src/main/java/com/tayyab/blooddonation/util/SupabaseClient.kt`
-  — raw PostgREST calls (blocking; background threads only).
+  — raw PostgREST calls (blocking; background threads only);
+  v1.4: user Bearer token + one 401 refresh-and-retry.
 - `app/src/main/java/com/tayyab/blooddonation/util/SupabaseSync.kt`
   — pull/merge and multi-step write orchestration.
+- `app/src/main/java/com/tayyab/blooddonation/util/Session.kt`
+  — v1.4: also stores Auth email, user id, tokens, pending flag.
 - `app/src/main/java/com/tayyab/blooddonation/db/DbHelper.kt`
-  — upsert / explicit-id helpers added; all v1.2 methods unchanged.
+  — upsert / explicit-id helpers added; v1.4 adds the
+  manager@blood.local seed, a v3 upgrade branch, and the profile
+  relink helper. All v1.2 methods unchanged.
 - `supabase_migration.sql` — the schema already applied to the
   project (donors, donations, requests, stock, users + seeds).
-- `supabase_policies_review.sql` — RLS policies for review only.
+- `supabase_auth_migration.sql` — v1.4: `donors.auth_id` + partial
+  unique index. Apply after `supabase_migration.sql`.
+- `supabase_auth_policies.sql` — v1.4: RLS ON + authenticated full
+  access. Apply after `supabase_auth_migration.sql`. REPLACES the
+  v1.3 review file below — do not apply both.
+- `supabase_policies_review.sql` — v1.3 RLS policies for review
+  only. NEVER applied; do NOT apply it under v1.4.

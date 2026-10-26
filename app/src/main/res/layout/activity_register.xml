@@ -7,8 +7,9 @@
             android:text="Create your donor account" android:textSize="20sp"
             android:textStyle="bold" android:textColor="@color/blood_red_dark"
             android:layout_marginBottom="12dp" />
-        <EditText android:id="@+id/etUsername" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="Username *" android:inputType="text" />
+        <EditText android:id="@+id/etEmail" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="Email *" android:inputType="textEmailAddress"
+            android:autofillHints="emailAddress" />
         <EditText android:id="@+id/etPassword" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:hint="Password *" android:inputType="textPassword" />
         <EditText android:id="@+id/etName" android:layout_width="match_parent"
