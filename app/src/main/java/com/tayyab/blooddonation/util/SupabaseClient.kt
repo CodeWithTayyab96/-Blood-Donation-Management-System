@@ -437,6 +437,16 @@ object SupabaseClient {
         return out
     }
 
+    /** Every offer, newest first. Manager only — RLS denies non-managers. */
+    fun getAllOffers(): List<Offer>? {
+        val array = getArray("/offers?select=*&order=id.desc") ?: return null
+        val out = ArrayList<Offer>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(offerFromJson(it)) }
+        }
+        return out
+    }
+
     /** Inserts an offer online; returns the server-assigned id, or null. */
     fun insertOffer(o: Offer): Long? {
         val body = JSONObject().apply {

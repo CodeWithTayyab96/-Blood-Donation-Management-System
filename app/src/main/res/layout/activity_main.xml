@@ -121,6 +121,10 @@
             android:text="🏥  Blood Stock" android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnRequests" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="📋  Blood Requests" android:layout_marginTop="10dp" />
+        <!-- P2P: managers only. MainActivity leaves this GONE for everyone else. -->
+        <Button android:id="@+id/btnModeration" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="🛡  Moderation — reports &amp; offers" android:layout_marginTop="10dp"
+            android:visibility="gone" />
         <Button android:id="@+id/btnProfile" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="👤  My Profile" android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content"

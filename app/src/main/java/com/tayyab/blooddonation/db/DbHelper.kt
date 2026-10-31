@@ -750,6 +750,15 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         return out
     }
 
+    /** Every offer, newest first. Used by the manager moderation screen. */
+    fun getAllOffers(): List<Offer> {
+        val out = mutableListOf<Offer>()
+        readableDatabase.rawQuery(
+            "SELECT * FROM offers ORDER BY id DESC", null
+        ).use { c -> while (c.moveToNext()) out.add(readOffer(c)) }
+        return out
+    }
+
     /** Merges a downloaded offer by id (update first; insert only when new). */
     fun upsertOffer(o: Offer) {
         if (o.id <= 0) return

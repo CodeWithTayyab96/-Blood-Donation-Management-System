@@ -83,6 +83,16 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnRequests).setOnClickListener {
             startActivity(Intent(this, RequestListActivity::class.java))
         }
+        // P2P: moderation (reports and offers) is a manager-only screen.
+        val btnModeration = findViewById<Button>(R.id.btnModeration)
+        if (Session.isManager) {
+            btnModeration.visibility = View.VISIBLE
+            btnModeration.setOnClickListener {
+                startActivity(Intent(this, ModerationActivity::class.java))
+            }
+        } else {
+            btnModeration.visibility = View.GONE
+        }
         findViewById<Button>(R.id.btnProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
         }

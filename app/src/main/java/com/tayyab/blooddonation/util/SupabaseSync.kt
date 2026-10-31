@@ -152,6 +152,13 @@ object SupabaseSync {
     fun completePeerDonationRemote(offerId: Long): Boolean =
         SupabaseClient.completePeerDonation(offerId)
 
+    /** Downloads every offer (manager only; RLS denies non-managers). */
+    fun pullAllOffers(db: DbHelper): Boolean {
+        val offers = SupabaseClient.getAllOffers() ?: return false
+        for (o in offers) db.upsertOffer(o)
+        return true
+    }
+
     /** Downloads all reports (manager only; RLS denies non-managers). */
     fun pullReports(db: DbHelper): Boolean {
         val reports = SupabaseClient.getReports() ?: return false
