@@ -1,127 +1,139 @@
 # Peer-to-peer design (P2P)
 
-Companion to `SUPABASE_SETUP.md`. Describes the model for letting any signed-in
-user request blood and offer to donate, with the manager keeping full access and
-moderation. Two pages, on purpose.
+Companion to `SUPABASE_SETUP.md`. Lets any signed-in user request blood and offer to
+donate; donors and requesters connect directly; the manager keeps full access and
+moderates. Phase 1 (motivation, milestones, tips) is already shipped. This document
+covers Phase 2 only. Two pages, on purpose.
 
-## Tables
+## 1. Tables, columns, and the SQLite migration
 
-`requests` — existing table, additive columns only:
+`DB_VERSION` goes **5 → 6**. All changes are additive; `onUpgrade` runs `ALTER TABLE … ADD
+COLUMN` (SQLite supports this without a table rebuild) plus `CREATE TABLE` for the new
+tables, so no existing data is dropped.
 
-| column | type | notes |
-|---|---|---|
-| `requester_id` | uuid | the Auth user who created it; null on legacy/manager rows |
-| `city` | text | where the blood is needed; drives "nearby first" |
-| `status` | text | `Pending` `Matched` `Fulfilled` `Cancelled` `Expired` |
-| `fulfilled_by` | text | `stock` or `donor`; null until fulfilled |
-| `needed_by` | date | optional; drives `Expired` |
+**requests** (existing, `status` already exists with `Pending`/`Fulfilled`):
+- `requester_id TEXT` — Supabase auth user id of the creator; **null on legacy/manager rows**.
+- `city TEXT` — where blood is needed; drives "nearby first".
+- `fulfilled_by TEXT` — `stock` or `donor`; null until fulfilled.
+- `needed_by TEXT` (date) — optional; drives lazy `Expired`.
 
-Existing rows keep working: `status = 'Pending'` and a null `requester_id` means
-"manager-created", which only the manager can see the offers on.
+**donors** (existing): add `auth_id TEXT` (currently **missing** — required to own and
+link a peer profile) and `available_to_donate INTEGER NOT NULL DEFAULT 0`.
 
-`donors` — existing table, additive: `available_to_donate boolean not null default false`.
+**offers** (new): `id`, `request_id`, `donor_id`, `status` (`Offered`/`Accepted`/`Declined`/
+`Completed`), `donor_confirmed_at`, `requester_confirmed_at`, `created_at`. Unique on
+`(request_id, donor_id)`; a partial unique index on `request_id WHERE status='Accepted'`
+allows at most one accepted offer per request.
 
-`offers` — new:
+**contact_details** (new): `user_id TEXT PRIMARY KEY`, `phone TEXT`. Split from `donors`
+because Row Level Security is row-level, not column-level — a phone on `donors` is either
+visible to everyone who can read the row or hidden from the owner too.
 
-| column | notes |
-|---|---|
-| `id`, `request_id`, `donor_id`, `created_at` | |
-| `status` | `Offered` `Accepted` `Declined` `Completed` |
-| `donor_confirmed_at`, `requester_confirmed_at` | the two halves of "both confirm" |
+**reports** (new): `id`, `request_id`, `reporter_id`, `reason`, `created_at`, `resolved_at`.
 
-Unique on `(request_id, donor_id)`. A partial unique index on `request_id where
-status = 'Accepted'` allows at most one accepted offer per request.
+**What happens to existing rows:** manager-created requests keep `status='Pending'` and a
+null `requester_id` → treated as manager-owned; only the manager sees their offers and they
+are excluded from "browse requests". Existing `donors` get `available_to_donate=0`; the
+migration copies `donors.phone` into `contact_details` keyed by `auth_id` (rows without an
+`auth_id`, e.g. the seeded demo donors, get no contact row — they are manager data, not
+peer accounts). `users` (the local account mirror) is untouched.
 
-`contact_details` — new: `user_id uuid primary key`, `phone text`. Separated from
-`donors` because Row Level Security is row-level, not column-level.
+The matching Supabase SQL lives in `supabase_p2p_migration.sql` (additive, with a copy of
+phones into `contact_details` and a rollback file `supabase_p2p_migration_rollback.sql`).
 
-`reports` — new: `id`, `request_id`, `reporter_id`, `reason`, `created_at`, `resolved_at`.
+## 2. Allowed status transitions
 
-## Statuses
+Requests: `Pending` → `Matched` (an offer is accepted) → `Fulfilled` (both sides confirm);
+`Pending` → `Cancelled` (requester or manager, any time before Fulfilled);
+`Pending` → `Expired` (past `needed_by`, still Pending — evaluated lazily by the client).
+`Fulfilled` / `Cancelled` / `Expired` are terminal.
 
-Request: `Pending` → `Matched` (an offer is accepted) → `Fulfilled` (both sides
-confirm) · `Cancelled` (requester or manager, any time before Fulfilled) ·
-`Expired` (past `needed_by`, still Pending).
+Offers: `Offered` → `Accepted` or `Declined`; `Accepted` → `Completed` once both sides
+confirm. One offer row per `(donor, request)`; declining it then re-offering sets it back
+to `Offered`. `Declined` / `Completed` are terminal.
 
-Offer: `Offered` → `Accepted` or `Declined`. `Accepted` → `Completed` once both
-sides confirm. Declining one offer leaves the request `Pending` so other donors
-can still offer.
+## 3. Screens (one line each)
 
-## Screens
+- **Home (`MainActivity`)** — add "Browse requests" (donors) and "My requests" (requesters) entries.
+- **CreateRequestActivity** (new) — any signed-in user, even with no donor profile, creates a request (group, city, units, urgency, needed_by); capped at 3 open.
+- **RequestListActivity** — split into donor view (compatible + city-first) and "My requests" (own only, cancel own).
+- **RequestDetailActivity** — donor sees "I can donate"; requester sees offers (first name, group, city) with Accept/Decline; Report button; safety notice; contact revealed only after accept.
+- **Donation completion** (in RequestDetailActivity) — both sides tap "Donation completed"; records once.
+- **ProfileActivity** — "I'm available to donate" switch, shown only when eligible; else shows next eligible date.
+- **Manager moderation** (new screen) — see all offers and reports, cancel/remove any request.
+- **SettingsActivity** — unchanged (tip toggle).
 
-- **Home** — daily motivation card, badges, streak, "people you may have helped".
-- **Requests** — open requests the donor's group can serve, own city first.
-- **My requests** — created by me; cancel my own; capped at 3 open.
-- **Request detail** — "I can donate" for donors, offer list for the requester
-  (first name, group, city), Report button, safety notice.
-- **Settings** — tips toggle (default off), notification permission state.
-- **Profile** — "I'm available to donate" switch, gated on eligibility.
-- **Manager** — everything above plus moderation: cancel/remove any request, see
-  all offers and reports.
+## 4. Server security rules (plain words)
 
-## Security rules
+- **requests**: any signed-in user can **read**. **Create / update / delete** only where
+  `requester_id = auth.uid()`, plus the manager. Cancelling is an update to `status`.
+- **offers**: the donor reads/edits their own; the requester reads offers on their own
+  request; the manager reads all. Insert requires the donor to have a profile and
+  `available_to_donate = true`.
+- **contact_details**: readable only by the owner, the manager, or a user who is the other
+  party on an `Accepted`/`Completed` offer. This is the **only** path that reveals a phone
+  number, and it is enforced by the database, not the UI.
+- **donors**: a donor updates only their own row, and only `available_to_donate`; the
+  manager edits the rest.
+- **reports**: anyone can insert; only the manager reads.
+- **Manager role**: `auth.jwt() -> 'app_metadata' ->> 'role' = 'MANAGER'`. `supabase_p2p_policies.sql`
+  replaces `supabase_role_policies.sql` (that file was never applied; this supersedes it).
 
-`supabase_p2p_policies.sql` **replaces** `supabase_role_policies.sql` (that file
-was never applied; this one supersedes it and should be the only policy file used).
+## 5. What breaks for installed versions, and the safe order
 
-- `requests`: readable by any authenticated user. Insert/update/delete only where
-  `requester_id = auth.uid()`, plus manager. Cancelling is an update to `status`.
-- `offers`: the donor sees and changes their own; the requester sees offers on
-  their own request; the manager sees all. Insert requires the donor to have a
-  donor profile and `available_to_donate`.
-- `contact_details`: readable by the owner, the manager, or a user who is the
-  other party on an `Accepted`/`Completed` offer. That is the only thing that
-  reveals a phone number, and it is enforced by the database, not the UI.
-- `donors`: a donor may update only their own row, and only `available_to_donate`
-  (the rest is manager-editable).
-- Manager role comes from `auth.jwt() -> 'app_metadata' ->> 'role' = 'MANAGER'`.
+**Breaks:** an older APK writes `status='Pending'` with **no `requester_id`**. The new
+insert policy requires `requester_id = auth.uid()`, so the online insert is **denied** and
+the app falls back to local SQLite (still works offline, just not shared). Older apps also
+cannot see offers, and — because `donors.phone` is no longer the shared source — their
+manager donor list may show a blank phone. The SQLite migration only runs for users who
+install the new APK; it is non-destructive.
 
-## What is not possible, and why
+**Safe order:**
+1. Backup the Supabase project.
+2. Run `supabase_p2p_migration.sql` (additive tables/columns) — non-breaking.
+3. Set the manager role claim on `manager@blood.local`.
+4. Deploy the new APK (clients now send `requester_id` and read offers).
+5. Apply `supabase_p2p_policies.sql` (the enforcing step; older clients then lose online
+   request writes until they update — acceptable, they fall back to local).
+6. Sign out and in so the JWT carries the role claim.
 
-1. **Hiding one column of a row.** RLS filters rows, not columns, so a phone
-   number on `donors` is either visible to everyone who can read the row or
-   invisible to the owner too. Hence `contact_details`.
-2. **Showing a phone only after acceptance, without moving it.** Not expressible
-   as a column rule. Even with the split table, the rule is "readable if an
-   Accepted offer exists", which is what the policy above does — the client must
-   still not cache it before then.
-3. **A truly atomic "both confirmed".** Two devices cannot compare-and-set
-   without a server-side function. Phase 2 will do the completion in a
-   `security definer` function so the donation row, the donor's last-donation
-   date and the request status change in one transaction. Without that, the
-   worst case is a duplicate donation row, which the `(donor_id, date)` unique
-   index will refuse.
-4. **Expiring requests on a timer.** Postgres has no scheduler unless `pg_cron`
-   is enabled. Plan: expire lazily — the client treats a past-`needed_by`
-   `Pending` request as `Expired`, and the manager can force it.
-5. **Real-time delivery.** Until Phase 3 (FCM), offers and acceptances arrive
-   by the existing ~15-minute poll. Delivery is approximate; the README says so.
-6. **Verifying anything.** The app cannot check blood group, identity, health or
-   that a donation happened. Every value is self-reported, which is why the
-   safety notice appears on both request and donate screens.
-7. **Offline.** Phase 1 works offline. Requests and offers do not: they are
-   multi-user state and need the server.
-8. **A hard 3-open-requests limit in RLS alone.** Counting a user's rows inside
-   a policy is possible but expensive and racy. Plan: a `BEFORE INSERT` trigger
-   raises when the user already has 3 open requests, plus the client check.
-9. **Moderation without an Auth session.** The seeded `manager` / `manager123`
-   login has no `app_metadata` claim, so it is not a manager to the database and
-   cannot moderate. Only `manager@blood.local` signed in through Auth can.
-10. **Peer donations touching blood bank stock.** They must not. `fulfilled_by =
-    'donor'` records the donation on the donor's history only; the stock table is
-    for the blood bank's own units.
+## 6. What cannot be done or verified
 
-## Rollout order
+- The app **cannot** verify blood group, health, identity, or that a donation happened.
+  Everything is self-reported — hence the safety notice on both request and donate screens.
+- **No real-time.** Until Phase 3 (FCM), offers/acceptances arrive by the existing ~15-minute
+  poll; delivery is approximate (README states this).
+- RLS hides rows, not columns — hence the `contact_details` split; the client must not cache
+  a phone before acceptance.
+- A truly atomic "both confirmed" needs a server function; Phase 2 uses a `SECURITY DEFINER`
+  function so the donation row, donor's last-donation date and request status change in one
+  transaction. Without it, the worst case is a duplicate donation row (the `(donor_id, date)`
+  unique index refuses the second).
+- Timer-based expiry needs `pg_cron` (not assumed); expiry is lazy/client-driven.
+- The hard 3-open-requests cap needs a `BEFORE INSERT` trigger plus a client check (RLS alone
+  cannot count cheaply).
+- The seeded `manager`/`manager123` login has **no Auth claim**, so it cannot moderate
+  server-side — only `manager@blood.local` signed in through Auth can.
+- Peer donations must **not** touch blood-bank stock (`fulfilled_by='donor'` records on the
+  donor's history only).
 
-1. Run `supabase_p2p_migration.sql` (additive columns, new tables, indexes).
-2. Set the manager's role claim (statement at the top of the policy file).
-3. Run `supabase_p2p_policies.sql`.
-4. Sign out and in again, so the JWT carries the role claim.
-5. Install the new APK.
+## 7. Risks and the manual test plan
 
-Older app versions keep working during rollout but degrade: they write
-`status = 'Pending'` and never set `requester_id`, so their requests are
-manager-only, and they cannot see offers. They also lose the phone number shown
-on the donor list, because the migration copies it into `contact_details` and
-then drops `donors.phone` — keeping it would leave every number readable by
-any signed-in user, which is the thing the split exists to prevent.
+**Risks:** a miswritten policy can lock everyone out (test on a throwaway project first, keep
+the rollback); concurrent both-confirm can duplicate a donation (mitigated by the unique
+index + server function); two donors accepting is prevented by the partial unique index; the
+anon key in every APK must never read `contact_details` (verify the policy denies anon);
+offline-first SQLite can diverge from the server between syncs; the 3-request cap is
+bypassable if the trigger is not applied.
+
+**Manual test — three accounts (on a test Supabase project):**
+- **Manager** `manager@blood.local` / `manager123`: sees every request, offer and report;
+  cancels/removes any request; stock fulfilment sets `fulfilled_by='stock'`.
+- **Requester** `requester@test.com` (register, no donor profile needed): creates an `A+`,
+  city X, 1-unit, Urgent request; sees it under "My requests"; cancels own; a 4th open
+  request is refused at 3; after a donor offers, sees the offer (first name, `A+`, city X);
+  Accepts → contact appears; both confirm → request `Fulfilled`.
+- **Donor** `donor@test.com` (register, eligible donor profile): sets "available to donate";
+  browses open requests compatible with their group, city-first; taps "I can donate" → offer;
+  on accept sees the requester contact; both confirm → donation recorded **once**, last-donation
+  date updated, stock **unchanged**, request `Fulfilled` with `fulfilled_by='donor'`.
