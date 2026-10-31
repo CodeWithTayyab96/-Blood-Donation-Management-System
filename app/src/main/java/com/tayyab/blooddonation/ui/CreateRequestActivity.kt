@@ -12,6 +12,7 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.BloodRequest
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
@@ -31,8 +32,6 @@ class CreateRequestActivity : AppCompatActivity() {
     private companion object {
         /** Sanity cap for a single request; also bounds the units input field. */
         const val MAX_UNITS_PER_REQUEST = 20
-        /** Hard cap on how many open requests one person may have at a time. */
-        const val MAX_OPEN_REQUESTS = 3
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,13 +117,14 @@ class CreateRequestActivity : AppCompatActivity() {
                 }
             }
 
-            // Client-side half of the 3-open-requests cap. The server
-            // enforces it too (BEFORE INSERT trigger), because RLS alone
-            // cannot count rows cheaply — this is only the friendly message.
-            if (db.openRequestCountForRequester(requesterId) >= MAX_OPEN_REQUESTS) {
+            // Client-side half of the open-requests cap. The server enforces
+            // it too (BEFORE INSERT trigger), because RLS alone cannot count
+            // rows cheaply — this is only the friendly message.
+            val cap = P2pRules.MAX_OPEN_REQUESTS
+            if (db.openRequestCountForRequester(requesterId) >= cap) {
                 Toast.makeText(
                     this,
-                    "You already have $MAX_OPEN_REQUESTS open requests. " +
+                    "You already have $cap open requests. " +
                         "Cancel one before posting another.",
                     Toast.LENGTH_LONG
                 ).show()

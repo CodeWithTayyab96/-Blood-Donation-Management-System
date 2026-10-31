@@ -16,6 +16,7 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.BloodRequest
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 
@@ -176,19 +177,20 @@ class RequestListActivity : AppCompatActivity() {
     private fun browseRequests(me: String?): List<BloodRequest> {
         val donor = Session.donorId?.let { db.getDonor(it) }
         val myCity = donor?.city
+        val today = java.time.LocalDate.now().toString()
         return db.getAllRequests()
             .asSequence()
             // Peer requests only: a null requester_id is a manager row.
             .filter { !it.requesterId.isNullOrBlank() }
             // Never my own request — I cannot offer to help myself.
             .filter { me.isNullOrBlank() || it.requesterId != me }
-            .filter { isOpen(it) }
+            .filter { P2pRules.isOpenRequest(it.status) }
             // Only requests my blood group can actually give to. Without a
             // donor profile there is no group to check against, so show all.
             .filter { donor == null || BloodCompatibility.isCompatible(donor.bloodGroup, it.bloodGroup) }
             // Lazy expiry: a request past its needed-by date and still open is
             // Expired. There is no pg_cron, so this is evaluated on read.
-            .map { it.copy(status = expireIfNeeded(it)) }
+            .map { it.copy(status = P2pRules.requestStatusOnRead(it.status, it.neededBy, today)) }
             // City-first, then most urgent, then newest.
             .sortedWith(
                 compareByDescending<BloodRequest> { !myCity.isNullOrBlank() && it.city == myCity }
@@ -196,17 +198,6 @@ class RequestListActivity : AppCompatActivity() {
                     .thenByDescending { it.id }
             )
             .toList()
-    }
-
-    private fun isOpen(r: BloodRequest): Boolean =
-        r.status in listOf("Pending", "Matched")
-
-    /** Returns "Expired" when the request is still open but past needed-by. */
-    private fun expireIfNeeded(r: BloodRequest): String {
-        if (!isOpen(r)) return r.status
-        val needed = r.neededBy ?: return r.status
-        val today = java.time.LocalDate.now().toString()
-        return if (needed < today) "Expired" else r.status
     }
 
     private fun urgencyRank(urgency: String): Int = when (urgency) {

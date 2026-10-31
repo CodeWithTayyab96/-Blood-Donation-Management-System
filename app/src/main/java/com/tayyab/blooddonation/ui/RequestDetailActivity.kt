@@ -19,6 +19,7 @@ import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -499,7 +500,7 @@ class RequestDetailActivity : AppCompatActivity() {
         if (asDonor) db.setOfferDonorConfirmed(offer.id, today)
         else db.setOfferRequesterConfirmed(offer.id, today)
 
-        val both = !donorAt.isNullOrBlank() && !requesterAt.isNullOrBlank()
+        val both = P2pRules.bothConfirmed(donorAt, requesterAt)
 
         if (SupabaseSync.isOnline) {
             Background.run {
