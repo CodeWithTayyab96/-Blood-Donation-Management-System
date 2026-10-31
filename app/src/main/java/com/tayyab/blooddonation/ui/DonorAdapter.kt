@@ -1,10 +1,10 @@
 package com.tayyab.blooddonation.ui
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.model.Donor
@@ -36,7 +36,12 @@ class DonorAdapter(
         h.meta.text = "${d.city} • ${d.age} yrs • ${d.phone}"
         val (eligible, reason) = BloodCompatibility.eligibility(d)
         h.status.text = if (eligible) "✓ Eligible" else "✗ $reason"
-        h.status.setTextColor(Color.parseColor(if (eligible) "#2E7D32" else "#E65100"))
+        h.status.setTextColor(
+            ContextCompat.getColor(
+                h.itemView.context,
+                if (eligible) R.color.status_ok else R.color.status_warn
+            )
+        )
         h.itemView.setOnClickListener { onClick(d) }
     }
 

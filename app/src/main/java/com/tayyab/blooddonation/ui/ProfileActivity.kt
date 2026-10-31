@@ -1,6 +1,5 @@
 package com.tayyab.blooddonation.ui
 
-import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -131,7 +130,7 @@ class ProfileActivity : AppCompatActivity() {
         val (eligible, reason) = BloodCompatibility.eligibility(donor)
         val tv = findViewById<TextView>(R.id.tvProfileEligibility)
         tv.text = (if (eligible) "✓ " else "✗ ") + reason
-        tv.setTextColor(Color.parseColor(if (eligible) "#2E7D32" else "#E65100"))
+        tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
         val next = BloodCompatibility.nextEligibleDate(donor)
         findViewById<TextView>(R.id.tvProfileNext).text =
             if (next == null) "Next eligible date: now — you can donate today."

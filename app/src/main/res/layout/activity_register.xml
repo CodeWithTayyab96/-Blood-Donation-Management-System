@@ -5,7 +5,7 @@
         android:orientation="vertical" android:padding="18dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Create your donor account" android:textSize="20sp"
-            android:textStyle="bold" android:textColor="@color/blood_red_dark"
+            android:textStyle="bold" android:textColor="@color/text_accent"
             android:layout_marginBottom="12dp" />
         <EditText android:id="@+id/etEmail" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:hint="Email *" android:inputType="textEmailAddress"

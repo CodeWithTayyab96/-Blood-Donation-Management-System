@@ -8,4 +8,17 @@
     <color name="grey_text">#5F6368</color>
     <color name="green_ok">#2E7D32</color>
     <color name="orange_warn">#E65100</color>
+
+    <!--
+        Theme-aware colours. These have a matching override in values-night so
+        text stays readable on both the light and the dark surface. Fixed
+        colours like @color/grey_text cannot do that: the theme is DayNight, so
+        the surface changes but the text does not.
+    -->
+    <color name="text_secondary">#5F6368</color>
+    <color name="text_accent">#B71C1C</color>
+    <color name="status_ok">#2E7D32</color>
+    <color name="status_warn">#E65100</color>
+    <color name="status_bad">#B71C1C</color>
 </resources>
+

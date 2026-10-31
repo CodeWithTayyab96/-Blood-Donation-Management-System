@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@color/blood_red_light">
+    android:layout_width="match_parent" android:layout_height="match_parent">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="16dp">
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="🩸 Blood Donation Management" android:textSize="22sp"
-            android:textStyle="bold" android:textColor="@color/blood_red_dark" />
+            android:textStyle="bold" android:textColor="@color/text_accent" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Every donation can save up to three lives."
-            android:textSize="14sp" android:textColor="@color/grey_text"
+            android:textSize="14sp" android:textColor="@color/text_secondary"
             android:layout_marginBottom="16dp" />
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -24,7 +23,7 @@
                     android:orientation="vertical" android:padding="14dp">
                     <TextView android:id="@+id/tvStatDonors" android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/blood_red" />
+                        android:textStyle="bold" android:textColor="@color/text_accent" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:text="Registered Donors" android:textSize="13sp" />
                 </LinearLayout>
@@ -36,7 +35,7 @@
                     android:orientation="vertical" android:padding="14dp">
                     <TextView android:id="@+id/tvStatUnits" android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/blood_red" />
+                        android:textStyle="bold" android:textColor="@color/text_accent" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:text="Units in Stock" android:textSize="13sp" />
                 </LinearLayout>
@@ -52,7 +51,7 @@
                     android:orientation="vertical" android:padding="14dp">
                     <TextView android:id="@+id/tvStatRequests" android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/blood_red" />
+                        android:textStyle="bold" android:textColor="@color/text_accent" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:text="Pending Requests" android:textSize="13sp" />
                 </LinearLayout>
@@ -64,7 +63,7 @@
                     android:orientation="vertical" android:padding="14dp">
                     <TextView android:id="@+id/tvStatMonth" android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/blood_red" />
+                        android:textStyle="bold" android:textColor="@color/text_accent" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:text="Units Donated This Month" android:textSize="13sp" />
                 </LinearLayout>
@@ -73,13 +72,13 @@
 
         <TextView android:id="@+id/tvSignedIn" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:textSize="14sp"
-            android:textColor="@color/grey_text" android:layout_marginBottom="4dp" />
+            android:textColor="@color/text_secondary" android:layout_marginBottom="4dp" />
 
         <!-- Shown when the signed-in account has no Supabase session, which
              means every online call is anonymous and therefore rejected. -->
         <TextView android:id="@+id/tvSyncWarning" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:textSize="13sp"
-            android:textColor="@color/orange_warn" android:visibility="gone"
+            android:textColor="@color/status_warn" android:visibility="gone"
             android:layout_marginBottom="4dp" />
 
         <Button android:id="@+id/btnDonors" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -100,17 +99,16 @@
             android:text="Log Out" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
 
         <!--
-            Explicit text colours: the page background is a fixed light pink
-            (@color/blood_red_light) in both light and dark mode, but the theme
-            is DayNight, so anything without a colour inherits white in dark
-            mode and disappears against it.
+            The page no longer paints its own background: the theme's surface is
+            used, so it follows light/dark mode. Colours here come from the
+            day/night pairs in values/colors.xml and values-night/colors.xml.
         -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Stock by blood group" android:textSize="16sp" android:textStyle="bold"
-            android:textColor="@color/grey_text"
+            android:textColor="@color/text_secondary"
             android:layout_marginTop="22dp" android:layout_marginBottom="6dp" />
         <TextView android:id="@+id/tvStockSummary" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:textSize="15sp"
-            android:textColor="@color/grey_text" android:lineSpacingMultiplier="1.3" />
+            android:textColor="@color/text_secondary" android:lineSpacingMultiplier="1.3" />
     </LinearLayout>
 </ScrollView>

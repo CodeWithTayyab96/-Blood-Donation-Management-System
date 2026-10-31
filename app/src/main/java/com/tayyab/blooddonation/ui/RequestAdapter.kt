@@ -1,10 +1,10 @@
 package com.tayyab.blooddonation.ui
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.model.BloodRequest
@@ -35,7 +35,10 @@ class RequestAdapter(
         h.meta.text = "${r.hospital} • ${r.unitsNeeded} unit(s) • ${r.urgency}"
         h.status.text = r.status
         h.status.setTextColor(
-            Color.parseColor(if (r.status == "Fulfilled") "#2E7D32" else "#B71C1C")
+            ContextCompat.getColor(
+                h.itemView.context,
+                if (r.status == "Fulfilled") R.color.status_ok else R.color.status_bad
+            )
         )
         h.itemView.setOnClickListener { onClick(r) }
     }
