@@ -115,8 +115,11 @@ what changed):
   on a new phone finds the donor profile by `auth_id` and recreates
   the local account. If there is no network but the phone already
   knows the email + password, the app signs in offline and says so.
-  The plain-username login (`manager` / `manager123`) still works
-  exactly as before, local-only.
+  The plain-username login (`manager` / `manager123`) still works, but it is
+  **local-only**: it carries no Supabase session, so every online call goes out
+  anonymously and is rejected by the policies above. Nothing on that device
+  syncs, and the dashboard says so. Use `manager@blood.local` to work against
+  the shared data.
 - **Where the key comes from.** The app reads the project URL and
   anon key from BuildConfig fields (`SUPABASE_URL`,
   `SUPABASE_ANON_KEY`), which Gradle fills from project properties of

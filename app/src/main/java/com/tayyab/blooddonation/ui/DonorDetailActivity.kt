@@ -50,25 +50,28 @@ class DonorDetailActivity : AppCompatActivity() {
                 // the same change locally. If the online step fails, the
                 // local record still stands and the user is told so.
                 Background.run {
-                    val remoteId = SupabaseSync.recordDonationRemote(donor, 1)
-                    if (remoteId != null) {
+                    val written = SupabaseSync.recordDonationRemote(donor, 1)
+                    if (written != null) {
                         // Keep the server id locally, so the pull that follows
                         // updates this row instead of adding a second one.
-                        db.recordDonationWithId(donor, 1, remoteId)
+                        db.recordDonationWithId(donor, 1, written.donationId)
                     } else {
                         db.recordDonation(donor, 1)
                     }
                     runOnUiThread {
                         if (isFinishing || isDestroyed) return@runOnUiThread
-                        Toast.makeText(
-                            this,
-                            if (remoteId != null) {
-                                "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock."
-                            } else {
-                                "Donation saved on this phone (not synced to Supabase)."
-                            },
-                            Toast.LENGTH_LONG
-                        ).show()
+                        val message = if (written == null) {
+                            "Donation saved on this phone (not synced to Supabase)."
+                        } else if (!written.stockSynced) {
+                            // The donation row landed but the stock call did
+                            // not. Saying "recorded" without this caveat is how
+                            // the two stock counts silently drift apart.
+                            "Donation recorded, but the stock count did not update on " +
+                                "the server. Please tell the manager."
+                        } else {
+                            "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock."
+                        }
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                         refresh()
                     }
                 }

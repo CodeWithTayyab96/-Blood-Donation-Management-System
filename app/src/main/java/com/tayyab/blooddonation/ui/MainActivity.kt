@@ -57,6 +57,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<TextView>(R.id.tvSignedIn).text = "Signed in as ${Session.label()}"
+
+        // A local-only account (the seeded demo manager, or an offline fallback)
+        // carries no Auth token, so every Supabase call goes out with the anon
+        // key — which the authenticated-only RLS policies reject. Without this
+        // note the app looks like it is syncing when nothing is.
+        val tvSyncWarning = findViewById<TextView>(R.id.tvSyncWarning)
+        if (SupabaseSync.isOnline && Session.accessToken.isNullOrBlank()) {
+            tvSyncWarning.visibility = View.VISIBLE
+            tvSyncWarning.text =
+                "Offline-only session — this account has no Supabase login, so nothing " +
+                    "syncs with the server. Sign in with an email address to see shared data."
+        } else {
+            tvSyncWarning.visibility = View.GONE
+        }
         findViewById<Button>(R.id.btnDonors).setOnClickListener {
             startActivity(Intent(this, DonorListActivity::class.java))
         }

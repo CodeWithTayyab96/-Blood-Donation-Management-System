@@ -30,6 +30,24 @@ Notable changes to the Blood Donation Management System. Versions follow the
   immediately instead of waiting for the next poll, and reports how many alerts
   it sent. The button is hidden in release builds.
 
+### Fixes
+
+- **Dark-mode contrast.** The dashboard's "Stock by blood group" heading and
+  summary were invisible in dark mode: the page background is a fixed light pink
+  while those two views inherited the dark theme's white text. They now set their
+  colour explicitly.
+- **Fulfil message contradicted the screen.** Fulfilling used the server's stock
+  but the screen shows the local count, so "In stock: 2" could sit next to "not
+  enough units". The message now names the server's number and the screen
+  refreshes from it.
+- **Silent half-synced donations.** A donation whose stock increment failed was
+  reported as a plain success, leaving the local and online counts quietly
+  different. It now says the stock did not update.
+- **Local-only sessions are called out.** An account with no Supabase session
+  cannot read or write the backend at all, because the policies only accept
+  authenticated users. The dashboard now says so instead of looking like it is
+  syncing.
+
 ## 1.5 — 2026-10-31
 
 A correctness and security pass over v1.4, driven by a full code review. No
