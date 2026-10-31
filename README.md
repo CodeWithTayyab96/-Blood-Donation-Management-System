@@ -40,6 +40,42 @@ offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
   urgency, contact), fulfil them from stock, and instantly see every
   **compatible, eligible donor** using standard transfusion compatibility
   rules (O− is the universal donor, AB+ the universal recipient).
+- **Urgent request alerts** — a signed-in donor is notified about pending
+  requests their blood group can serve, at most once per request. Delivery
+  is **approximate**, not instant: see "Urgent request alerts" below.
+
+## Urgent request alerts
+
+A signed-in donor gets a notification when a pending request appears that
+their blood group can serve and that they are eligible to donate for.
+
+How it works, and why it is not instant:
+
+- **Polling, not push.** A `WorkManager` periodic job
+  (`RequestAlertWorker`) wakes roughly **every 15 minutes** — the minimum
+  period Android allows for periodic work — pulls the pending requests from
+  Supabase, and compares them with the donor's own group using the same
+  `BloodCompatibility` rules as the request screen. There is no Firebase,
+  no push service and no server of our own.
+- **Approximate delivery.** An alert can arrive up to a poll interval after
+  the request is created, and later still when the phone is asleep, in Doze,
+  or low on battery — the system batches and defers background work. Treat
+  these as "you'll hear about it soon", not "you'll hear about it now".
+- **Online only.** The job carries a `CONNECTED` network constraint, so it
+  never runs without a connection. If Supabase is not configured the job is
+  not scheduled at all.
+- **Once per request, ever.** Notified request ids are stored in their own
+  SharedPreferences file, so the same request never alerts twice — including
+  across app restarts and repeated polls. Fulfilled requests keep their id
+  remembered, so they cannot resurface.
+- **Donors only.** The job is scheduled when a donor reaches the dashboard
+  and cancelled on sign-out or when a manager signs in.
+- **Android 13+ needs permission.** The app asks for `POST_NOTIFICATIONS` on
+  the dashboard. If it is denied the app works normally; the donor simply
+  never receives alerts.
+- Tapping a notification opens that request's detail screen. The notification
+  shows the group, units and hospital but deliberately not the patient's name.
+
 
 ## Screenshots
 
