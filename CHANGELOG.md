@@ -3,6 +3,45 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## Unreleased — Phase 2: peer-to-peer requests
+
+Any signed-in user can now ask for blood, and donors can offer to help
+directly. **Requires the two new SQL files to be applied** — see
+`supabase_p2p_migration.sql` (then `supabase_p2p_policies.sql`) and the
+safe order in `DESIGN_P2P.md §5`. Until the migration is applied the app
+simply behaves as before; the schema change is additive.
+
+- **Post a request** (`CreateRequestActivity`) — any signed-in user, even
+  without a donor profile: blood group, city, units, urgency, an optional
+  needed-by date and a contact number. Capped at **3 open requests**; the
+  cap is enforced by a server trigger as well as the app.
+- **Browse / My requests** — the request list now has two views. *Browse*
+  shows open requests other people posted that this donor's group can
+  actually give to, nearest city first. *My requests* shows your own, with
+  Cancel. Managers still see everything.
+- **Offers** — a donor taps *I can donate*; the requester sees the donor's
+  first name, blood group and city, and Accepts or Declines. Accepting moves
+  the request to *Matched*, and **only then** is a phone number revealed to
+  the other side. Phone numbers live in their own `contact_details` table and
+  the database — not the app — decides who may read them.
+- **Both sides confirm** before a donation is recorded. A peer donation is
+  recorded on the donor's history and deliberately **does not** add units to
+  blood-bank stock: it never entered the bank.
+- **"I'm available to donate"** switch on the profile, shown only while the
+  donor is eligible. Offering is refused by the server unless it is on.
+- **Reports and moderation** — anyone can report a request; managers get a
+  new moderation screen listing every report and offer, and can cancel a
+  reported request.
+- SQLite **DB v6**: additive `ALTER TABLE` plus three new tables, so an
+  upgrade keeps every existing row. Legacy/manager rows keep a null
+  `requester_id` and are treated as manager-owned.
+- Unit tests for the request/offer state machine (`P2pRules`).
+
+Known limits, stated plainly: nothing is verified (blood group, identity and
+health are all self-reported) — hence the safety notice on the request
+screen. There is still **no real-time**: until Phase 3 (FCM) offers arrive
+on the existing ~15-minute poll.
+
 ## Unreleased — Phase 1: motivation, milestones, tips
 
 All offline; no server or database changes.

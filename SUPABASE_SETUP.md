@@ -193,3 +193,15 @@ unaffected, and nothing in the app reads or writes `users`.
   again before its token carries the claim.
 - `supabase_policies_review.sql` — v1.3 RLS policies for review
   only. NEVER applied; do NOT apply it under v1.4.
+- `supabase_p2p_migration.sql` — peer-to-peer schema: the new
+  `requests` / `donors` columns, and the `offers`, `contact_details`
+  and `reports` tables, plus the open-request trigger and
+  `complete_peer_donation()`. **Additive**: safe to run before the
+  APK update. Apply after `supabase_auth_migration.sql`.
+- `supabase_p2p_migration_rollback.sql` — undoes the above. Drops the
+  new tables and columns; `donors.phone` is untouched, so no phone
+  number is lost.
+- `supabase_p2p_policies.sql` — the P2P Row Level Security policies.
+  **This is the enforcing step**: deploy the new APK *before* running
+  it, or older clients lose online request writes. It also supersedes
+  `supabase_role_policies.sql`. See `DESIGN_P2P.md §5` for the order.
