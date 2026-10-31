@@ -101,6 +101,10 @@ dependencies {
     // fixes for the Android 9/10 Keystore issues in 1.0.0.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
+    // Periodic background polling for urgent blood requests. WorkManager rather
+    // than Firebase: no Google services, no server, no extra account.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // Local JVM unit tests (app/src/test). No Android runtime needed.
     testImplementation("junit:junit:4.13.2")
 }

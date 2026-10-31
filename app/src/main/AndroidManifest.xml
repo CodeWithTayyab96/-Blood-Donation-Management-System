@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Needed on Android 8+ so the system installer can open an APK this app downloaded. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Urgent-request alerts. Runtime permission on Android 13+; without it the
+         notifications are silently dropped, so MainActivity asks for it. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
         allowBackup is OFF: the session store holds Supabase refresh tokens and

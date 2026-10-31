@@ -1,6 +1,9 @@
 package com.tayyab.blooddonation.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
@@ -13,10 +16,15 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.AppUpdater
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.RequestAlertScheduler
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 
 class MainActivity : AppCompatActivity() {
+
+    private companion object {
+        const val REQUEST_NOTIFICATIONS = 1001
+    }
 
     private lateinit var db: DbHelper
 
@@ -30,6 +38,15 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
         db = DbHelper(this)
+
+        // Donors get the ~15-minute request poll; managers do not. Any poll left
+        // behind by a previous donor session is stopped here.
+        if (Session.role == Session.ROLE_DONOR && Session.donorId != null) {
+            RequestAlertScheduler.schedule(this)
+            askForNotificationPermission()
+        } else {
+            RequestAlertScheduler.cancel(this)
+        }
 
         findViewById<TextView>(R.id.tvSignedIn).text = "Signed in as ${Session.label()}"
         findViewById<Button>(R.id.btnDonors).setOnClickListener {
@@ -48,9 +65,26 @@ class MainActivity : AppCompatActivity() {
             checkForUpdate()
         }
         findViewById<Button>(R.id.btnLogout).setOnClickListener {
+            // Stop the request poll before the session is cleared, so a signed
+            // out device does not keep waking up for alerts.
+            RequestAlertScheduler.cancel(this)
             Session.logout(this)
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
+        }
+    }
+
+    /**
+     * Android 13+ requires a runtime permission for notifications. Without it
+     * every alert is silently dropped, so ask once on the dashboard. A refusal
+     * is not an error: the app works, the donor just never gets alerts.
+     */
+    private fun askForNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
         }
     }
 
