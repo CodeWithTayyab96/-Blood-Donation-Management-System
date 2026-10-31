@@ -52,27 +52,33 @@ object FcmPush {
     /**
      * Initialises Firebase explicitly from the BuildConfig values. Safe and
      * cheap to call repeatedly; returns true only when a usable app exists.
+     *
+     * Uses the pre-24.x Java API surface (firebase-common 20.4.2, which
+     * firebase-messaging 23.4.1 pins): [FirebaseApp.getApps] needs a Context
+     * here, and the sender id goes through setGcmSenderId (the setSenderId
+     * alias was removed in 20.1.0). Written from a JVM-less environment
+     * against published source of that version — see PUSH_SETUP.md.
      */
-    fun initIfNeeded(): Boolean {
+    fun initIfNeeded(context: Context): Boolean {
         if (!isConfigured) return false
-        if (FirebaseApp.getApps().isNotEmpty()) return true
+        val app = context.applicationContext
+        if (FirebaseApp.getApps(app).isNotEmpty()) return true
         return try {
             val options = FirebaseOptions.Builder()
                 .setApiKey(BuildConfig.FIREBASE_API_KEY)
                 .setApplicationId(BuildConfig.FIREBASE_APP_ID)
                 .setProjectId(BuildConfig.FIREBASE_PROJECT_ID)
-                .setSenderId(BuildConfig.FIREBASE_SENDER_ID)
+                .setGcmSenderId(BuildConfig.FIREBASE_SENDER_ID)
                 .build()
-            FirebaseApp.initializeApp(options)
-            FirebaseApp.getApps().isNotEmpty()
+            FirebaseApp.initializeApp(app, options)
+            FirebaseApp.getApps(app).isNotEmpty()
         } catch (_: Exception) {
             // Wrong or partial credentials: stay silent and keep polling.
             false
         }
     }
 
-    private fun store(context: Context, userId: String, token: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+    private fun store(context: Context, userId: String, token: String) {        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_UPLOADED_FOR_USER, userId)
             .apply()
@@ -105,9 +111,11 @@ object FcmPush {
     fun refreshToken(context: Context): Boolean {
         if (!Session.isLoggedIn) return false
         val userId = Session.authUserId ?: return false
-        if (!initIfNeeded()) return false
+        if (!initIfNeeded(context)) return false
         val token = try {
-            Tasks.await(FirebaseMessaging.getInstance().token)
+            // getToken() (not the Kotlin "token" property): the plain method
+            // is the only form that compiles against this SDK version.
+            Tasks.await(FirebaseMessaging.getInstance().getToken())
         } catch (_: Exception) {
             return false
         }
