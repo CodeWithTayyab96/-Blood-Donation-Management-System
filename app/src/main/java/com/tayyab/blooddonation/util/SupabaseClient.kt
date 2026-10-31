@@ -483,6 +483,19 @@ object SupabaseClient {
 
     // ------------------------------------------------------------- P2P: reports
 
+    /**
+     * Runs `complete_peer_donation` (see supabase_p2p_migration.sql §7): the
+     * donation row, the donor's last-donation date, the offer status and the
+     * request status all change in ONE server transaction, and stock is
+     * deliberately left alone. Returns false if the function is missing, the
+     * two sides have not both confirmed, or the call failed.
+     */
+    fun completePeerDonation(offerId: Long): Boolean {
+        val body = JSONObject().apply { put("p_offer_id", offerId) }
+        val (code, _) = request("POST", "/rpc/complete_peer_donation", body)
+        return code in 200..299
+    }
+
     fun insertReport(requestId: Long, reporterId: String?, reason: String): Long? {
         val body = JSONObject().apply {
             put("request_id", requestId)

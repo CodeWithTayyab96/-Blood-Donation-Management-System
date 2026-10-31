@@ -7,8 +7,36 @@
             android:textSize="24sp" android:textStyle="bold" android:textColor="@color/text_accent" />
         <TextView android:id="@+id/tvReqDetailInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="15sp" android:lineSpacingMultiplier="1.4" android:layout_marginTop="8dp" />
+
+        <!-- P2P: shown on every request. Nothing in this app is verified. -->
+        <TextView android:id="@+id/tvSafety" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginTop="10dp"
+            android:text="Safety: this app cannot verify blood groups, identity or health. Everything here is self-reported. Never pay for blood, and meet only at a hospital or registered blood bank." />
+
         <Button android:id="@+id/btnFulfill" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Fulfill from Stock" android:layout_marginTop="14dp" />
+
+        <!-- P2P: the donor's side -->
+        <Button android:id="@+id/btnOffer" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="I can donate" android:layout_marginTop="14dp" android:visibility="gone" />
+        <TextView android:id="@+id/tvOfferState" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="10dp" android:visibility="gone" />
+
+        <!-- P2P: the requester's side. Offers are built in code because each
+             row carries its own Accept / Decline buttons. -->
+        <TextView android:id="@+id/tvOffersHeader" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Offers to help" android:textSize="16sp" android:textStyle="bold"
+            android:layout_marginTop="20dp" android:layout_marginBottom="6dp" android:visibility="gone" />
+        <LinearLayout android:id="@+id/offersContainer" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone" />
+
+        <!-- P2P: both sides confirm the donation happened -->
+        <Button android:id="@+id/btnComplete" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Donation completed" android:layout_marginTop="14dp" android:visibility="gone" />
+
+        <Button android:id="@+id/btnReport" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Report this request" android:layout_marginTop="10dp" android:visibility="gone" />
+
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Compatible donors" android:textSize="16sp" android:textStyle="bold"
             android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />

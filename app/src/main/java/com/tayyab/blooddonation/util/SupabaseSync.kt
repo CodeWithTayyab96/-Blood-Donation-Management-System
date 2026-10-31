@@ -148,6 +148,10 @@ object SupabaseSync {
     fun insertReportRemote(requestId: Long, reporterId: String?, reason: String): Long? =
         SupabaseClient.insertReport(requestId, reporterId, reason)
 
+    /** P2P: runs the atomic both-confirmed completion on the server. */
+    fun completePeerDonationRemote(offerId: Long): Boolean =
+        SupabaseClient.completePeerDonation(offerId)
+
     /** Downloads all reports (manager only; RLS denies non-managers). */
     fun pullReports(db: DbHelper): Boolean {
         val reports = SupabaseClient.getReports() ?: return false

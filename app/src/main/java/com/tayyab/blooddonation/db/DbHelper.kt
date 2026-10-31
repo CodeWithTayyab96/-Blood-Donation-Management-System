@@ -601,6 +601,32 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         }
     }
 
+    /**
+     * P2P: records a peer donation — the history row and the donor's
+     * last-donation date, and deliberately NOT the stock increment that
+     * [recordDonation] does.
+     *
+     * A peer donation is a private arrangement between two people; the blood
+     * never enters the blood bank's inventory, so adding units to stock would
+     * overstate what the manager can actually issue (see DESIGN_P2P.md §6).
+     */
+    fun recordPeerDonation(donorId: Long, date: LocalDate) {
+        val db = writableDatabase
+        val dateStr = date.toString()
+        db.beginTransaction()
+        try {
+            val v = ContentValues().apply {
+                put("donor_id", donorId); put("date", dateStr); put("units", 1)
+            }
+            db.insert("donations", null, v)
+            val upd = ContentValues().apply { put("last_donation_date", dateStr) }
+            db.update("donors", upd, "id=?", arrayOf(donorId.toString()))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     fun donationsForDonor(donorId: Long): List<Donation> {
         val out = mutableListOf<Donation>()
         val sql = """SELECT d.id, d.donor_id, dn.name, dn.blood_group, d.date, d.units
