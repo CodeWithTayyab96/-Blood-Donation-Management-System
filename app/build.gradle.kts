@@ -29,6 +29,21 @@ android {
             ?.trim() ?: ""
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+
+        // Push notifications (v1.7, Firebase Cloud Messaging). The four values
+        // come from Gradle project properties of the same names — in CI, from
+        // GitHub secrets (never the service-account key: that lives only as a
+        // Supabase secret, read by the push-notify Edge Function). With any
+        // value missing the app reports Push.notConfigured and keeps the
+        // WorkManager polling fallback, exactly like builds before this.
+        // Firebase is initialised explicitly in code (Push.kt), so there is no
+        // google-services.json and no google-services Gradle plugin to choke CI.
+        fun firebaseProp(name: String): String =
+            (project.findProperty(name) as String?)?.trim()?.takeIf { it.isNotBlank() } ?: ""
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebaseProp("FIREBASE_PROJECT_ID")}\"")
+        buildConfigField("String", "FIREBASE_APP_ID", "\"${firebaseProp("FIREBASE_APP_ID")}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${firebaseProp("FIREBASE_API_KEY")}\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"${firebaseProp("FIREBASE_SENDER_ID")}\"")
     }
 
     // Release signing. The keystore itself is NEVER committed: it lives in
@@ -101,9 +116,14 @@ dependencies {
     // fixes for the Android 9/10 Keystore issues in 1.0.0.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // Periodic background polling for urgent blood requests. WorkManager rather
-    // than Firebase: no Google services, no server, no extra account.
+    // Periodic background polling for urgent blood requests (the fallback).
+    // Still the only alerting path when no Firebase values were baked in.
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+
+    // Push notifications (v1.7). Deliberately WITHOUT the google-services
+    // plugin: Firebase is initialised explicitly from BuildConfig values, so
+    // a build without Firebase credentials still compiles and runs offline.
+    implementation("com.google.firebase:firebase-messaging:24.1.0")
 
     // Local JVM unit tests (app/src/test). No Android runtime needed.
     testImplementation("junit:junit:4.13.2")
