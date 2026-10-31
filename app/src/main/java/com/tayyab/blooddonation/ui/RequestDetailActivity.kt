@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
-import BloodRequest
+import com.tayyab.blooddonation.model.BloodRequest
 import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
