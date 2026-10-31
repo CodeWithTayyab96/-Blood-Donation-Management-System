@@ -1,7 +1,6 @@
 package com.tayyab.blooddonation.util
 
-import com.tayyab.blooddonation.BuildConfig
-import org.json.JSONObjectimport org.junit.Assert.*
+import org.junit.Assert.*
 import org.junit.Test
 
 /**

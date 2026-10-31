@@ -129,7 +129,7 @@
             android:text="👤  My Profile" android:layout_marginTop="10dp" />
         <!-- Phase 4 AI helper: open to every signed-in user. -->
         <Button android:id="@+id/btnAskDonate" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="?  Can I donate? — AI helper" android:layout_marginTop="10dp"
+            android:text="🩸  Can I donate? (AI helper)" android:layout_marginTop="10dp"
             style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="⚙  Settings" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
