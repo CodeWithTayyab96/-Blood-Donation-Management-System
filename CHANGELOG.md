@@ -3,6 +3,33 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.6 — 2026-10-31
+
+### Urgent request alerts
+
+- A signed-in donor is notified when a pending **Urgent** or **Critical** request
+  appears that their blood group can serve, provided they are eligible to donate.
+  Requests marked **Normal** do not alert — waking someone for routine stock
+  replenishment would only train donors to ignore the notifications.
+- Delivery is **approximate**. A `WorkManager` job polls about every 15 minutes
+  (the platform minimum for periodic work) and only while online, so an alert can
+  arrive late, and Doze can delay it further. There is no push service, no
+  Firebase and no server of our own.
+- **Once per request, ever.** Notified request ids are stored on the device, so a
+  restart or a later poll cannot produce a second notification for the same
+  request. Fulfilled requests stay remembered.
+- **Lock-screen privacy.** The notification is `VISIBILITY_PRIVATE` with a
+  generic public version ("A blood request needs your help"), so the hospital and
+  contact number are not readable on a locked screen. The patient's name is never
+  shown at all.
+- Tapping an alert opens that request's detail screen.
+- **Android 13+** asks for the notification permission once, behind a short
+  explanation. Declining is respected: the prompt does not return on every
+  launch, and granting it later from system settings takes effect automatically.
+- **Debug builds** gain a "Check requests now" button that runs the same worker
+  immediately instead of waiting for the next poll, and reports how many alerts
+  it sent. The button is hidden in release builds.
+
 ## 1.5 — 2026-10-31
 
 A correctness and security pass over v1.4, driven by a full code review. No
