@@ -101,6 +101,27 @@ Known limits (see also `util/SupabaseSync.kt`):
   Supabase dashboard will still show locally until it is also deleted
   in the app (the app's own delete removes it from both copies).
 
+## ⚠️ Security fix: drop the unused `users` table
+
+`supabase_migration.sql` used to create a public `users` table holding
+`password_hash` values. The app never read or wrote it from v1.4 on
+(Supabase Auth owns accounts), and it was the **only** public table with
+Row Level Security switched off — `supabase_auth_policies.sql` covers
+`donors`, `donations`, `requests` and `stock` only. Supabase grants the
+`anon` role full table privileges by default, so anyone holding the anon
+key (which is baked into every release APK) could read every stored
+password hash through PostgREST.
+
+**If you already ran `supabase_migration.sql`, run `fix_users_table.sql`
+in the Supabase SQL editor now.** It is a single statement:
+
+```sql
+drop table if exists users;
+```
+
+`supabase_migration.sql` no longer creates the table, so a fresh setup is
+unaffected, and nothing in the app reads or writes `users`.
+
 ## How the anon key reaches the build (no values in this repo)
 
 1. Gradle property `SUPABASE_ANON_KEY` (and `SUPABASE_URL`) — see
@@ -151,11 +172,24 @@ Known limits (see also `util/SupabaseSync.kt`):
   manager@blood.local seed, a v3 upgrade branch, and the profile
   relink helper. All v1.2 methods unchanged.
 - `supabase_migration.sql` — the schema already applied to the
-  project (donors, donations, requests, stock, users + seeds).
+  project (donors, donations, requests, stock + seeds). No longer
+  creates the legacy `users` table.
+- `fix_users_table.sql` — one-time security fix: drops the unused
+  `users` table (see the warning above). Run this if you applied an
+  older `supabase_migration.sql`.
 - `supabase_auth_migration.sql` — v1.4: `donors.auth_id` + partial
   unique index. Apply after `supabase_migration.sql`.
 - `supabase_auth_policies.sql` — v1.4: RLS ON + authenticated full
   access. Apply after `supabase_auth_migration.sql`. REPLACES the
   v1.3 review file below — do not apply both.
+- `fix_stock_rpc.sql` — adds `public.adjust_stock(text, int)`, the
+  atomic stock adjustment the app now calls instead of
+  read-then-write. Purely additive: safe to run before or after the
+  APK update, and it does not affect older app versions.
+- `supabase_role_policies.sql` — role-aware RLS that replaces
+  "Authenticated full access" with per-role policies. **Do not run
+  this until you have read its header**: it needs the manager's
+  `app_metadata.role` set first, and every session must sign in
+  again before its token carries the claim.
 - `supabase_policies_review.sql` — v1.3 RLS policies for review
   only. NEVER applied; do NOT apply it under v1.4.

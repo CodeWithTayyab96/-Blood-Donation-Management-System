@@ -2,6 +2,7 @@ package com.tayyab.blooddonation.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -10,7 +11,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 
 class RequestDetailActivity : AppCompatActivity() {
@@ -24,6 +27,13 @@ class RequestDetailActivity : AppCompatActivity() {
         title = "Request Detail"
         db = DbHelper(this)
         requestId = intent.getLongExtra("requestId", -1)
+        Session.load(this)
+        // Fulfilling a request moves stock, which is a manager action. Hiding
+        // the button is a UI guard only — supabase_role_policies.sql is what
+        // actually enforces it on the server.
+        if (!Session.isManager) {
+            findViewById<Button>(R.id.btnFulfill).visibility = View.GONE
+        }
 
         findViewById<Button>(R.id.btnFulfill).setOnClickListener {
             val req = db.getRequest(requestId) ?: return@setOnClickListener
@@ -35,18 +45,18 @@ class RequestDetailActivity : AppCompatActivity() {
                 // Online stock is the source of truth when reachable:
                 // a short online stock means "not enough", full stop.
                 // An online error falls back to the old local behaviour.
-                Thread {
+                Background.run {
                     when (SupabaseSync.fulfilRequestRemote(req)) {
                         is SupabaseSync.FulfilResult.Success -> {
                             db.fulfillRequest(req)
                             runOnUiThread {
-                            if (isFinishing || isDestroyed) return@runOnUiThread
+                                if (isFinishing || isDestroyed) return@runOnUiThread
                                 Toast.makeText(this, "Request fulfilled from stock.", Toast.LENGTH_LONG).show()
                                 refresh()
                             }
                         }
                         is SupabaseSync.FulfilResult.Insufficient -> runOnUiThread {
-                                if (isFinishing || isDestroyed) return@runOnUiThread
+                            if (isFinishing || isDestroyed) return@runOnUiThread
                             Toast.makeText(
                                 this,
                                 "Not enough ${req.bloodGroup} units in stock.",
@@ -57,7 +67,7 @@ class RequestDetailActivity : AppCompatActivity() {
                         is SupabaseSync.FulfilResult.Error -> {
                             val ok = db.fulfillRequest(req)
                             runOnUiThread {
-                            if (isFinishing || isDestroyed) return@runOnUiThread
+                                if (isFinishing || isDestroyed) return@runOnUiThread
                                 Toast.makeText(
                                     this,
                                     if (ok) "Request fulfilled on this phone (not synced to Supabase)."
@@ -68,7 +78,7 @@ class RequestDetailActivity : AppCompatActivity() {
                             }
                         }
                     }
-                }.start()
+                }
             } else {
                 val ok = db.fulfillRequest(req)
                 Toast.makeText(
@@ -89,12 +99,21 @@ class RequestDetailActivity : AppCompatActivity() {
     private fun refresh() {
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            Thread {
+            Background.run {
                 SupabaseSync.pullRequestDetail(db, requestId)
                 runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
-            }.start()
+            }
         }
     }
+
+    /**
+     * A request created on this phone stores `createdAt` as a plain date
+     * ("2026-10-31"); the same request pulled from Supabase comes back as a
+     * full timestamptz. Showing only the date part keeps the screen identical
+     * before and after a sync.
+     */
+    private fun displayDate(raw: String): String =
+        if (raw.length >= 10 && raw[4] == '-' && raw[7] == '-') raw.substring(0, 10) else raw
 
     private fun renderFromLocal() {
         val req = db.getRequest(requestId) ?: run { finish(); return }
@@ -105,7 +124,7 @@ class RequestDetailActivity : AppCompatActivity() {
             "Units needed: ${req.unitsNeeded}\n" +
             "Urgency: ${req.urgency}\n" +
             "Contact: ${req.contact}\n" +
-            "Requested on: ${req.createdAt}\n" +
+            "Requested on: ${displayDate(req.createdAt)}\n" +
             "Status: ${req.status}\n" +
             "In stock (${req.bloodGroup}): ${db.stockLevels()[req.bloodGroup] ?: 0} unit(s)"
 

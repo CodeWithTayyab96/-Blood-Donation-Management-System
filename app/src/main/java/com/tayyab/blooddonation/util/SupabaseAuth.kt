@@ -187,6 +187,46 @@ object SupabaseAuth {
     }
 
     /**
+     * Revokes the current Auth session on the server. Called from
+     * [Session.logout] on a background thread, after the local state has
+     * already been cleared — so this never throws and its result is only
+     * recorded in [lastError]. A failure here means the refresh token stays
+     * valid server-side until it expires; the device is signed out either way.
+     */
+    fun signOut(accessToken: String) {
+        if (!isConfigured || accessToken.isBlank()) return
+        try {
+            val connection =
+                URL(authUrl() + "/logout").openConnection() as HttpURLConnection
+            try {
+                connection.requestMethod = "POST"
+                connection.connectTimeout = CONNECT_TIMEOUT_MS
+                connection.readTimeout = READ_TIMEOUT_MS
+                connection.setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                connection.setRequestProperty("Authorization", "Bearer $accessToken")
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.doOutput = true
+                connection.outputStream.use { out ->
+                    out.write("{}".toByteArray(Charsets.UTF_8))
+                }
+                val code = connection.responseCode
+                // Drain the body so the socket is released.
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                if (code !in 200..299) {
+                    lastError = "Supabase Auth logout -> HTTP $code"
+                }
+            } finally {
+                connection.disconnect()
+            }
+        } catch (e: IOException) {
+            lastError = "No internet connection"
+        } catch (e: Exception) {
+            lastError = "Logout request failed: ${e.javaClass.simpleName}"
+        }
+    }
+
+    /**
      * The donor profile linked to an Auth user id, or null if there is
      * none (or it could not be fetched). This goes through
      * [SupabaseClient]'s authenticated request path, so it carries the

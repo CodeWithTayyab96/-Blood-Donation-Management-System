@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -48,14 +49,20 @@ class DonorDetailActivity : AppCompatActivity() {
                 // Online first (donation row + donor date + stock), then
                 // the same change locally. If the online step fails, the
                 // local record still stands and the user is told so.
-                Thread {
-                    val onlineOk = SupabaseSync.recordDonationRemote(donor, 1)
-                    db.recordDonation(donor, 1)
+                Background.run {
+                    val remoteId = SupabaseSync.recordDonationRemote(donor, 1)
+                    if (remoteId != null) {
+                        // Keep the server id locally, so the pull that follows
+                        // updates this row instead of adding a second one.
+                        db.recordDonationWithId(donor, 1, remoteId)
+                    } else {
+                        db.recordDonation(donor, 1)
+                    }
                     runOnUiThread {
                         if (isFinishing || isDestroyed) return@runOnUiThread
                         Toast.makeText(
                             this,
-                            if (onlineOk) {
+                            if (remoteId != null) {
                                 "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock."
                             } else {
                                 "Donation saved on this phone (not synced to Supabase)."
@@ -64,7 +71,7 @@ class DonorDetailActivity : AppCompatActivity() {
                         ).show()
                         refresh()
                     }
-                }.start()
+                }
             } else {
                 db.recordDonation(donor, 1)
                 Toast.makeText(this, "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock.", Toast.LENGTH_LONG).show()
@@ -78,11 +85,11 @@ class DonorDetailActivity : AppCompatActivity() {
                 .setMessage("Remove this donor permanently?")
                 .setPositiveButton("Delete") { _, _ ->
                     if (SupabaseSync.isOnline) {
-                        Thread {
+                        Background.run {
                             SupabaseSync.deleteDonorRemote(donorId)
                             db.deleteDonor(donorId)
                             runOnUiThread { finish() }
-                        }.start()
+                        }
                     } else {
                         db.deleteDonor(donorId)
                         finish()
@@ -101,10 +108,10 @@ class DonorDetailActivity : AppCompatActivity() {
     private fun refresh() {
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            Thread {
+            Background.run {
                 SupabaseSync.pullDonorDetail(db, donorId)
                 runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
-            }.start()
+            }
         }
     }
 

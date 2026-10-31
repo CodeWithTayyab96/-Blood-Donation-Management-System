@@ -11,8 +11,8 @@ android {
         applicationId = "com.tayyab.blooddonation"
         minSdk = 26          // Android 8.0 and above
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
 
         // Supabase (v1.3, Auth added in v1.4): the PostgREST client reads these BuildConfig
         // fields. They come from Gradle project properties of the same
@@ -70,12 +70,22 @@ android {
         jvmTarget = "17"
     }
     buildFeatures {
-        viewBinding = true
+        // viewBinding was enabled but never used — every screen still calls
+        // findViewById. Removed so the generated binding classes stop costing
+        // build time and confusing readers.
         // AGP 8 does NOT generate BuildConfig by default. The in-app updater
         // (AppUpdater.kt, MainActivity.kt) reads BuildConfig.VERSION_NAME /
         // VERSION_CODE, so without this the release build fails with
         // "unresolved reference: BuildConfig" — this was the v1.2 run #2 failure.
         buildConfig = true
+    }
+
+    testOptions {
+        // Local unit tests run against the android.jar stubs, which throw on
+        // every method call. Returning defaults instead means a test that only
+        // touches pure Kotlin (BloodCompatibility, AppUpdater.compareVersionNames)
+        // never trips over a stub it did not mean to call.
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -86,4 +96,11 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.cardview:cardview:1.0.0")
+    // EncryptedSharedPreferences for the session store (Auth tokens and the
+    // offline password hash). 1.1.0-alpha06 is the release that carries the
+    // fixes for the Android 9/10 Keystore issues in 1.0.0.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Local JVM unit tests (app/src/test). No Android runtime needed.
+    testImplementation("junit:junit:4.13.2")
 }

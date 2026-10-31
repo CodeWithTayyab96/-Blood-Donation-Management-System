@@ -10,14 +10,28 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.BloodRequest
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 
 class AddRequestActivity : AppCompatActivity() {
 
+    private companion object {
+        /** Sanity cap for a single request; also bounds the units input field. */
+        const val MAX_UNITS_PER_REQUEST = 20
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.load(this)
+        // Creating a request is a manager action (same guard as AddDonorActivity).
+        if (!Session.isManager) {
+            Toast.makeText(this, "Only managers can create blood requests", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         setContentView(R.layout.activity_add_request)
         title = "New Blood Request"
         val db = DbHelper(this)
@@ -39,11 +53,22 @@ class AddRequestActivity : AppCompatActivity() {
                 Toast.makeText(this, "Please fill all fields marked *", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            // Parse defensively: toInt() throws on "2.5", "1 0" or anything
+            // outside Int range, which would crash the app.
+            val units = unitsText.toIntOrNull()
+            if (units == null || units !in 1..MAX_UNITS_PER_REQUEST) {
+                Toast.makeText(
+                    this,
+                    "Units needed must be a whole number between 1 and $MAX_UNITS_PER_REQUEST",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
             val req = BloodRequest(
                 patientName = patient,
                 hospital = hospital,
                 bloodGroup = spGroup.selectedItem.toString(),
-                unitsNeeded = unitsText.toInt(),
+                unitsNeeded = units,
                 urgency = spUrgency.selectedItem.toString(),
                 contact = contact,
                 createdAt = LocalDate.now().toString()
@@ -51,7 +76,7 @@ class AddRequestActivity : AppCompatActivity() {
             if (SupabaseSync.isOnline) {
                 // Online first so the request keeps its server id locally;
                 // unreachable Supabase = saved locally only.
-                Thread {
+                Background.run {
                     val remoteId = SupabaseSync.addRequestRemote(req)
                     if (remoteId != null) {
                         db.insertRequestWithId(req.copy(id = remoteId))
@@ -67,7 +92,7 @@ class AddRequestActivity : AppCompatActivity() {
                         ).show()
                         finish()
                     }
-                }.start()
+                }
             } else {
                 db.addRequest(req)
                 Toast.makeText(this, "Request created for $patient", Toast.LENGTH_SHORT).show()

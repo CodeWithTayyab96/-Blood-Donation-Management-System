@@ -324,6 +324,22 @@ object SupabaseClient {
         return patchRows("stock", "blood_group=eq.${encode(bloodGroup)}", body)
     }
 
+    /**
+     * Adds [delta] to a blood group's stock in one server-side statement
+     * (`adjust_stock` in fix_stock_rpc.sql). Replaces the old
+     * read-then-write, which lost a unit whenever two devices recorded a
+     * donation at the same moment. Returns false if the function is missing
+     * or the call failed, in which case the caller falls back to local only.
+     */
+    fun adjustStock(bloodGroup: String, delta: Int): Boolean {
+        val body = JSONObject().apply {
+            put("p_group", bloodGroup)
+            put("p_delta", delta)
+        }
+        val (code, _) = request("POST", "/rpc/adjust_stock", body)
+        return code in 200..299
+    }
+
     // ------------------------------------------------------------- requests
 
     fun getRequests(): List<BloodRequest>? {

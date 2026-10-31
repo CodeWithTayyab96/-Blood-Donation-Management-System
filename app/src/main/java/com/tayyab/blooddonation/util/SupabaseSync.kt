@@ -119,27 +119,35 @@ object SupabaseSync {
     fun deleteDonorRemote(donorId: Long): Boolean = SupabaseClient.deleteDonor(donorId)
 
     /**
-     * Records a donation online: donation row, donor's last-donation date,
-     * and stock +units. True only if all three steps succeeded; the
-     * caller still records it locally either way.
+     * Records a donation online: donation row, donor's last-donation date, and
+     * stock +units.
+     *
+     * Returns the server-assigned donation id when the donation row itself
+     * reached Supabase, or null when it did not. The caller stores the same row
+     * locally under that id ([DbHelper.recordDonationWithId]), so the history
+     * list does not end up holding a local row AND a server row for the same
+     * donation.
+     *
+     * The last-donation date and the stock increment are attempted after the
+     * row is inserted and are best-effort: if either fails the id is still
+     * returned, because the donation really does exist online and the next pull
+     * reconciles the date and the stock count. Reporting failure here would make
+     * the caller insert a second local row, which is the worse outcome.
+     *
+     * The stock increment is a single `adjust_stock` call, so two devices
+     * recording at the same moment cannot lose a unit between them.
      */
     fun recordDonationRemote(
         donor: Donor,
         units: Int,
         date: LocalDate = LocalDate.now()
-    ): Boolean {
+    ): Long? {
         val dateStr = date.toString()
-        val donationId = SupabaseClient.insertDonation(donor.id, dateStr, units) ?: return false
-        if (donationId <= 0) return false
-        val dateOk = SupabaseClient.updateDonorLastDonation(donor.id, dateStr)
-        val stock = SupabaseClient.getStock()
-        val stockOk = if (stock != null) {
-            val current = stock[donor.bloodGroup] ?: 0
-            SupabaseClient.updateStock(donor.bloodGroup, current + units)
-        } else {
-            false
-        }
-        return dateOk && stockOk
+        val donationId = SupabaseClient.insertDonation(donor.id, dateStr, units) ?: return null
+        if (donationId <= 0) return null
+        SupabaseClient.updateDonorLastDonation(donor.id, dateStr)
+        SupabaseClient.adjustStock(donor.bloodGroup, units)
+        return donationId
     }
 
     /** Creates a request online; returns the server id, or null on failure. */
@@ -157,12 +165,17 @@ object SupabaseSync {
      * really is short (caller must NOT fulfil locally either, or the two
      * copies would disagree). [Error] means the online state is unknown
      * (network/permission failure) — the caller falls back to local-only.
+     *
+     * The check is still a read followed by a write, so two devices fulfilling
+     * the same group at the same moment can both pass it. The subtraction
+     * itself is atomic and clamped at zero by `adjust_stock`, so stock can no
+     * longer go negative — it just may under-count in that race.
      */
     fun fulfilRequestRemote(req: BloodRequest): FulfilResult {
         val stock = SupabaseClient.getStock() ?: return FulfilResult.Error
         val available = stock[req.bloodGroup] ?: 0
         if (available < req.unitsNeeded) return FulfilResult.Insufficient
-        if (!SupabaseClient.updateStock(req.bloodGroup, available - req.unitsNeeded)) {
+        if (!SupabaseClient.adjustStock(req.bloodGroup, -req.unitsNeeded)) {
             return FulfilResult.Error
         }
         if (!SupabaseClient.updateRequestStatus(req.id, "Fulfilled")) {

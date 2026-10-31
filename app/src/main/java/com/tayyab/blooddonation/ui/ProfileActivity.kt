@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -31,7 +32,7 @@ class ProfileActivity : AppCompatActivity() {
         renderFromLocal()
         setupSyncRetry()
         if (SupabaseSync.isOnline) {
-            Thread {
+            Background.run {
                 val donorId = Session.donorId
                 if (donorId != null) {
                     SupabaseSync.pullDonorDetail(db, donorId)
@@ -39,7 +40,7 @@ class ProfileActivity : AppCompatActivity() {
                     SupabaseSync.pullAll(db)
                 }
                 runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
-            }.start()
+            }
         }
     }
 
@@ -61,7 +62,7 @@ class ProfileActivity : AppCompatActivity() {
         if (!show) return
         btn.setOnClickListener {
             btn.isEnabled = false
-            Thread {
+            Background.run {
                 val donorId = Session.donorId
                 val authId = Session.authUserId
                 val donor = donorId?.let { db.getDonor(it) }
@@ -97,7 +98,7 @@ class ProfileActivity : AppCompatActivity() {
                         ).show()
                     }
                 }
-            }.start()
+            }
         }
     }
 

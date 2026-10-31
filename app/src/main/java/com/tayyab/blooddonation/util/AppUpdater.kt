@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.tayyab.blooddonation.BuildConfig
@@ -173,7 +175,9 @@ object AppUpdater {
                     }
                 }
             }
-            installApk(context, apkFile)
+            // The installer must be launched from the main thread; the download
+            // itself is deliberately kept off it.
+            Handler(Looper.getMainLooper()).post { installApk(context, apkFile) }
         } catch (e: Exception) {
             onError(e.message ?: "Download failed.")
         }
@@ -215,15 +219,19 @@ object AppUpdater {
 
     private fun getUrl(urlString: String): String {
         val connection = URL(urlString).openConnection() as HttpURLConnection
-        connection.connectTimeout = CONNECT_TIMEOUT_MS
-        connection.readTimeout = READ_TIMEOUT_MS
-        connection.setRequestProperty("User-Agent", "BloodDonation-Updater")
-        connection.setRequestProperty("Accept", "application/vnd.github+json")
-        connection.connect()
-        if (connection.responseCode !in 200..299) {
-            throw IllegalStateException("GitHub returned HTTP ${connection.responseCode}")
+        try {
+            connection.connectTimeout = CONNECT_TIMEOUT_MS
+            connection.readTimeout = READ_TIMEOUT_MS
+            connection.setRequestProperty("User-Agent", "BloodDonation-Updater")
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            connection.connect()
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("GitHub returned HTTP ${connection.responseCode}")
+            }
+            return connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
         }
-        return connection.inputStream.bufferedReader().use { it.readText() }
     }
 
     /** Compare dotted version names, e.g. 1.10 > 1.2. Returns >0 if a is newer. */

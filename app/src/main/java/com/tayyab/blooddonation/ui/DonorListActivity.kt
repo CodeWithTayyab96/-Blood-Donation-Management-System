@@ -17,6 +17,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -76,10 +77,10 @@ class DonorListActivity : AppCompatActivity() {
         // rule as the dashboard: unreachable Supabase = local list stays).
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            Thread {
+            Background.run {
                 SupabaseSync.pullDonors(db)
                 runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
-            }.start()
+            }
         }
     }
 
