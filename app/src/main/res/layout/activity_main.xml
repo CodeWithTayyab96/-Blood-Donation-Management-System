@@ -13,6 +13,22 @@
             android:textSize="14sp" android:textColor="@color/text_secondary"
             android:layout_marginBottom="16dp" />
 
+        <!-- Daily motivation card: one fact per day, stable for the day, the
+             same on every device. No medical claims (see MotivationFacts). -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp" app:cardCornerRadius="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="14dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="💡 Did you know?" android:textSize="15sp" android:textStyle="bold"
+                    android:textColor="@color/text_accent" />
+                <TextView android:id="@+id/tvFact" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textSize="14sp"
+                    android:textColor="@color/text_secondary" android:layout_marginTop="6dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal">
             <com.google.android.material.card.MaterialCardView
@@ -70,9 +86,27 @@
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
+        <!-- Donor milestones, computed locally from the donation history. Shown
+             only when the signed-in person has a donor profile; a manager with
+             none never sees it. -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardMilestones" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="14dp"
+            android:visibility="gone" app:cardCornerRadius="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="14dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Your donation milestones" android:textSize="15sp"
+                    android:textStyle="bold" android:textColor="@color/text_accent" />
+                <TextView android:id="@+id/tvMilestones" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textSize="14sp"
+                    android:textColor="@color/text_secondary" android:layout_marginTop="6dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <TextView android:id="@+id/tvSignedIn" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:textSize="14sp"
-            android:textColor="@color/text_secondary" android:layout_marginBottom="4dp" />
+            android:textColor="@color/text_secondary" android:layout_marginTop="16dp" android:layout_marginBottom="4dp" />
 
         <!-- Shown when the signed-in account has no Supabase session, which
              means every online call is anonymous and therefore rejected. -->
@@ -89,6 +123,8 @@
             android:text="📋  Blood Requests" android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnProfile" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="👤  My Profile" android:layout_marginTop="10dp" />
+        <Button android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="⚙  Settings" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnUpdate" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="⬇  Check for Updates" android:layout_marginTop="10dp" />
         <!-- Debug builds only. MainActivity leaves this GONE in release builds. -->

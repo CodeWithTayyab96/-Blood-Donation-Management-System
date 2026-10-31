@@ -43,6 +43,12 @@ offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
 - **Urgent request alerts** — a signed-in donor is notified about pending
   requests their blood group can serve, at most once per request. Delivery
   is **approximate**, not instant: see "Urgent request alerts" below.
+- **Daily motivation card & milestones** — the dashboard shows one accurate
+  blood-donation fact per day, plus a donor's own milestones (badges at the
+  1st/3rd/5th/10th donation, current streak, and an estimate of how many
+  people they may have helped). All computed locally from the donation history.
+- **Optional daily tip** — a practical, non-medical tip, off by default, at
+  most one a day and never at night. Toggle it in **Settings**.
 
 ## Urgent request alerts
 

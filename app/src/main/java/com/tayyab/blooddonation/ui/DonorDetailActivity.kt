@@ -60,15 +60,16 @@ class DonorDetailActivity : AppCompatActivity() {
                     runOnUiThread {
                         if (isFinishing || isDestroyed) return@runOnUiThread
                         val message = if (written == null) {
-                            "Donation saved on this phone (not synced to Supabase)."
+                            "Thank you for donating! Your donation was saved on this phone " +
+                                "(not yet synced to Supabase)."
                         } else if (!written.stockSynced) {
                             // The donation row landed but the stock call did
                             // not. Saying "recorded" without this caveat is how
                             // the two stock counts silently drift apart.
-                            "Donation recorded, but the stock count did not update on " +
-                                "the server. Please tell the manager."
+                            "Thank you for donating! The donation was recorded, but the stock " +
+                                "count did not update on the server. Please tell the manager."
                         } else {
-                            "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock."
+                            "Thank you for donating! 1 unit of ${donor.bloodGroup} added to stock."
                         }
                         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                         refresh()
@@ -76,7 +77,7 @@ class DonorDetailActivity : AppCompatActivity() {
                 }
             } else {
                 db.recordDonation(donor, 1)
-                Toast.makeText(this, "Donation recorded. 1 unit of ${donor.bloodGroup} added to stock.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Thank you for donating! 1 unit of ${donor.bloodGroup} added to stock.", Toast.LENGTH_LONG).show()
                 refresh()
             }
         }

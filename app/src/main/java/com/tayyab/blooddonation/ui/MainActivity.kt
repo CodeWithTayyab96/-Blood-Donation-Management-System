@@ -26,6 +26,9 @@ import com.tayyab.blooddonation.util.RequestAlertWorker
 import com.tayyab.blooddonation.util.RequestAlerts
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.util.MotivationFacts
+import com.tayyab.blooddonation.util.DonationStats
+import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
@@ -82,6 +85,9 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnSettings).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
         findViewById<Button>(R.id.btnUpdate).setOnClickListener {
             checkForUpdate()
@@ -293,5 +299,42 @@ class MainActivity : AppCompatActivity() {
         val stock = db.stockLevels()
         findViewById<TextView>(R.id.tvStockSummary).text =
             BloodCompatibility.ALL_GROUPS.joinToString("\n") { g -> "$g : ${stock[g] ?: 0} unit(s)" }
+
+        // Daily motivation card: one fact per day, stable for the day and the
+        // same on every device (derived from the epoch day, not wall-clock text).
+        findViewById<TextView>(R.id.tvFact).text =
+            MotivationFacts.factFor(LocalDate.now().toEpochDay())
+
+        // Donor milestones, computed from the local donation history. Only a
+        // signed-in donor has a profile to count; managers without one skip it.
+        val card = findViewById<android.view.View>(R.id.cardMilestones)
+        val tvMilestones = findViewById<TextView>(R.id.tvMilestones)
+        val donorId = Session.donorId
+        if (donorId != null) {
+            val stats = DonationStats.from(db.donationsForDonor(donorId).map { it.date })
+            card.visibility = android.view.View.VISIBLE
+            val badges = if (stats.earnedMilestones.isEmpty()) "none yet"
+            else stats.earnedMilestones.joinToString(", ") { ordinal(it) }
+            val next = stats.nextMilestone?.let { "Next milestone: your ${ordinal(it)} donation." }
+                ?: "You have earned every milestone — thank you!"
+            tvMilestones.text = buildString {
+                append("Total donations: ${stats.totalDonations}\n")
+                append("Current streak: ${stats.streak}\n")
+                append("You may have helped up to ${stats.mayHaveHelped} people\n")
+                append("Badges earned: $badges\n")
+                append(next)
+            }
+        } else {
+            card.visibility = android.view.View.GONE
+        }
+    }
+
+    /** 1 -> "1st", 3 -> "3rd", 11 -> "11th", 21 -> "21st". */
+    private fun ordinal(n: Int): String = when {
+        n % 100 in 11..13 -> "${n}th"
+        n % 10 == 1 -> "${n}st"
+        n % 10 == 2 -> "${n}nd"
+        n % 10 == 3 -> "${n}rd"
+        else -> "${n}th"
     }
 }

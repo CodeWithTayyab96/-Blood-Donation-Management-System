@@ -3,6 +3,27 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## Unreleased — Phase 1: motivation, milestones, tips
+
+All offline; no server or database changes.
+
+- **Daily motivation card** on the dashboard: one short, accurate fact per day
+  (WHO / Red Cross style — no "cures", weight-loss or disease-prevention
+  claims), stable for the day and the same on every device. 32 facts in the
+  bank so a month does not repeat.
+- **Donation milestones**, computed locally from the donation history a donor
+  already has: badges at the 1st, 3rd, 5th and 10th donation, a current streak
+  (consecutive donations within 180 days), and a "you may have helped up to N
+  people" estimate (3 patients per donation, labelled an estimate). Shown only
+  when the signed-in person has a donor profile.
+- **Optional daily tip notification** — a practical, non-medical tip, on its
+  own low-importance channel. **Off by default**, at most one per day, never
+  between 21:00 and 09:00, with a toggle in a new **Settings** screen. Reuses
+  the existing notification permission handling; a missing permission is
+  swallowed, not crashed on.
+- **Thank-you message** after a donation is recorded.
+- Unit tests for the milestone/streak math and the tip send-window rule.
+
 ## 1.6 — 2026-10-31
 
 ### Urgent request alerts
