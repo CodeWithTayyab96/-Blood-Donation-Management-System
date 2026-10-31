@@ -4,6 +4,8 @@ import com.tayyab.blooddonation.BuildConfig
 import com.tayyab.blooddonation.model.BloodRequest
 import com.tayyab.blooddonation.model.Donation
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.model.Offer
+import com.tayyab.blooddonation.model.Report
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -191,7 +193,9 @@ object SupabaseClient {
             phone = obj.optString("phone", ""),
             city = obj.optString("city", ""),
             weightKg = obj.optDouble("weight", 0.0),
-            lastDonationDate = last
+            lastDonationDate = last,
+            authId = if (obj.isNull("auth_id")) null else obj.optString("auth_id", ""),
+            availableToDonate = obj.optInt("available_to_donate", 0) != 0
         )
     }
 
@@ -199,6 +203,9 @@ object SupabaseClient {
         // Supabase stores created_at as a timestamp; the app's model keeps
         // it as a plain string, so it is carried through unchanged.
         val created = if (obj.isNull("created_at")) "" else obj.optString("created_at", "")
+        val requester = if (obj.isNull("requester_id")) null else obj.optString("requester_id", "")
+        val fulfilledBy = if (obj.isNull("fulfilled_by")) null else obj.optString("fulfilled_by", "")
+        val neededBy = if (obj.isNull("needed_by")) null else obj.optString("needed_by", "")
         return BloodRequest(
             id = obj.optLong("id", 0),
             patientName = obj.optString("patient_name", ""),
@@ -208,7 +215,11 @@ object SupabaseClient {
             urgency = obj.optString("urgency", ""),
             contact = obj.optString("contact", ""),
             status = obj.optString("status", "Pending"),
-            createdAt = created
+            createdAt = created,
+            requesterId = requester,
+            city = if (obj.isNull("city")) "" else obj.optString("city", ""),
+            fulfilledBy = fulfilledBy,
+            neededBy = neededBy
         )
     }
 
@@ -268,6 +279,7 @@ object SupabaseClient {
             if (donor.lastDonationDate != null) put("last_donation_date", donor.lastDonationDate)
             else put("last_donation_date", JSONObject.NULL)
             if (authId != null) put("auth_id", authId)
+            put("available_to_donate", if (donor.availableToDonate) 1 else 0)
         }
         return insertRow("donors", body)
     }
@@ -367,6 +379,10 @@ object SupabaseClient {
             put("urgency", req.urgency)
             put("contact", req.contact)
             put("status", req.status)
+            if (req.requesterId != null) put("requester_id", req.requesterId) else put("requester_id", JSONObject.NULL)
+            put("city", req.city)
+            if (req.fulfilledBy != null) put("fulfilled_by", req.fulfilledBy) else put("fulfilled_by", JSONObject.NULL)
+            if (req.neededBy != null) put("needed_by", req.neededBy) else put("needed_by", JSONObject.NULL)
         }
         return insertRow("requests", body)
     }
@@ -374,5 +390,126 @@ object SupabaseClient {
     fun updateRequestStatus(id: Long, status: String): Boolean {
         val body = JSONObject().apply { put("status", status) }
         return patchRows("requests", "id=eq.$id", body)
+    }
+
+    fun updateRequestFulfilledBy(id: Long, fulfilledBy: String): Boolean {
+        val body = JSONObject().apply { put("fulfilled_by", fulfilledBy) }
+        return patchRows("requests", "id=eq.$id", body)
+    }
+
+    // ------------------------------------------------------------- P2P: offers
+
+    private fun offerFromJson(obj: JSONObject): Offer {
+        val donorConfirmed = if (obj.isNull("donor_confirmed_at")) null else obj.optString("donor_confirmed_at", "")
+        val requesterConfirmed = if (obj.isNull("requester_confirmed_at")) null else obj.optString("requester_confirmed_at", "")
+        return Offer(
+            id = obj.optLong("id", 0),
+            requestId = obj.optLong("request_id", 0),
+            donorId = obj.optLong("donor_id", 0),
+            donorAuthId = if (obj.isNull("donor_auth_id")) null else obj.optString("donor_auth_id", ""),
+            donorName = obj.optString("donor_name", ""),
+            donorGroup = obj.optString("donor_group", ""),
+            donorCity = obj.optString("donor_city", ""),
+            status = obj.optString("status", "Offered"),
+            donorConfirmedAt = donorConfirmed,
+            requesterConfirmedAt = requesterConfirmed,
+            createdAt = if (obj.isNull("created_at")) "" else obj.optString("created_at", "")
+        )
+    }
+
+    fun getOffersForRequest(requestId: Long): List<Offer>? {
+        val array = getArray(
+            "/offers?request_id=eq.$requestId&select=*&order=id.asc"
+        ) ?: return null
+        val out = ArrayList<Offer>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(offerFromJson(it)) }
+        }
+        return out
+    }
+
+    /** Inserts an offer online; returns the server-assigned id, or null. */
+    fun insertOffer(o: Offer): Long? {
+        val body = JSONObject().apply {
+            put("request_id", o.requestId)
+            put("donor_id", o.donorId)
+            if (o.donorAuthId != null) put("donor_auth_id", o.donorAuthId) else put("donor_auth_id", JSONObject.NULL)
+            put("donor_name", o.donorName)
+            put("donor_group", o.donorGroup)
+            put("donor_city", o.donorCity)
+            put("status", o.status)
+            put("created_at", o.createdAt)
+        }
+        return insertRow("offers", body)
+    }
+
+    fun updateOfferStatus(offerId: Long, status: String): Boolean {
+        val body = JSONObject().apply { put("status", status) }
+        return patchRows("offers", "id=eq.$offerId", body)
+    }
+
+    fun updateOfferConfirmed(offerId: Long, donorAt: String?, requesterAt: String?): Boolean {
+        val body = JSONObject().apply {
+            if (donorAt != null) put("donor_confirmed_at", donorAt) else put("donor_confirmed_at", JSONObject.NULL)
+            if (requesterAt != null) put("requester_confirmed_at", requesterAt) else put("requester_confirmed_at", JSONObject.NULL)
+        }
+        return patchRows("offers", "id=eq.$offerId", body)
+    }
+
+    // ------------------------------------------------------------- P2P: contact_details
+
+    /** The private phone for a user id, or null. The anon key must not read this
+     *  table — only a signed-in user (owner / manager / accepted party) can. */
+    fun getContactDetails(userId: String): String? {
+        val obj = firstObject("/contact_details?user_id=eq.$userId&select=phone") ?: return null
+        return if (obj.isNull("phone")) null else obj.optString("phone", "")
+    }
+
+    fun upsertContactDetails(userId: String, phone: String): Boolean {
+        // PostgREST does not upsert on a natural primary key without an
+        // ON CONFLICT clause; PATCH-then-POST keeps it simple and idempotent.
+        // This table is keyed by user_id and has NO `id` column, so insertRow
+        // (which reads the server-assigned "id" back) must not be used here —
+        // it would report failure on a perfectly successful insert.
+        val existing = getContactDetails(userId)
+        val body = JSONObject().apply { put("user_id", userId); put("phone", phone) }
+        return if (existing != null) {
+            patchRows("contact_details", "user_id=eq.${encode(userId)}", body)
+        } else {
+            val (code, _) = request("POST", "/contact_details", body)
+            code in 200..299
+        }
+    }
+
+    // ------------------------------------------------------------- P2P: reports
+
+    fun insertReport(requestId: Long, reporterId: String?, reason: String): Long? {
+        val body = JSONObject().apply {
+            put("request_id", requestId)
+            if (reporterId != null) put("reporter_id", reporterId) else put("reporter_id", JSONObject.NULL)
+            put("reason", reason)
+        }
+        return insertRow("reports", body)
+    }
+
+    fun getReports(): List<Report>? {
+        val array = getArray("/reports?select=*&order=id.desc") ?: return null
+        val out = ArrayList<Report>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(reportFromJson(it)) }
+        }
+        return out
+    }
+
+    private fun reportFromJson(obj: JSONObject): Report {
+        val resolved = if (obj.isNull("resolved_at")) null else obj.optString("resolved_at", "")
+        return Report(
+            id = obj.optLong("id", 0),
+            requestId = obj.optLong("request_id", 0),
+            reporterId = if (obj.isNull("reporter_id")) null else obj.optString("reporter_id", ""),
+            reason = obj.optString("reason", ""),
+            createdAt = if (obj.isNull("created_at")) "" else obj.optString("created_at", ""),
+            resolvedAt = resolved
+        )
     }
 }

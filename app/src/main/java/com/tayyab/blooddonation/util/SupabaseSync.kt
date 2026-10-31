@@ -2,7 +2,10 @@ package com.tayyab.blooddonation.util
 
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.BloodRequest
+import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.model.Offer
+import com.tayyab.blooddonation.model.Report
 import java.time.LocalDate
 
 /**
@@ -102,6 +105,53 @@ object SupabaseSync {
         db.upsertRequest(req)
         pullStock(db)
         pullDonors(db)
+        pullOffersForRequest(db, requestId)
+        return true
+    }
+
+    // ------------------------------------------------------------- P2P: offers
+
+    /** Downloads the offers on a request and merges them into SQLite. */
+    fun pullOffersForRequest(db: DbHelper, requestId: Long): Boolean {
+        val offers = SupabaseClient.getOffersForRequest(requestId) ?: return false
+        for (o in offers) db.upsertOffer(o)
+        return true
+    }
+
+    /** Creates an offer online; returns the server id, or null on failure. */
+    fun addOfferRemote(o: Offer): Long? = SupabaseClient.insertOffer(o)
+
+    fun updateOfferStatusRemote(offerId: Long, status: String): Boolean =
+        SupabaseClient.updateOfferStatus(offerId, status)
+
+    fun updateOfferConfirmedRemote(offerId: Long, donorAt: String?, requesterAt: String?): Boolean =
+        SupabaseClient.updateOfferConfirmed(offerId, donorAt, requesterAt)
+
+    // ------------------------------------------------------------- P2P: contact_details
+
+    /** Downloads one user's private phone (only call when allowed by RLS). */
+    fun pullContactDetails(db: DbHelper, userId: String): Boolean {
+        val phone = SupabaseClient.getContactDetails(userId) ?: return false
+        db.upsertContactDetails(ContactDetail(userId, phone))
+        return true
+    }
+
+    fun upsertContactDetailsRemote(userId: String, phone: String): Boolean =
+        SupabaseClient.upsertContactDetails(userId, phone)
+
+    /** Fetches one user's phone on demand (returns null if RLS denies it). */
+    fun getContactDetailsRemote(userId: String): String? =
+        SupabaseClient.getContactDetails(userId)
+
+    // ------------------------------------------------------------- P2P: reports
+
+    fun insertReportRemote(requestId: Long, reporterId: String?, reason: String): Long? =
+        SupabaseClient.insertReport(requestId, reporterId, reason)
+
+    /** Downloads all reports (manager only; RLS denies non-managers). */
+    fun pullReports(db: DbHelper): Boolean {
+        val reports = SupabaseClient.getReports() ?: return false
+        for (r in reports) db.upsertReport(r)
         return true
     }
 

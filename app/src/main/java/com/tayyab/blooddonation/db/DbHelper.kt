@@ -6,8 +6,11 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.tayyab.blooddonation.model.BloodRequest
+import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donation
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.model.Offer
+import com.tayyab.blooddonation.model.Report
 import com.tayyab.blooddonation.model.UserAccount
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
@@ -27,7 +30,12 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         // Old hashes cannot be re-derived, so the seeded demo accounts are
         // rewritten here and every other account is upgraded at its next
         // online sign-in.
-        private const val DB_VERSION = 5
+        // v6: P2P. requests gains requester_id/city/fulfilled_by/needed_by;
+        // donors gains auth_id/available_to_donate; three new tables
+        // (offers, contact_details, reports). All additive — onUpgrade runs
+        // ALTER TABLE ADD COLUMN and CREATE TABLE, so no existing data is
+        // dropped and legacy manager rows keep a null requester_id.
+        private const val DB_VERSION = 6
 
         /**
          * Explicit column lists. `SELECT *` plus positional access silently
@@ -35,9 +43,11 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
          * order is pinned here and every row is read by name.
          */
         private const val DONOR_COLUMNS =
-            "id, name, age, gender, blood_group, phone, city, weight, last_donation_date"
+            "id, name, age, gender, blood_group, phone, city, weight, " +
+            "last_donation_date, auth_id, available_to_donate"
         private const val REQUEST_COLUMNS =
-            "id, patient_name, hospital, blood_group, units_needed, urgency, contact, status, created_at"
+            "id, patient_name, hospital, blood_group, units_needed, urgency, " +
+            "contact, status, created_at, requester_id, city, fulfilled_by, needed_by"
     }
 
     /**
@@ -69,7 +79,8 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL, age INTEGER NOT NULL, gender TEXT NOT NULL,
                 blood_group TEXT NOT NULL, phone TEXT NOT NULL, city TEXT NOT NULL,
-                weight REAL NOT NULL, last_donation_date TEXT)"""
+                weight REAL NOT NULL, last_donation_date TEXT,
+                auth_id TEXT, available_to_donate INTEGER NOT NULL DEFAULT 0)"""
         )
         db.execSQL(
             """CREATE TABLE donations(
@@ -83,18 +94,53 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                 patient_name TEXT NOT NULL, hospital TEXT NOT NULL,
                 blood_group TEXT NOT NULL, units_needed INTEGER NOT NULL,
                 urgency TEXT NOT NULL, contact TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Pending', created_at TEXT NOT NULL)"""
+                status TEXT NOT NULL DEFAULT 'Pending', created_at TEXT NOT NULL,
+                requester_id TEXT, city TEXT, fulfilled_by TEXT, needed_by TEXT)"""
         )
         db.execSQL(
             """CREATE TABLE stock(
                 blood_group TEXT PRIMARY KEY, units INTEGER NOT NULL DEFAULT 0)"""
         )
+        createOffersTable(db)
+        createContactDetailsTable(db)
+        createReportsTable(db)
         for (g in BloodCompatibility.ALL_GROUPS) {
             db.execSQL("INSERT INTO stock(blood_group, units) VALUES('$g', 0)")
         }
         seed(db)
         createUsersTable(db)
         seedManager(db)
+    }
+
+    /** P2P: a donor's offer to fulfil a request. One row per (donor, request). */
+    private fun createOffersTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE offers(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id INTEGER NOT NULL, donor_id INTEGER NOT NULL,
+                donor_auth_id TEXT, donor_name TEXT, donor_group TEXT,
+                donor_city TEXT, status TEXT NOT NULL DEFAULT 'Offered',
+                donor_confirmed_at TEXT, requester_confirmed_at TEXT,
+                created_at TEXT NOT NULL)"""
+        )
+    }
+
+    /** P2P: a donor's private phone, keyed by Auth user id. */
+    private fun createContactDetailsTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE contact_details(
+                user_id TEXT PRIMARY KEY, phone TEXT NOT NULL)"""
+        )
+    }
+
+    /** P2P: a report filed against a request. */
+    private fun createReportsTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE reports(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id INTEGER NOT NULL, reporter_id TEXT, reason TEXT NOT NULL,
+                created_at TEXT NOT NULL, resolved_at TEXT)"""
+        )
     }
 
     /** Accounts table, added in v2. Existing installs are migrated, not wiped. */
@@ -164,6 +210,27 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             // runs once per upgrade rather than once per skipped version (each
             // hash is 200,000 PBKDF2 rounds, so repeating it is not free).
             seedManager(db)
+        }
+        if (oldVersion < 6) {
+            // v6: P2P schema. Everything here is additive and non-destructive.
+            // Existing manager requests keep a null requester_id (treated as
+            // manager-owned); existing donors get available_to_donate = 0 and a
+            // null auth_id (the seeded demo donors are manager data, not peer
+            // accounts, so their phones are deliberately NOT copied into
+            // contact_details — that only happens for donors with an auth_id).
+            db.execSQL("ALTER TABLE requests ADD COLUMN requester_id TEXT")
+            db.execSQL("ALTER TABLE requests ADD COLUMN city TEXT")
+            db.execSQL("ALTER TABLE requests ADD COLUMN fulfilled_by TEXT")
+            db.execSQL("ALTER TABLE requests ADD COLUMN needed_by TEXT")
+            db.execSQL(
+                "ALTER TABLE donors ADD COLUMN auth_id TEXT"
+            )
+            db.execSQL(
+                "ALTER TABLE donors ADD COLUMN available_to_donate INTEGER NOT NULL DEFAULT 0"
+            )
+            createOffersTable(db)
+            createContactDetailsTable(db)
+            createReportsTable(db)
         }
     }
 
@@ -292,6 +359,8 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             put("name", d.name); put("age", d.age); put("gender", d.gender)
             put("blood_group", d.bloodGroup); put("phone", d.phone); put("city", d.city)
             put("weight", d.weightKg); put("last_donation_date", d.lastDonationDate)
+            put("auth_id", d.authId)
+            put("available_to_donate", if (d.availableToDonate) 1 else 0)
         }
         // Explicit upsert: update first, insert only when the row is new.
         // CONFLICT_REPLACE deletes and re-inserts the row, which with foreign
@@ -329,6 +398,10 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             put("blood_group", r.bloodGroup); put("units_needed", r.unitsNeeded)
             put("urgency", r.urgency); put("contact", r.contact)
             put("status", r.status); put("created_at", r.createdAt)
+            put("requester_id", r.requesterId)
+            put("city", r.city)
+            put("fulfilled_by", r.fulfilledBy)
+            put("needed_by", r.neededBy)
         }
         if (db.update("requests", v, "id=?", arrayOf(r.id.toString())) == 0) {
             v.put("id", r.id)
@@ -340,6 +413,22 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
     fun upsertRequest(r: BloodRequest) {
         if (r.id <= 0) return
         insertRequestWithId(r)
+    }
+
+    /**
+     * P2P: counts open requests (anything not in a terminal state) owned by a
+     * given requester. Used to enforce the hard 3-open-requests cap before an
+     * insert; the server backs this up with a BEFORE INSERT trigger (RLS alone
+     * cannot count cheaply).
+     */
+    fun openRequestCountForRequester(requesterId: String): Int {
+        val terminal = listOf("Fulfilled", "Cancelled", "Expired")
+        val placeholders = terminal.joinToString(",") { "?" }
+        return readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM requests " +
+                "WHERE requester_id = ? AND status NOT IN ($placeholders)",
+            arrayOf(requesterId, *terminal.toTypedArray())
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
     }
 
     fun setStock(bloodGroup: String, units: Int) {
@@ -414,6 +503,8 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             put("name", d.name); put("age", d.age); put("gender", d.gender)
             put("blood_group", d.bloodGroup); put("phone", d.phone); put("city", d.city)
             put("weight", d.weightKg); put("last_donation_date", d.lastDonationDate)
+            put("auth_id", d.authId)
+            put("available_to_donate", if (d.availableToDonate) 1 else 0)
         }
         return db.insert("donors", null, v)
     }
@@ -550,6 +641,10 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             put("blood_group", r.bloodGroup); put("units_needed", r.unitsNeeded)
             put("urgency", r.urgency); put("contact", r.contact)
             put("status", r.status); put("created_at", r.createdAt)
+            put("requester_id", r.requesterId)
+            put("city", r.city)
+            put("fulfilled_by", r.fulfilledBy)
+            put("needed_by", r.neededBy)
         }
         return writableDatabase.insert("requests", null, v)
     }
@@ -578,6 +673,182 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         "SELECT COUNT(*) FROM requests WHERE status = ?", arrayOf("Pending")
     ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
+    /** P2P: sets a request's status locally (Matched / Fulfilled / Cancelled / Expired). */
+    fun setRequestStatus(id: Long, status: String) {
+        val v = ContentValues().apply { put("status", status) }
+        writableDatabase.update("requests", v, "id=?", arrayOf(id.toString()))
+    }
+
+    /** P2P: records how a request was fulfilled ("stock" or "donor"). */
+    fun setRequestFulfilledBy(id: Long, fulfilledBy: String) {
+        val v = ContentValues().apply { put("fulfilled_by", fulfilledBy) }
+        writableDatabase.update("requests", v, "id=?", arrayOf(id.toString()))
+    }
+
+    // ------------------------------------------------------------- P2P: offers
+
+    /** Inserts an offer; returns the row id. One offer row per (donor, request). */
+    fun insertOffer(o: Offer): Long {
+        val v = ContentValues().apply {
+            put("request_id", o.requestId); put("donor_id", o.donorId)
+            put("donor_auth_id", o.donorAuthId)
+            put("donor_name", o.donorName); put("donor_group", o.donorGroup)
+            put("donor_city", o.donorCity); put("status", o.status)
+            put("donor_confirmed_at", o.donorConfirmedAt)
+            put("requester_confirmed_at", o.requesterConfirmedAt)
+            put("created_at", o.createdAt)
+        }
+        return writableDatabase.insert("offers", null, v)
+    }
+
+    fun getOffer(id: Long): Offer? {
+        readableDatabase.rawQuery(
+            "SELECT * FROM offers WHERE id = ?", arrayOf(id.toString())
+        ).use { c -> return if (c.moveToFirst()) readOffer(c) else null }
+    }
+
+    /** The single offer a given donor has made on a given request (or null). */
+    fun getOffer(requestId: Long, donorId: Long): Offer? {
+        readableDatabase.rawQuery(
+            "SELECT * FROM offers WHERE request_id = ? AND donor_id = ?",
+            arrayOf(requestId.toString(), donorId.toString())
+        ).use { c -> return if (c.moveToFirst()) readOffer(c) else null }
+    }
+
+    fun getOffersForRequest(requestId: Long): List<Offer> {
+        val out = mutableListOf<Offer>()
+        readableDatabase.rawQuery(
+            "SELECT * FROM offers WHERE request_id = ? ORDER BY id ASC",
+            arrayOf(requestId.toString())
+        ).use { c -> while (c.moveToNext()) out.add(readOffer(c)) }
+        return out
+    }
+
+    /** Merges a downloaded offer by id (update first; insert only when new). */
+    fun upsertOffer(o: Offer) {
+        if (o.id <= 0) return
+        val v = ContentValues().apply {
+            put("request_id", o.requestId); put("donor_id", o.donorId)
+            put("donor_auth_id", o.donorAuthId)
+            put("donor_name", o.donorName); put("donor_group", o.donorGroup)
+            put("donor_city", o.donorCity); put("status", o.status)
+            put("donor_confirmed_at", o.donorConfirmedAt)
+            put("requester_confirmed_at", o.requesterConfirmedAt)
+            put("created_at", o.createdAt)
+        }
+        if (writableDatabase.update("offers", v, "id=?", arrayOf(o.id.toString())) == 0) {
+            v.put("id", o.id)
+            writableDatabase.insert("offers", null, v)
+        }
+    }
+
+    /** Updates an offer's status (Offered / Accepted / Declined / Completed). */
+    fun setOfferStatus(id: Long, status: String) {
+        val v = ContentValues().apply { put("status", status) }
+        writableDatabase.update("offers", v, "id=?", arrayOf(id.toString()))
+    }
+
+    fun setOfferDonorConfirmed(id: Long, at: String) {
+        val v = ContentValues().apply { put("donor_confirmed_at", at) }
+        writableDatabase.update("offers", v, "id=?", arrayOf(id.toString()))
+    }
+
+    fun setOfferRequesterConfirmed(id: Long, at: String) {
+        val v = ContentValues().apply { put("requester_confirmed_at", at) }
+        writableDatabase.update("offers", v, "id=?", arrayOf(id.toString()))
+    }
+
+    // ------------------------------------------------------------- P2P: contact_details
+
+    /** The private phone for a user id, or null when none is stored. */
+    fun getContactDetails(userId: String): ContactDetail? {
+        readableDatabase.rawQuery(
+            "SELECT user_id, phone FROM contact_details WHERE user_id = ?",
+            arrayOf(userId)
+        ).use { c ->
+            return if (c.moveToFirst()) ContactDetail(c.getString(0), c.getString(1)) else null
+        }
+    }
+
+    /** Inserts or replaces a user's private phone (keyed by user id). */
+    fun upsertContactDetails(c: ContactDetail) {
+        val v = ContentValues().apply { put("user_id", c.userId); put("phone", c.phone) }
+        writableDatabase.insertWithOnConflict(
+            "contact_details", null, v, SQLiteDatabase.CONFLICT_REPLACE
+        )
+    }
+
+    // ------------------------------------------------------------- P2P: reports
+
+    fun insertReport(r: Report): Long {
+        val v = ContentValues().apply {
+            put("request_id", r.requestId); put("reporter_id", r.reporterId)
+            put("reason", r.reason); put("created_at", r.createdAt)
+            put("resolved_at", r.resolvedAt)
+        }
+        return writableDatabase.insert("reports", null, v)
+    }
+
+    /** All reports, newest first. Manager-only in the UI; RLS enforces it too. */
+    fun getReports(): List<Report> {
+        val out = mutableListOf<Report>()
+        readableDatabase.rawQuery(
+            "SELECT * FROM reports ORDER BY id DESC", null
+        ).use { c -> while (c.moveToNext()) out.add(readReport(c)) }
+        return out
+    }
+
+    fun getReportsForRequest(requestId: Long): List<Report> {
+        val out = mutableListOf<Report>()
+        readableDatabase.rawQuery(
+            "SELECT * FROM reports WHERE request_id = ? ORDER BY id DESC",
+            arrayOf(requestId.toString())
+        ).use { c -> while (c.moveToNext()) out.add(readReport(c)) }
+        return out
+    }
+
+    fun markReportResolved(id: Long, at: String) {
+        val v = ContentValues().apply { put("resolved_at", at) }
+        writableDatabase.update("reports", v, "id=?", arrayOf(id.toString()))
+    }
+
+    /** Merges a downloaded report by id (update first; insert only when new). */
+    fun upsertReport(r: Report) {
+        if (r.id <= 0) return
+        val v = ContentValues().apply {
+            put("request_id", r.requestId); put("reporter_id", r.reporterId)
+            put("reason", r.reason); put("created_at", r.createdAt)
+            put("resolved_at", r.resolvedAt)
+        }
+        if (writableDatabase.update("reports", v, "id=?", arrayOf(r.id.toString())) == 0) {
+            v.put("id", r.id)
+            writableDatabase.insert("reports", null, v)
+        }
+    }
+
+    private fun readOffer(c: Cursor): Offer = Offer(
+        id = c.getLong(c.getColumnIndexOrThrow("id")),
+        requestId = c.getLong(c.getColumnIndexOrThrow("request_id")),
+        donorId = c.getLong(c.getColumnIndexOrThrow("donor_id")),
+        donorAuthId = c.getString(c.getColumnIndexOrThrow("donor_auth_id")),
+        donorName = c.getString(c.getColumnIndexOrThrow("donor_name")) ?: "",
+        donorGroup = c.getString(c.getColumnIndexOrThrow("donor_group")) ?: "",
+        donorCity = c.getString(c.getColumnIndexOrThrow("donor_city")) ?: "",
+        status = c.getString(c.getColumnIndexOrThrow("status")) ?: "Offered",
+        donorConfirmedAt = c.getString(c.getColumnIndexOrThrow("donor_confirmed_at")),
+        requesterConfirmedAt = c.getString(c.getColumnIndexOrThrow("requester_confirmed_at")),
+        createdAt = c.getString(c.getColumnIndexOrThrow("created_at")) ?: ""
+    )
+
+    private fun readReport(c: Cursor): Report = Report(
+        id = c.getLong(c.getColumnIndexOrThrow("id")),
+        requestId = c.getLong(c.getColumnIndexOrThrow("request_id")),
+        reporterId = c.getString(c.getColumnIndexOrThrow("reporter_id")),
+        reason = c.getString(c.getColumnIndexOrThrow("reason")) ?: "",
+        createdAt = c.getString(c.getColumnIndexOrThrow("created_at")) ?: "",
+        resolvedAt = c.getString(c.getColumnIndexOrThrow("resolved_at"))
+    )
+
     // ------------------------------------------------------------- row mapping
 
     private fun readDonor(c: Cursor): Donor = Donor(
@@ -589,7 +860,9 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         phone = c.getString(c.getColumnIndexOrThrow("phone")),
         city = c.getString(c.getColumnIndexOrThrow("city")),
         weightKg = c.getDouble(c.getColumnIndexOrThrow("weight")),
-        lastDonationDate = c.getString(c.getColumnIndexOrThrow("last_donation_date"))
+        lastDonationDate = c.getString(c.getColumnIndexOrThrow("last_donation_date")),
+        authId = c.getString(c.getColumnIndexOrThrow("auth_id")),
+        availableToDonate = c.getInt(c.getColumnIndexOrThrow("available_to_donate")) != 0
     )
 
     private fun readRequest(c: Cursor): BloodRequest = BloodRequest(
@@ -601,7 +874,11 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         urgency = c.getString(c.getColumnIndexOrThrow("urgency")),
         contact = c.getString(c.getColumnIndexOrThrow("contact")),
         status = c.getString(c.getColumnIndexOrThrow("status")),
-        createdAt = c.getString(c.getColumnIndexOrThrow("created_at"))
+        createdAt = c.getString(c.getColumnIndexOrThrow("created_at")),
+        requesterId = c.getString(c.getColumnIndexOrThrow("requester_id")),
+        city = c.getString(c.getColumnIndexOrThrow("city")) ?: "",
+        fulfilledBy = c.getString(c.getColumnIndexOrThrow("fulfilled_by")),
+        neededBy = c.getString(c.getColumnIndexOrThrow("needed_by"))
     )
 
     /**
