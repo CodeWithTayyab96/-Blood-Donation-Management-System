@@ -123,7 +123,11 @@ dependencies {
     // Push notifications (v1.7). Deliberately WITHOUT the google-services
     // plugin: Firebase is initialised explicitly from BuildConfig values, so
     // a build without Firebase credentials still compiles and runs offline.
-    implementation("com.google.firebase:firebase-messaging:24.1.0")
+    // 23.x keeps the classic Java FirebaseOptions.Builder
+    // (setSenderId/setApiKey); the 24.x line greeted this without-JVM-toolkit
+    // setup with API shape changes, so this stays pinned until a full Firebase
+    // project is actually wired up end to end.
+    implementation("com.google.firebase:firebase-messaging:23.4.1")
 
     // Local JVM unit tests (app/src/test). No Android runtime needed.
     testImplementation("junit:junit:4.13.2")
