@@ -210,6 +210,11 @@ object SupabaseSync {
     /** Creates a request online; returns the server id, or null on failure. */
     fun addRequestRemote(req: BloodRequest): Long? = SupabaseClient.insertRequest(req)
 
+    /** P2P: cancels a request online. Cancelling is an UPDATE to status, not a
+     *  delete — the row stays so the manager can still audit it. */
+    fun cancelRequestRemote(id: Long): Boolean =
+        SupabaseClient.updateRequestStatus(id, "Cancelled")
+
     sealed class FulfilResult {
         object Success : FulfilResult()
 
