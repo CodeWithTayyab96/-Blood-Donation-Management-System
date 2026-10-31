@@ -46,8 +46,11 @@ offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
 
 ## Urgent request alerts
 
-A signed-in donor gets a notification when a pending request appears that
-their blood group can serve and that they are eligible to donate for.
+A signed-in donor gets a notification when a pending **Urgent** or **Critical**
+request appears that their blood group can serve and that they are eligible to
+donate for. Requests marked **Normal** are skipped — they are routine stock
+replenishment and alerting on them would only teach donors to ignore the
+notifications.
 
 How it works, and why it is not instant:
 
@@ -70,11 +73,18 @@ How it works, and why it is not instant:
   remembered, so they cannot resurface.
 - **Donors only.** The job is scheduled when a donor reaches the dashboard
   and cancelled on sign-out or when a manager signs in.
-- **Android 13+ needs permission.** The app asks for `POST_NOTIFICATIONS` on
-  the dashboard. If it is denied the app works normally; the donor simply
-  never receives alerts.
-- Tapping a notification opens that request's detail screen. The notification
-  shows the group, units and hospital but deliberately not the patient's name.
+- **Android 13+ needs permission.** The app asks once, behind a short
+  explanation, the first time a donor reaches the dashboard. Declining is
+  respected: the prompt does not return on every launch, and granting the
+  permission later in system settings takes effect on its own.
+- **Nothing sensitive on the lock screen.** The notification is
+  `VISIBILITY_PRIVATE`, with a public version that says only "A blood request
+  needs your help", so the hospital and contact number stay hidden while the
+  device is locked. The patient's name is never shown at all. Tapping the alert
+  opens that request's detail screen.
+- **Debug builds** add a "Check requests now" button that runs the same worker
+  immediately instead of waiting for the next poll, and reports how many alerts
+  it sent. It is hidden in release builds.
 
 
 ## Screenshots
@@ -105,8 +115,11 @@ what changed):
   on a new phone finds the donor profile by `auth_id` and recreates
   the local account. If there is no network but the phone already
   knows the email + password, the app signs in offline and says so.
-  The plain-username login (`manager` / `manager123`) still works
-  exactly as before, local-only.
+  The plain-username login (`manager` / `manager123`) still works, but it is
+  **local-only**: it carries no Supabase session, so every online call goes out
+  anonymously and is rejected by the policies above. Nothing on that device
+  syncs, and the dashboard says so. Use `manager@blood.local` to work against
+  the shared data.
 - **Where the key comes from.** The app reads the project URL and
   anon key from BuildConfig fields (`SUPABASE_URL`,
   `SUPABASE_ANON_KEY`), which Gradle fills from project properties of

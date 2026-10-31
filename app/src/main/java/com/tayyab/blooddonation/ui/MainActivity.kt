@@ -5,11 +5,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.work.BackoffPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.tayyab.blooddonation.BuildConfig
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
@@ -17,8 +22,11 @@ import com.tayyab.blooddonation.util.AppUpdater
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.RequestAlertScheduler
+import com.tayyab.blooddonation.util.RequestAlertWorker
+import com.tayyab.blooddonation.util.RequestAlerts
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
@@ -49,6 +57,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<TextView>(R.id.tvSignedIn).text = "Signed in as ${Session.label()}"
+
+        // A local-only account (the seeded demo manager, or an offline fallback)
+        // carries no Auth token, so every Supabase call goes out with the anon
+        // key — which the authenticated-only RLS policies reject. Without this
+        // note the app looks like it is syncing when nothing is.
+        val tvSyncWarning = findViewById<TextView>(R.id.tvSyncWarning)
+        if (SupabaseSync.isOnline && Session.accessToken.isNullOrBlank()) {
+            tvSyncWarning.visibility = View.VISIBLE
+            tvSyncWarning.text =
+                "Offline-only session — this account has no Supabase login, so nothing " +
+                    "syncs with the server. Sign in with an email address to see shared data."
+        } else {
+            tvSyncWarning.visibility = View.GONE
+        }
         findViewById<Button>(R.id.btnDonors).setOnClickListener {
             startActivity(Intent(this, DonorListActivity::class.java))
         }
@@ -64,6 +86,15 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnUpdate).setOnClickListener {
             checkForUpdate()
         }
+        // Debug builds only. The release APK keeps this hidden and has no way
+        // to trigger it.
+        val btnCheckRequests = findViewById<Button>(R.id.btnCheckRequests)
+        if (BuildConfig.DEBUG) {
+            btnCheckRequests.visibility = View.VISIBLE
+            btnCheckRequests.setOnClickListener { runRequestAlertCheckNow() }
+        } else {
+            btnCheckRequests.visibility = View.GONE
+        }
         findViewById<Button>(R.id.btnLogout).setOnClickListener {
             // Stop the request poll before the session is cleared, so a signed
             // out device does not keep waking up for alerts.
@@ -75,16 +106,71 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Android 13+ requires a runtime permission for notifications. Without it
-     * every alert is silently dropped, so ask once on the dashboard. A refusal
-     * is not an error: the app works, the donor just never gets alerts.
+     * Android 13+ requires a runtime permission for notifications; without it
+     * every alert is silently dropped.
+     *
+     * Asked exactly once, behind a short explanation, the first time a donor
+     * reaches the dashboard. If they decline, the flag in [RequestAlerts] stops
+     * the prompt coming back on every launch — they can enable it later in
+     * system settings, and the app picks that up automatically because this
+     * only runs while the permission is still missing.
      */
     private fun askForNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
-        if (!granted) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
+        if (granted) return
+        if (RequestAlerts.wasPermissionAsked(this)) return
+
+        AlertDialog.Builder(this)
+            .setTitle("Allow blood request alerts?")
+            .setMessage(
+                "This app can tell you when someone needs blood your group can give. " +
+                    "It checks about every 15 minutes while you are online, and never " +
+                    "notifies you twice for the same request.\n\n" +
+                    "You can turn this off at any time in Android settings."
+            )
+            .setPositiveButton("Allow") { _, _ ->
+                RequestAlerts.markPermissionAsked(this)
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    REQUEST_NOTIFICATIONS
+                )
+            }
+            .setNegativeButton("Not now") { _, _ ->
+                RequestAlerts.markPermissionAsked(this)
+            }
+            .show()
+    }
+
+    /**
+     * Debug builds only: runs the alert worker immediately instead of waiting
+     * for the next 15-minute poll, and reports what it did. Uses the same
+     * worker as the periodic job, so it exercises the real code path.
+     */
+    private fun runRequestAlertCheckNow() {
+        val request = OneTimeWorkRequestBuilder<RequestAlertWorker>()
+            // Short backoff, so a failed pull retries while the developer is
+            // still looking at the screen rather than 30 seconds later.
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 5, TimeUnit.SECONDS)
+            .build()
+        val workManager = WorkManager.getInstance(this)
+        workManager.enqueue(request)
+        workManager.getWorkInfoByIdLiveData(request.id).observe(this) { info ->
+            when (info?.state) {
+                WorkInfo.State.SUCCEEDED -> {
+                    val count = info.outputData.getInt(RequestAlertWorker.KEY_ALERT_COUNT, 0)
+                    Toast.makeText(
+                        this,
+                        if (count == 0) "No new alerts" else "$count alert(s) sent",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                WorkInfo.State.FAILED -> {
+                    Toast.makeText(this, "Alert check failed", Toast.LENGTH_SHORT).show()
+                }
+                else -> Unit
+            }
         }
     }
 

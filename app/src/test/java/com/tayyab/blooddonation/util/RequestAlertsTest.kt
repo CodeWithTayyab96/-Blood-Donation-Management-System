@@ -24,13 +24,17 @@ class RequestAlertsTest {
         lastDonationDate = null
     )
 
-    private fun request(group: String, status: String = "Pending") = BloodRequest(
+    private fun request(
+        group: String,
+        status: String = "Pending",
+        urgency: String = "Urgent"
+    ) = BloodRequest(
         id = 1,
         patientName = "Test Patient",
         hospital = "Test Hospital",
         bloodGroup = group,
         unitsNeeded = 2,
-        urgency = "Urgent",
+        urgency = urgency,
         contact = "0000-0000000",
         status = status,
         createdAt = "2026-10-31"
@@ -49,6 +53,23 @@ class RequestAlertsTest {
     @Test
     fun `fulfilled request does not match`() {
         assertFalse(RequestAlerts.matches(donor("O-"), request("A+", status = "Fulfilled")))
+    }
+
+    @Test
+    fun `normal urgency is not alerted`() {
+        assertFalse(RequestAlerts.matches(donor("O-"), request("A+", urgency = "Normal")))
+    }
+
+    @Test
+    fun `urgent and critical urgency are alerted`() {
+        assertTrue(RequestAlerts.matches(donor("O-"), request("A+", urgency = "Urgent")))
+        assertTrue(RequestAlerts.matches(donor("O-"), request("A+", urgency = "Critical")))
+    }
+
+    @Test
+    fun `normal is rejected even when everything else matches`() {
+        // Pending, same group, an eligible donor — urgency alone rules it out.
+        assertFalse(RequestAlerts.matches(donor("O-"), request("O-", urgency = "Normal")))
     }
 
     @Test

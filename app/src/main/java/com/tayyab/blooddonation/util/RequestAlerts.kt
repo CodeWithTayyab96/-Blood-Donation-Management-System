@@ -26,19 +26,25 @@ object RequestAlerts {
     private const val CHANNEL_ID = "urgent_requests"
     private const val PREFS = "request_alerts"
     private const val KEY_NOTIFIED = "notified_request_ids"
+    private const val KEY_PERMISSION_ASKED = "notification_permission_asked"
 
     /** Safety net so the remembered-id set cannot grow without bound. */
     private const val MAX_REMEMBERED = 500
 
     /**
-     * Whether [request] is worth alerting [donor] about: it is still pending,
-     * and the donor's group is compatible with the patient's.
+     * Whether [request] is worth alerting [donor] about: still pending, not a
+     * routine "Normal" request, and compatible with the donor's group.
+     *
+     * Only Urgent and Critical requests alert. A Normal request is not worth
+     * waking someone for, and alerting on every one of them would train donors
+     * to ignore the notifications.
      *
      * The donor's own eligibility (age, weight, 90-day gap) is checked once per
      * run by the worker, not per request, because it does not vary by request.
      */
     fun matches(donor: Donor, request: BloodRequest): Boolean =
         request.status == "Pending" &&
+            request.urgency != "Normal" &&
             BloodCompatibility.isCompatible(donor.bloodGroup, request.bloodGroup)
 
     /** Creates the channel once; a no-op afterwards. */
@@ -82,6 +88,17 @@ object RequestAlerts {
         // to decide, and it would otherwise appear on a lock screen.
         val summary =
             "${request.unitsNeeded} unit(s) of ${request.bloodGroup} needed at ${request.hospital}"
+
+        // Shown on a secure lock screen in place of the real content, so the
+        // hospital and the contact number are not readable by anyone glancing
+        // at the phone. The full text returns once the device is unlocked.
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification_drop)
+            .setContentTitle("Blood donation")
+            .setContentText("A blood request needs your help")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_drop)
             .setContentTitle("${request.urgency} blood request")
@@ -89,6 +106,8 @@ object RequestAlerts {
             .setStyle(NotificationCompat.BigTextStyle().bigText("$summary\nContact: ${request.contact}"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
             .build()
@@ -105,6 +124,21 @@ object RequestAlerts {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet(KEY_NOTIFIED, emptySet())
             ?: emptySet()
+
+    /**
+     * True once the notification permission has been asked for. Used so a donor
+     * who declines is not prompted again on every launch — the system stops
+     * showing the dialog after a couple of denials anyway, but calling
+     * requestPermissions on every dashboard visit would still be wrong.
+     */
+    fun wasPermissionAsked(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_PERMISSION_ASKED, false)
+
+    fun markPermissionAsked(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_PERMISSION_ASKED, true).apply()
+    }
 
     fun markNotified(context: Context, requestId: Long) {
         val ids = notifiedIds(context).toMutableSet()

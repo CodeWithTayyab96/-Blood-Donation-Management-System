@@ -46,7 +46,7 @@ class RequestDetailActivity : AppCompatActivity() {
                 // a short online stock means "not enough", full stop.
                 // An online error falls back to the old local behaviour.
                 Background.run {
-                    when (SupabaseSync.fulfilRequestRemote(req)) {
+                    when (val result = SupabaseSync.fulfilRequestRemote(req)) {
                         is SupabaseSync.FulfilResult.Success -> {
                             db.fulfillRequest(req)
                             runOnUiThread {
@@ -57,9 +57,12 @@ class RequestDetailActivity : AppCompatActivity() {
                         }
                         is SupabaseSync.FulfilResult.Insufficient -> runOnUiThread {
                             if (isFinishing || isDestroyed) return@runOnUiThread
+                            // Name the server's number: the count on screen is
+                            // the local copy, and the two can disagree.
                             Toast.makeText(
                                 this,
-                                "Not enough ${req.bloodGroup} units in stock.",
+                                "Not enough ${req.bloodGroup} units — the server has " +
+                                    "${result.available}. Refreshing from the server.",
                                 Toast.LENGTH_LONG
                             ).show()
                             refresh()

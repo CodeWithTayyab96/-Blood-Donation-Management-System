@@ -75,6 +75,13 @@
             android:layout_height="wrap_content" android:textSize="14sp"
             android:textColor="@color/grey_text" android:layout_marginBottom="4dp" />
 
+        <!-- Shown when the signed-in account has no Supabase session, which
+             means every online call is anonymous and therefore rejected. -->
+        <TextView android:id="@+id/tvSyncWarning" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="13sp"
+            android:textColor="@color/orange_warn" android:visibility="gone"
+            android:layout_marginBottom="4dp" />
+
         <Button android:id="@+id/btnDonors" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="👥  Manage Donors" android:layout_marginTop="20dp" />
         <Button android:id="@+id/btnStock" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -85,13 +92,25 @@
             android:text="👤  My Profile" android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnUpdate" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="⬇  Check for Updates" android:layout_marginTop="10dp" />
+        <!-- Debug builds only. MainActivity leaves this GONE in release builds. -->
+        <Button android:id="@+id/btnCheckRequests" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Check requests now (debug only)"
+            android:layout_marginTop="10dp" android:visibility="gone" />
         <Button android:id="@+id/btnLogout" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Log Out" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
 
+        <!--
+            Explicit text colours: the page background is a fixed light pink
+            (@color/blood_red_light) in both light and dark mode, but the theme
+            is DayNight, so anything without a colour inherits white in dark
+            mode and disappears against it.
+        -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Stock by blood group" android:textSize="16sp" android:textStyle="bold"
+            android:textColor="@color/grey_text"
             android:layout_marginTop="22dp" android:layout_marginBottom="6dp" />
         <TextView android:id="@+id/tvStockSummary" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:textSize="15sp" android:lineSpacingMultiplier="1.3" />
+            android:layout_height="wrap_content" android:textSize="15sp"
+            android:textColor="@color/grey_text" android:lineSpacingMultiplier="1.3" />
     </LinearLayout>
 </ScrollView>

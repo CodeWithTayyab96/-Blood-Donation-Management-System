@@ -3,6 +3,51 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.6 — 2026-10-31
+
+### Urgent request alerts
+
+- A signed-in donor is notified when a pending **Urgent** or **Critical** request
+  appears that their blood group can serve, provided they are eligible to donate.
+  Requests marked **Normal** do not alert — waking someone for routine stock
+  replenishment would only train donors to ignore the notifications.
+- Delivery is **approximate**. A `WorkManager` job polls about every 15 minutes
+  (the platform minimum for periodic work) and only while online, so an alert can
+  arrive late, and Doze can delay it further. There is no push service, no
+  Firebase and no server of our own.
+- **Once per request, ever.** Notified request ids are stored on the device, so a
+  restart or a later poll cannot produce a second notification for the same
+  request. Fulfilled requests stay remembered.
+- **Lock-screen privacy.** The notification is `VISIBILITY_PRIVATE` with a
+  generic public version ("A blood request needs your help"), so the hospital and
+  contact number are not readable on a locked screen. The patient's name is never
+  shown at all.
+- Tapping an alert opens that request's detail screen.
+- **Android 13+** asks for the notification permission once, behind a short
+  explanation. Declining is respected: the prompt does not return on every
+  launch, and granting it later from system settings takes effect automatically.
+- **Debug builds** gain a "Check requests now" button that runs the same worker
+  immediately instead of waiting for the next poll, and reports how many alerts
+  it sent. The button is hidden in release builds.
+
+### Fixes
+
+- **Dark-mode contrast.** The dashboard's "Stock by blood group" heading and
+  summary were invisible in dark mode: the page background is a fixed light pink
+  while those two views inherited the dark theme's white text. They now set their
+  colour explicitly.
+- **Fulfil message contradicted the screen.** Fulfilling used the server's stock
+  but the screen shows the local count, so "In stock: 2" could sit next to "not
+  enough units". The message now names the server's number and the screen
+  refreshes from it.
+- **Silent half-synced donations.** A donation whose stock increment failed was
+  reported as a plain success, leaving the local and online counts quietly
+  different. It now says the stock did not update.
+- **Local-only sessions are called out.** An account with no Supabase session
+  cannot read or write the backend at all, because the policies only accept
+  authenticated users. The dashboard now says so instead of looking like it is
+  syncing.
+
 ## 1.5 — 2026-10-31
 
 A correctness and security pass over v1.4, driven by a full code review. No
