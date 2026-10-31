@@ -4,7 +4,7 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
         <TextView android:id="@+id/tvReqDetailTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="24sp" android:textStyle="bold" android:textColor="@color/blood_red_dark" />
+            android:textSize="24sp" android:textStyle="bold" android:textColor="@color/text_accent" />
         <TextView android:id="@+id/tvReqDetailInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="15sp" android:lineSpacingMultiplier="1.4" android:layout_marginTop="8dp" />
         <Button android:id="@+id/btnFulfill" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -13,7 +13,7 @@
             android:text="Compatible donors" android:textSize="16sp" android:textStyle="bold"
             android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />
         <TextView android:id="@+id/tvCompatNote" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="13sp" android:textColor="@color/grey_text" android:layout_marginBottom="6dp" />
+            android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginBottom="6dp" />
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvCompatDonors"
             android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>

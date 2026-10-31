@@ -14,7 +14,7 @@
             <TextView android:id="@+id/tvDonorName" android:layout_width="wrap_content"
                 android:layout_height="wrap_content" android:textSize="17sp" android:textStyle="bold" />
             <TextView android:id="@+id/tvDonorMeta" android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:textSize="13sp" android:textColor="@color/grey_text" />
+                android:layout_height="wrap_content" android:textSize="13sp" android:textColor="@color/text_secondary" />
             <TextView android:id="@+id/tvDonorStatus" android:layout_width="wrap_content"
                 android:layout_height="wrap_content" android:textSize="13sp" />
         </LinearLayout>

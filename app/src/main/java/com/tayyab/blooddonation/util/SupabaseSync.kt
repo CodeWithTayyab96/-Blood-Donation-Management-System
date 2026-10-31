@@ -164,31 +164,53 @@ object SupabaseSync {
         object Success : FulfilResult()
 
         /**
-         * The online stock really is short. [available] is what the server
-         * holds right now, so the caller can say so instead of showing a bare
-         * "not enough" next to a different local number.
+         * The online stock was read and really is short. [available] is what
+         * the server holds right now, so the caller can say so instead of
+         * showing a bare "not enough" next to a different local number.
          */
         data class Insufficient(val available: Int) : FulfilResult()
 
+        /**
+         * The online stock could not be read at all — offline, or the request
+         * was rejected. Nothing is known about the server's count, so the
+         * caller must not report it as zero or as a shortage.
+         */
+        object StockUnknown : FulfilResult()
+
+        /**
+         * The stock was readable but a later step failed (the decrement or the
+         * status update). Different again: the count was known, the write was
+         * not accepted.
+         */
         object Error : FulfilResult()
     }
 
     /**
-     * Fulfils a request online: checks stock, subtracts the units, and
-     * marks the request Fulfilled. [Insufficient] means the online stock
-     * really is short (caller must NOT fulfil locally either, or the two
-     * copies would disagree). [Error] means the online state is unknown
-     * (network/permission failure) — the caller falls back to local-only.
+     * Fulfils a request online: checks stock, subtracts the units, and marks the
+     * request Fulfilled.
+     *
+     * The three failure modes are deliberately distinct. [Insufficient] means
+     * the server really is short, and the caller must NOT fulfil locally either,
+     * or the two copies would disagree. [StockUnknown] means the server could
+     * not be asked — the caller falls back to the local copy and says so rather
+     * than claiming a shortage. [Error] means the count was known but the write
+     * was rejected.
      *
      * The check is still a read followed by a write, so two devices fulfilling
-     * the same group at the same moment can both pass it. The subtraction
-     * itself is atomic and clamped at zero by `adjust_stock`, so stock can no
-     * longer go negative — it just may under-count in that race.
+     * the same group at the same moment can both pass it. The subtraction itself
+     * is atomic and clamped at zero by `adjust_stock`, so stock can no longer go
+     * negative — it just may under-count in that race.
      */
     fun fulfilRequestRemote(req: BloodRequest): FulfilResult {
-        val stock = SupabaseClient.getStock() ?: return FulfilResult.Error
-        val available = stock[req.bloodGroup] ?: 0
-        if (available < req.unitsNeeded) return FulfilResult.Insufficient(available)
+        val stock = SupabaseClient.getStock()
+        // A missing key counts as unknown, not as zero: the stock table is
+        // seeded with every group, so an absent row means the read told us
+        // nothing rather than that the group is empty.
+        when (val decision = StockCheck.decide(stock?.get(req.bloodGroup), req.unitsNeeded)) {
+            StockCheck.Decision.Unknown -> return FulfilResult.StockUnknown
+            is StockCheck.Decision.Short -> return FulfilResult.Insufficient(decision.available)
+            StockCheck.Decision.Sufficient -> Unit
+        }
         if (!SupabaseClient.adjustStock(req.bloodGroup, -req.unitsNeeded)) {
             return FulfilResult.Error
         }

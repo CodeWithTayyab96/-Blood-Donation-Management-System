@@ -67,14 +67,41 @@ class RequestDetailActivity : AppCompatActivity() {
                             ).show()
                             refresh()
                         }
-                        is SupabaseSync.FulfilResult.Error -> {
+                        is SupabaseSync.FulfilResult.StockUnknown -> {
+                            // The server's count is unknown. Fall back to the
+                            // local copy, but never claim the server is short.
                             val ok = db.fulfillRequest(req)
+                            val local = db.stockLevels()[req.bloodGroup] ?: 0
                             runOnUiThread {
                                 if (isFinishing || isDestroyed) return@runOnUiThread
                                 Toast.makeText(
                                     this,
-                                    if (ok) "Request fulfilled on this phone (not synced to Supabase)."
-                                    else "Not enough ${req.bloodGroup} units in stock.",
+                                    if (ok) {
+                                        "Request fulfilled on this phone (not synced to Supabase)."
+                                    } else {
+                                        "Could not check stock on the server. This phone has " +
+                                            "$local unit(s) of ${req.bloodGroup}."
+                                    },
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                refresh()
+                            }
+                        }
+                        is SupabaseSync.FulfilResult.Error -> {
+                            // The count was readable but the write was rejected —
+                            // a different situation again, and worth saying so.
+                            val ok = db.fulfillRequest(req)
+                            val local = db.stockLevels()[req.bloodGroup] ?: 0
+                            runOnUiThread {
+                                if (isFinishing || isDestroyed) return@runOnUiThread
+                                Toast.makeText(
+                                    this,
+                                    if (ok) {
+                                        "Request fulfilled on this phone (not synced to Supabase)."
+                                    } else {
+                                        "The server rejected the stock update. This phone has " +
+                                            "$local unit(s) of ${req.bloodGroup}."
+                                    },
                                     Toast.LENGTH_LONG
                                 ).show()
                                 refresh()

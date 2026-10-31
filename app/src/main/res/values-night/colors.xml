@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Night-mode overrides for the theme-aware colours in values/colors.xml.
+
+    The theme is Theme.MaterialComponents.DayNight.DarkActionBar, so the surface
+    goes dark while any fixed colour would stay the same. These values keep the
+    same roles readable against a dark surface:
+
+    - text_secondary: mid grey that reads on #121212 (was #5F6368, too dark).
+    - text_accent:    the red used for headings and stat numbers, lifted to a
+                      light red because #B71C1C on a dark surface is close to
+                      unreadable.
+    - status_*:       the eligibility and stock labels, same reasoning.
+-->
+<resources>
+    <color name="text_secondary">#B0BEC5</color>
+    <color name="text_accent">#FF8A80</color>
+    <color name="status_ok">#81C784</color>
+    <color name="status_warn">#FFB74D</color>
+    <color name="status_bad">#FF8A80</color>
+</resources>
