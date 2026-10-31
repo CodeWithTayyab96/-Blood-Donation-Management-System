@@ -57,5 +57,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Phase 3 push notifications, started only by the Firebase SDK.
+             With no Firebase values baked into the build the app never
+             initialises Firebase, so this service is never created and the
+             WorkManager poll keeps alerting as before. -->
+        <service
+            android:name=".util.BloodMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_SERVICE" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

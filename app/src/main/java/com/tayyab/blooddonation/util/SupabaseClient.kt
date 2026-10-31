@@ -83,15 +83,20 @@ object SupabaseClient {
      * will sign in again next time instead of retrying a dead token
      * on every call.
      */
-    private fun request(method: String, path: String, body: JSONObject? = null): Pair<Int, String?> {
-        val (code, text) = requestOnce(method, path, body)
+    private fun request(
+        method: String,
+        path: String,
+        body: JSONObject? = null,
+        prefer: String? = null
+    ): Pair<Int, String?> {
+        val (code, text) = requestOnce(method, path, body, prefer)
         if (code == 401) {
             val refresh = Session.refreshToken
             if (!refresh.isNullOrBlank()) {
                 val refreshed = SupabaseAuth.refreshSession(refresh)
                 if (refreshed != null) {
                     Session.updateTokens(refreshed.accessToken, refreshed.refreshToken)
-                    return requestOnce(method, path, body)
+                    return requestOnce(method, path, body, prefer)
                 }
                 if (SupabaseAuth.lastError != "No internet connection") {
                     Session.clearTokens()
@@ -102,7 +107,12 @@ object SupabaseClient {
     }
 
     /** A single HTTP attempt, with no retry. See [request]. */
-    private fun requestOnce(method: String, path: String, body: JSONObject? = null): Pair<Int, String?> {
+    private fun requestOnce(
+        method: String,
+        path: String,
+        body: JSONObject? = null,
+        prefer: String? = null
+    ): Pair<Int, String?> {
         if (!isConfigured) return -1 to null
         return try {
             val connection = URL(baseUrl() + path).openConnection() as HttpURLConnection
@@ -120,8 +130,12 @@ object SupabaseClient {
                     connection.doOutput = true
                     connection.setRequestProperty("Content-Type", "application/json")
                     // Ask PostgREST to send the created/updated row back, so
-                    // inserts can report the server-assigned id.
-                    connection.setRequestProperty("Prefer", "return=representation")
+                    // inserts can report the server-assigned id. A custom
+                    // [prefer] value (e.g. an upsert's resolution=
+                    // merge-duplicates) overrides this default.
+                    connection.setRequestProperty(
+                        "Prefer", prefer ?: "return=representation"
+                    )
                     connection.outputStream.use { out ->
                         out.write(body.toString().toByteArray(Charsets.UTF_8))
                     }
@@ -501,6 +515,45 @@ object SupabaseClient {
     }
 
     // ------------------------------------------------------------- P2P: reports
+
+    // ------------------------------------------------------------- P2P: push (device tokens)
+
+    /**
+     * Upserts THIS device's FCM token for [userId] (POST .../device_tokens
+     * ?on_conflict=token with resolution=merge-duplicates). One device is one
+     * row: re-uploading the same token only refreshes updated_at. The row's
+     * presence is what lets the Edge Function find the user who should receive
+     * a push; RLS only allows the user to write their own.
+     */
+    fun upsertDeviceToken(userId: String, token: String): Boolean {
+        val body = JSONObject().apply {
+            put("user_id", userId)
+            put("token", token)
+            put("platform", "android")
+        }
+        val (code, _) = request(
+            "POST",
+            "/device_tokens?on_conflict=token",
+            body,
+            prefer = "resolution=merge-duplicates,return=minimal"
+        )
+        return code in 200..299
+    }
+
+    /**
+     * Deletes token rows. With [token] set (a sign-out), only that device's
+     * row is removed; with it null (an account being removed), every row of
+     * [userId] is. True on 2xx.
+     */
+    fun deleteDeviceToken(userId: String, token: String?): Boolean {
+        val filter = if (token == null) {
+            "user_id=eq.${encode(userId)}"
+        } else {
+            "user_id=eq.${encode(userId)}&token=eq.${encode(token)}"
+        }
+        val (code, _) = request("DELETE", "/device_tokens?$filter")
+        return code in 200..299
+    }
 
     /**
      * Runs `complete_peer_donation` (see supabase_p2p_migration.sql §7): the

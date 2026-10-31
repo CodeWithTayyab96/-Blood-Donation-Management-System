@@ -50,6 +50,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         db = DbHelper(this)
 
+        // Phase 3 push: make sure this device's FCM token row exists for the
+        // signed-in user, in case Firebase rotated it since the last launch
+        // (or this build only just got Firebase values). No-op — and cheap —
+        // when push is not configured, when there was never a session, or for
+        // local-only accounts that no push can reach anyway. Runs in the
+        // background: it needs network I/O.
+        val appContext = applicationContext
+        Background.run { FcmPush.refreshToken(appContext) }
+
         // Donors get the ~15-minute request poll; managers do not. Any poll left
         // behind by a previous donor session is stopped here.
         if (Session.role == Session.ROLE_DONOR && Session.donorId != null) {
@@ -113,8 +122,12 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnLogout).setOnClickListener {
             // Stop the request poll before the session is cleared, so a signed
-            // out device does not keep waking up for alerts.
+            // out device does not keep waking up for alerts. The push token row
+            // is removed on a background thread BEFORE the session is cleared,
+            // because clearing it loses the sign-in context the delete needs
+            // (the row is keyed by the Auth user id being signed out).
             RequestAlertScheduler.cancel(this)
+            Background.run { FcmPush.forgetToken(applicationContext) }
             Session.logout(this)
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
