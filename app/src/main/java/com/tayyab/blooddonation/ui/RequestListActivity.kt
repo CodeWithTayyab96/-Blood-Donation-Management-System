@@ -11,6 +11,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 
 class RequestListActivity : AppCompatActivity() {
@@ -20,6 +21,7 @@ class RequestListActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.load(this)
         setContentView(R.layout.activity_request_list)
         title = "Blood Requests"
         db = DbHelper(this)
@@ -34,7 +36,16 @@ class RequestListActivity : AppCompatActivity() {
         rv.adapter = adapter
 
         findViewById<FloatingActionButton>(R.id.fabAddRequest).setOnClickListener {
-            startActivity(Intent(this, AddRequestActivity::class.java))
+            // Managers raise a request on behalf of a patient and fulfil it
+            // from stock (AddRequestActivity). Everyone else posts a peer
+            // request of their own, which donors can offer to help with.
+            startActivity(
+                Intent(
+                    this,
+                    if (Session.isManager) AddRequestActivity::class.java
+                    else CreateRequestActivity::class.java
+                )
+            )
         }
     }
 

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+
+        <TextView android:id="@+id/tvCreateSafety" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Requests are public to signed-in donors. Your contact number is shown to them so they can reach you. Only share what you are comfortable sharing."
+            android:textSize="13sp" android:paddingBottom="12dp" />
+
+        <EditText android:id="@+id/etPatient" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Patient name *" android:inputType="textPersonName" />
+        <EditText android:id="@+id/etHospital" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Hospital *" android:inputType="text" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blood group needed" android:layout_marginTop="10dp" />
+        <Spinner android:id="@+id/spReqGroup" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/etUnits" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Units needed *" android:inputType="number" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Urgency" android:layout_marginTop="10dp" />
+        <Spinner android:id="@+id/spUrgency" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/etCity" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="City where blood is needed *" android:inputType="text" />
+        <EditText android:id="@+id/etContact" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Contact number *" android:inputType="phone" />
+        <EditText android:id="@+id/etNeededBy" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Needed by (optional, yyyy-mm-dd)" android:inputType="date" />
+        <Button android:id="@+id/btnSaveRequest" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Post Request" android:layout_marginTop="16dp" />
+    </LinearLayout>
+</ScrollView>

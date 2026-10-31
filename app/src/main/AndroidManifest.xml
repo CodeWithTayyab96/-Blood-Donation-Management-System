@@ -38,6 +38,7 @@
 
         <activity android:name=".ui.RequestDetailActivity" android:exported="false" />
         <activity android:name=".ui.AddRequestActivity" android:exported="false" />
+        <activity android:name=".ui.CreateRequestActivity" android:exported="false" />
         <activity android:name=".ui.SettingsActivity" android:exported="false" />
         <activity android:name=".ui.RequestListActivity" android:exported="false" />
         <activity android:name=".ui.StockActivity" android:exported="false" />
