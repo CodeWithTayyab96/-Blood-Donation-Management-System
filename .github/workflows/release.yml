@@ -77,6 +77,14 @@ jobs:
           VERSION_NAME="${TAG#v}"
           # versionCode and versionName must match app/build.gradle.kts.
           VERSION_CODE=$(grep -E 'versionCode' app/build.gradle.kts | grep -oE '[0-9]+' | head -1)
+          GRADLE_VERSION_NAME=$(grep -E 'versionName' app/build.gradle.kts | grep -oE '"[^"]+"' | head -1 | tr -d '"')
+          # The in-app updater compares versionCode, not the tag, so a tag that
+          # disagrees with Gradle publishes a release it will never offer.
+          if [ "$VERSION_NAME" != "$GRADLE_VERSION_NAME" ]; then
+            echo "Tag '$TAG' does not match versionName '$GRADLE_VERSION_NAME' in app/build.gradle.kts."
+            echo "Bump versionName (and versionCode) before tagging."
+            exit 1
+          fi
           cat > update.json <<EOF
           {
             "versionName": "$VERSION_NAME",

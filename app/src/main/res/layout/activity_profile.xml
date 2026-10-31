@@ -21,8 +21,14 @@
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Donation history" android:textSize="16sp" android:textStyle="bold"
             android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />
+        <!--
+            wrap_content inside a ScrollView: the RecyclerView must not try to
+            scroll on its own, or the two fight for the gesture. Its full height
+            is laid out and the ScrollView does the scrolling.
+        -->
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvHistory"
-            android:layout_width="match_parent" android:layout_height="wrap_content" />
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
         <TextView android:id="@+id/tvNoHistory" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:text="No donations recorded yet."
             android:textColor="@color/grey_text" />

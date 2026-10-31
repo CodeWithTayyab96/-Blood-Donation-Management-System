@@ -1,17 +1,17 @@
 package com.tayyab.blooddonation.ui
 
-import android.app.AlertDialog
-import android.app.ProgressDialog
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.BuildConfig
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.AppUpdater
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkForUpdate() {
         Toast.makeText(this, "Checking for updates...", Toast.LENGTH_SHORT).show()
-        Thread {
+        Background.run {
             when (val result = AppUpdater.checkForUpdate()) {
                 is AppUpdater.CheckResult.UpdateAvailable -> runOnUiThread {
                     showUpdateDialog(result.info)
@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
                     ).show()
                 }
             }
-        }.start()
+        }
     }
 
     private fun showUpdateDialog(info: AppUpdater.UpdateInfo) {
@@ -120,29 +120,35 @@ class MainActivity : AppCompatActivity() {
                 .show()
             return
         }
-        val progress = ProgressDialog(this).apply {
-            setTitle("Downloading update")
-            setMessage("Downloading v${info.versionName}...")
-            isIndeterminate = false
-            max = 100
-            setProgressStyle(ProgressDialog.STYLE_HORIZONTAL)
-            setCancelable(false)
-            show()
-        }
-        Thread {
+        // A plain non-cancellable dialog showing the percentage, instead of the
+        // deprecated android.app.ProgressDialog (which renders unstyled under a
+        // Material theme and is removed in newer SDKs).
+        val progress = AlertDialog.Builder(this)
+            .setTitle("Downloading update")
+            .setMessage("Downloading v${info.versionName}...")
+            .setCancelable(false)
+            .create()
+        progress.show()
+        Background.run {
             AppUpdater.downloadAndInstall(
                 this,
                 info,
-                onProgress = { percent -> runOnUiThread { progress.progress = percent } },
+                onProgress = { percent ->
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            progress.setMessage("Downloading v${info.versionName}... $percent%")
+                        }
+                    }
+                },
                 onError = { message ->
                     runOnUiThread {
-                        progress.dismiss()
+                        if (!isFinishing && !isDestroyed) progress.dismiss()
                         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                     }
                 }
             )
-            runOnUiThread { progress.dismiss() }
-        }.start()
+            runOnUiThread { if (!isFinishing && !isDestroyed) progress.dismiss() }
+        }
     }
 
     private fun refresh() {
@@ -152,10 +158,10 @@ class MainActivity : AppCompatActivity() {
         // dashboard never waits on the network and never crashes.
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            Thread {
+            Background.run {
                 SupabaseSync.pullAll(db)
                 runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
-            }.start()
+            }
         }
     }
 

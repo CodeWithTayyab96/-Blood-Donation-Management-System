@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.SupabaseSync
 
 class StockActivity : AppCompatActivity() {
@@ -20,13 +21,13 @@ class StockActivity : AppCompatActivity() {
         // Supabase = local stock stays, same rule as everywhere else).
         rv.adapter = StockAdapter(db.stockLevels().toList())
         if (SupabaseSync.isOnline) {
-            Thread {
+            Background.run {
                 SupabaseSync.pullStock(db)
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
                     rv.adapter = StockAdapter(db.stockLevels().toList())
                 }
-            }.start()
+            }
         }
     }
 }

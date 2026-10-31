@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -60,20 +61,42 @@ class AddDonorActivity : AppCompatActivity() {
                 Toast.makeText(this, "Please fill all fields marked *", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            // Parse defensively: toInt()/toDouble() throw on "25.5", "2 5" or
+            // any value outside the type's range, which would crash the app.
+            val age = ageText.toIntOrNull()
+            if (age == null || age !in BloodCompatibility.MIN_AGE..BloodCompatibility.MAX_AGE) {
+                Toast.makeText(
+                    this,
+                    "Age must be a whole number between " +
+                        "${BloodCompatibility.MIN_AGE} and ${BloodCompatibility.MAX_AGE}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+            val weight = weightText.toDoubleOrNull()
+            if (weight == null || weight < BloodCompatibility.MIN_WEIGHT_KG) {
+                Toast.makeText(
+                    this,
+                    "Weight must be a number of at least " +
+                        "${BloodCompatibility.MIN_WEIGHT_KG.toInt()} kg",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
             val donor = Donor(
                 name = name,
-                age = ageText.toInt(),
+                age = age,
                 gender = spGender.selectedItem.toString(),
                 bloodGroup = spGroup.selectedItem.toString(),
                 phone = phone,
                 city = city,
-                weightKg = weightText.toDouble(),
+                weightKg = weight,
                 lastDonationDate = lastDonation?.toString()
             )
             if (SupabaseSync.isOnline) {
                 // Online first so the donor keeps its server id locally
                 // too; if Supabase is unreachable, save locally only.
-                Thread {
+                Background.run {
                     val remoteId = SupabaseSync.addDonorRemote(donor)
                     if (remoteId != null) {
                         db.insertDonorWithId(donor.copy(id = remoteId))
@@ -89,7 +112,7 @@ class AddDonorActivity : AppCompatActivity() {
                         ).show()
                         finish()
                     }
-                }.start()
+                }
             } else {
                 db.addDonor(donor)
                 Toast.makeText(this, "Donor registered: ${donor.name}", Toast.LENGTH_SHORT).show()

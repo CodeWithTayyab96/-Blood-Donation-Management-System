@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseAuth
@@ -67,11 +68,31 @@ class RegisterActivity : AppCompatActivity() {
             val city = findViewById<EditText>(R.id.etCity).text.toString().trim()
 
             if (email.isEmpty() || !email.contains("@") || password.isEmpty() ||
-                name.isEmpty() || age == null || weight == null ||
-                phone.isEmpty() || city.isEmpty()
+                name.isEmpty() || phone.isEmpty() || city.isEmpty()
             ) {
                 Toast.makeText(
                     this, "Please fill all fields marked * (a valid email is required)",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+            // Range checks (M12). A donor with an impossible age or weight is
+            // still a bad record even though it never crashes, and the same
+            // rules are applied in AddDonorActivity.
+            if (age == null || age !in BloodCompatibility.MIN_AGE..BloodCompatibility.MAX_AGE) {
+                Toast.makeText(
+                    this,
+                    "Age must be a whole number between " +
+                        "${BloodCompatibility.MIN_AGE} and ${BloodCompatibility.MAX_AGE}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
+            }
+            if (weight == null || weight < BloodCompatibility.MIN_WEIGHT_KG) {
+                Toast.makeText(
+                    this,
+                    "Weight must be a number of at least " +
+                        "${BloodCompatibility.MIN_WEIGHT_KG.toInt()} kg",
                     Toast.LENGTH_SHORT
                 ).show()
                 return@setOnClickListener
@@ -90,7 +111,7 @@ class RegisterActivity : AppCompatActivity() {
                 bloodGroup = spGroup.selectedItem.toString(), phone = phone,
                 city = city, weightKg = weight, lastDonationDate = null
             )
-            Thread {
+            Background.run {
                 val auth = SupabaseAuth.signUp(email, password)
                 if (auth == null) {
                     val message = if (SupabaseAuth.lastError == "No internet connection") {
@@ -101,7 +122,7 @@ class RegisterActivity : AppCompatActivity() {
                     runOnUiThread {
                         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                     }
-                    return@Thread
+                    return@run
                 }
                 // Save the session NOW, so the insert below goes out
                 // under the user's JWT (RLS needs it). donorId is
@@ -114,8 +135,25 @@ class RegisterActivity : AppCompatActivity() {
                 if (remoteId != null) {
                     val donorId = db.registerDonorAccountWithId(
                         donor.copy(id = remoteId), email,
-                        Session.hashPassword(email, password)
+                        Session.hashPassword(password)
                     )
+                    // -1 means the local account row could not be written (the
+                    // email already exists in the users table). The donor insert
+                    // was rolled back with it, so nothing is half-created. The
+                    // Auth account does exist, so point the user at sign-in.
+                    if (donorId <= 0) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                this,
+                                "Your account exists but could not be set up on this phone. " +
+                                    "Please sign in with your email and password.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            startActivity(Intent(this, LoginActivity::class.java))
+                            finish()
+                        }
+                        return@run
+                    }
                     Session.saveAuth(
                         this, email, Session.ROLE_DONOR, donorId,
                         email, auth.userId, auth.accessToken, auth.refreshToken
@@ -131,8 +169,22 @@ class RegisterActivity : AppCompatActivity() {
                     // Supabase: keep the account usable on this phone,
                     // mark the profile pending, and say so plainly.
                     val donorId = db.registerDonorAccount(
-                        donor, email, Session.hashPassword(email, password)
+                        donor, email, Session.hashPassword(password)
                     )
+                    // -1 means the local account row could not be written
+                    // (the email is already in the users table). The donor
+                    // insert was rolled back with it, so nothing is left
+                    // half-created — just report it.
+                    if (donorId <= 0) {
+                        runOnUiThread {
+                            Toast.makeText(
+                                this,
+                                "Could not create the local account. Please sign in and try again.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        return@run
+                    }
                     Session.saveAuth(
                         this, email, Session.ROLE_DONOR, donorId,
                         email, auth.userId, auth.accessToken, auth.refreshToken
@@ -149,7 +201,7 @@ class RegisterActivity : AppCompatActivity() {
                         finish()
                     }
                 }
-            }.start()
+            }
         }
     }
 }

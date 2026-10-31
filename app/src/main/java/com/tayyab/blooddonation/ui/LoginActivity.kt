@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.UserAccount
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseAuth
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -32,6 +33,22 @@ import com.tayyab.blooddonation.util.SupabaseSync
  */
 class LoginActivity : AppCompatActivity() {
 
+    private companion object {
+        /**
+         * Shown when the stored hash predates PBKDF2. It is deliberately not a
+         * "wrong password" message: the password is fine, the hash is simply
+         * unverifiable, and an online sign-in fixes it permanently.
+         */
+        const val LEGACY_PASSWORD_MESSAGE =
+            "This account's saved password is in an older format. Sign in once with " +
+                "your email and password while online — the app then upgrades it and " +
+                "this login works again."
+
+        const val LEGACY_OFFLINE_MESSAGE =
+            "This phone's saved password is in an older format. Sign in once with an " +
+                "internet connection to upgrade it."
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Session.load(this)
@@ -51,25 +68,42 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             if (!input.contains("@")) {
-                // (b) Local-only login, exactly as in v1.3.
+                // (b) Local-only login: the seeded demo manager, or an account
+                // that has already signed in online once.
                 val user = db.getUser(input)
-                if (user == null || user.passwordHash != Session.hashPassword(input, password)) {
+                if (user == null) {
                     Toast.makeText(this, "Wrong username or password", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
-                Session.save(this, user.username, user.role, user.donorId)
-                Toast.makeText(this, "Welcome, ${user.username}", Toast.LENGTH_SHORT).show()
-                goToMain()
+                when (Session.checkPassword(user.passwordHash, password)) {
+                    Session.PasswordCheck.OK -> {
+                        Session.save(this, user.username, user.role, user.donorId)
+                        Toast.makeText(this, "Welcome, ${user.username}", Toast.LENGTH_SHORT).show()
+                        goToMain()
+                    }
+                    Session.PasswordCheck.LEGACY_FORMAT -> {
+                        Toast.makeText(this, LEGACY_PASSWORD_MESSAGE, Toast.LENGTH_LONG).show()
+                    }
+                    Session.PasswordCheck.WRONG -> {
+                        Toast.makeText(this, "Wrong username or password", Toast.LENGTH_SHORT).show()
+                    }
+                }
                 return@setOnClickListener
             }
             // (a) Supabase Auth login (email). Network on a background thread.
             val email = input
-            Thread {
+            Background.run {
                 val auth = if (SupabaseSync.isOnline) SupabaseAuth.signIn(email, password) else null
                 val authError = SupabaseAuth.lastError
                 if (auth != null) {
                     val local = db.getUser(email)
                     if (local != null) {
+                        // Supabase Auth just proved the password, so this is the
+                        // one moment a stored hash from an older release (or a
+                        // weaker PBKDF2 setting) can be rewritten safely.
+                        if (Session.needsRehash(local.passwordHash)) {
+                            db.updatePasswordHash(email, Session.hashPassword(password))
+                        }
                         Session.saveAuth(
                             this, email, local.role, local.donorId,
                             email, auth.userId, auth.accessToken, auth.refreshToken
@@ -84,7 +118,7 @@ class LoginActivity : AppCompatActivity() {
                             db.insertDonorWithId(donor)
                             db.addUser(
                                 UserAccount(
-                                    email, Session.hashPassword(email, password),
+                                    email, Session.hashPassword(password),
                                     Session.ROLE_DONOR, donor.id
                                 )
                             )
@@ -112,9 +146,12 @@ class LoginActivity : AppCompatActivity() {
                     val networkFailed = !SupabaseSync.isOnline ||
                         authError == "No internet connection"
                     val local = if (networkFailed) db.getUser(email) else null
-                    if (local != null &&
-                        local.passwordHash == Session.hashPassword(email, password)
-                    ) {
+                    val localCheck = if (local != null) {
+                        Session.checkPassword(local.passwordHash, password)
+                    } else {
+                        Session.PasswordCheck.WRONG
+                    }
+                    if (local != null && localCheck == Session.PasswordCheck.OK) {
                         // Keep the previous Auth tokens for this same
                         // email if there are any, so online sync can
                         // still refresh once the network is back.
@@ -135,17 +172,20 @@ class LoginActivity : AppCompatActivity() {
                             goToMain()
                         }
                     } else {
-                        val message = if (networkFailed) {
-                            "Sign-in needs an internet connection"
-                        } else {
-                            authError ?: "Sign-in failed"
+                        // A legacy hash cannot be checked offline, so say that
+                        // rather than pretending the password was wrong.
+                        val message = when {
+                            localCheck == Session.PasswordCheck.LEGACY_FORMAT ->
+                                LEGACY_OFFLINE_MESSAGE
+                            networkFailed -> "Sign-in needs an internet connection"
+                            else -> authError ?: "Sign-in failed"
                         }
                         runOnUiThread {
                             Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                         }
                     }
                 }
-            }.start()
+            }
         }
 
         findViewById<Button>(R.id.btnRegister).setOnClickListener {

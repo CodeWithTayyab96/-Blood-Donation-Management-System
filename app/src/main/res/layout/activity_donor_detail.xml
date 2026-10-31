@@ -16,8 +16,10 @@
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Donation history" android:textSize="16sp" android:textStyle="bold"
             android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />
+        <!-- See activity_profile.xml: no nested scrolling inside a ScrollView. -->
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvHistory"
-            android:layout_width="match_parent" android:layout_height="wrap_content" />
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
         <TextView android:id="@+id/tvNoHistory" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="No donations recorded yet." android:textColor="@color/grey_text" />
     </LinearLayout>

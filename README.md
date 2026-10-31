@@ -63,7 +63,9 @@ what changed):
   that user's access token (refreshed automatically once when it
   expires). The tables have Row Level Security for the
   `authenticated` role (`supabase_auth_policies.sql`, applied), so
-  the anon key alone reads/writes nothing. Signing in with an email
+  the anon key alone reads/writes nothing. That is authentication,
+  not authorisation — it does not separate managers from donors; see
+  the Row Level Security note below. Signing in with an email
   on a new phone finds the donor profile by `auth_id` and recreates
   the local account. If there is no network but the phone already
   knows the email + password, the app signs in offline and says so.
@@ -81,6 +83,20 @@ what changed):
 - **Row Level Security note.** The old review-only file
   (`supabase_policies_review.sql`, permissive anon access) must NOT
   be applied — v1.4 replaces it with authenticated-only policies.
+
+  **Role enforcement is client-side only unless you apply
+  `supabase_role_policies.sql`.** With just
+  `supabase_auth_policies.sql`, every signed-in user — donor or
+  manager — can read and write every row. The Manager/Donor split
+  lives in `Session.isManager` and in hidden buttons, which is a UI
+  guard, not a security boundary: anyone with a donor account could
+  call PostgREST directly and change stock, edit other donors or
+  delete them. `supabase_role_policies.sql` moves the role into the
+  Auth user's `app_metadata` and enforces it in the database. It is
+  **not** applied by default, and its header explains the ordering —
+  set the manager's role claim first, then the policies, then sign
+  in again so the new token carries it.
+
   Demo/sample data only: do not enter real donor phone numbers.
   Full details, data flow and known limits: `SUPABASE_SETUP.md`.
 

@@ -6,8 +6,17 @@
     <!-- Needed on Android 8+ so the system installer can open an APK this app downloaded. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!--
+        allowBackup is OFF: the session store holds Supabase refresh tokens and
+        the offline password hash, and a cloud backup or adb backup would copy
+        them off the device. dataExtractionRules repeats the exclusion for
+        Android 12+, where allowBackup no longer covers device-to-device
+        transfer on its own.
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:icon="@drawable/ic_launcher_drop"
         android:label="@string/app_name"
         android:supportsRtl="true"

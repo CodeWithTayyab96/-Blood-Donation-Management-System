@@ -40,12 +40,12 @@ create table if not exists stock (
   units integer not null default 0 check (units >= 0)
 );
 
-create table if not exists users (
-  username text primary key,
-  password_hash text not null,
-  role text not null check (role in ('MANAGER','DONOR')),
-  donor_id bigint references donors(id) on delete set null
-);
+-- NOTE: the legacy `users` table (username / password_hash / role /
+-- donor_id) is deliberately NOT created here any more. It was never read
+-- or written by the app from v1.4 on (Supabase Auth owns accounts), and
+-- because it had no Row Level Security the anon key could read every
+-- password hash through PostgREST. If you applied an older version of
+-- this file, run `fix_users_table.sql` to drop it.
 
 -- Seed the 8 blood groups in stock (same as the app does on first launch).
 insert into stock (blood_group, units) values
