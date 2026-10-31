@@ -169,6 +169,11 @@ object SupabaseSync {
     fun addDonorRemote(donor: Donor, authId: String? = null): Long? =
         SupabaseClient.insertDonor(donor, authId)
 
+    /** P2P: flips a donor's "available to donate" flag. The server refuses an
+     *  offer from a donor who has not switched this on. */
+    fun setAvailabilityRemote(donorId: Long, available: Boolean): Boolean =
+        SupabaseClient.updateDonorAvailability(donorId, available)
+
     /** Deletes a donor online. False on failure (caller still deletes locally). */
     fun deleteDonorRemote(donorId: Long): Boolean = SupabaseClient.deleteDonor(donorId)
 

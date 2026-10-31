@@ -289,6 +289,15 @@ object SupabaseClient {
         return patchRows("donors", "id=eq.$id", body)
     }
 
+    /** P2P: flips a donor's "available to donate" flag online. Offering to
+     *  help is refused by RLS unless this is true. */
+    fun updateDonorAvailability(id: Long, available: Boolean): Boolean {
+        val body = JSONObject().apply {
+            put("available_to_donate", if (available) 1 else 0)
+        }
+        return patchRows("donors", "id=eq.$id", body)
+    }
+
     fun deleteDonor(id: Long): Boolean {
         val (code, _) = request("DELETE", "/donors?id=eq.$id")
         return code in 200..299

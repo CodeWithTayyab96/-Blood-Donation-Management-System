@@ -6,10 +6,13 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.model.ContactDetail
+import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
@@ -101,6 +104,68 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * P2P: the "I'm available to donate" switch.
+     *
+     * Shown only while the donor is actually eligible — offering to help is
+     * refused by the server unless this is on, and it would be dishonest to
+     * offer a switch that cannot be acted on. When they are not eligible the
+     * next-eligible date above already says why.
+     */
+    private fun setupAvailabilitySwitch(donor: Donor, eligible: Boolean) {
+        val row = findViewById<View>(R.id.rowAvailability)
+        val note = findViewById<TextView>(R.id.tvAvailabilityNote)
+        val sw = findViewById<SwitchCompat>(R.id.swAvailable)
+        if (!eligible) {
+            row.visibility = View.GONE
+            note.visibility = View.GONE
+            return
+        }
+        row.visibility = View.VISIBLE
+        note.visibility = View.VISIBLE
+        // Detach first: setting isChecked while a listener is attached would
+        // fire it and immediately push a write we did not ask for.
+        sw.setOnCheckedChangeListener(null)
+        sw.isChecked = donor.availableToDonate
+        sw.setOnCheckedChangeListener { _, checked -> setAvailability(donor, checked, sw) }
+    }
+
+    private fun setAvailability(donor: Donor, available: Boolean, sw: SwitchCompat) {
+        val updated = donor.copy(availableToDonate = available)
+        // Upsert by id so the local donor row keeps its donations.
+        db.insertDonorWithId(updated)
+
+        if (!SupabaseSync.isOnline) {
+            Toast.makeText(
+                this,
+                "Saved on this phone (not synced to Supabase).", Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        Background.run {
+            val ok = SupabaseSync.setAvailabilityRemote(donor.id, available)
+            // Switching on also makes sure the donor's phone exists in
+            // contact_details, so a requester who accepts their offer can
+            // actually reach them. It stays hidden until then.
+            val authId = updated.authId ?: Session.authUserId
+            if (available && authId != null && donor.phone.isNotBlank()) {
+                SupabaseSync.upsertContactDetailsRemote(authId, donor.phone)
+                db.upsertContactDetails(ContactDetail(authId, donor.phone))
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (!ok) {
+                    Toast.makeText(
+                        this,
+                        "Saved on this phone, but the server refused the update.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                renderFromLocal()
+            }
+        }
+    }
+
     private fun renderFromLocal() {
         val donorId = Session.donorId
         if (donorId == null) {
@@ -135,6 +200,8 @@ class ProfileActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvProfileNext).text =
             if (next == null) "Next eligible date: now — you can donate today."
             else "Next eligible date: $next (90 days after your last donation)"
+
+        setupAvailabilitySwitch(donor, eligible)
 
         val history = db.donationsForDonor(donorId)
         val rv = findViewById<RecyclerView>(R.id.rvHistory)
