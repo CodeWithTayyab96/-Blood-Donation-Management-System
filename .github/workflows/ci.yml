@@ -41,6 +41,30 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
+      # Gradle reports success without saying how many tests ran, which makes a
+      # green build hard to trust. Count them from the JUnit XML and put the
+      # numbers on the run summary.
+      - name: Summarise test results
+        if: always()
+        run: |
+          shopt -s nullglob
+          files=(app/build/test-results/testDebugUnitTest/TEST-*.xml)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No test result files found — the test task did not run." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          tests=$(grep -ho '<testcase ' "${files[@]}" | wc -l | tr -d ' ')
+          failures=$(grep -ho '<failure' "${files[@]}" | wc -l | tr -d ' ')
+          errors=$(grep -ho '<error' "${files[@]}" | wc -l | tr -d ' ')
+          {
+            echo "### Unit tests"
+            echo ""
+            echo "| Tests | Failures | Errors |"
+            echo "|-------|----------|--------|"
+            echo "| $tests | $failures | $errors |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Ran $tests tests: $failures failures, $errors errors"
+
       # No secrets are required: with an empty anon key the app builds and runs
       # fully offline, which is exactly what a CI build needs.
       - name: Build debug APK
