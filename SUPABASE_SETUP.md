@@ -205,3 +205,14 @@ unaffected, and nothing in the app reads or writes `users`.
   **This is the enforcing step**: deploy the new APK *before* running
   it, or older clients lose online request writes. It also supersedes
   `supabase_role_policies.sql`. See `DESIGN_P2P.md §5` for the order.
+- `supabase_fcm_migration.sql` — Phase 3 push: the `device_tokens` table
+  (additive). Apply after the P2P files. Rollback:
+  `supabase_fcm_migration_rollback.sql`.
+- `supabase_fcm_policies.sql` — per-user / manager RLS on device tokens.
+  Rollback: `supabase_fcm_policies_rollback.sql`.
+- `supabase_fcm_triggers.sql` — the three pg_net triggers that call the
+  `push-notify` Edge Function (offer created, offer accepted, urgent
+  request created). **Edit its two placeholders first** (function URL and
+  webhook secret). Rollback: `supabase_fcm_triggers_rollback.sql`.
+- Full push setup (Firebase project, service account, Edge Function
+  deploy, run order): see `PUSH_SETUP.md`.

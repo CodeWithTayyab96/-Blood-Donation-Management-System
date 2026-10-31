@@ -66,15 +66,24 @@ jobs:
           echo "Ran $tests tests: $failures failures, $errors errors"
 
       # No secrets are required: with an empty anon key the app builds and runs
-      # fully offline, which is exactly what a CI build needs.
+      # fully offline, which is exactly what a CI build needs. The FIREBASE_*
+      # secrets are the same optional no-op pattern as android.yml.
       - name: Build debug APK
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_SENDER_ID: ${{ secrets.FIREBASE_SENDER_ID }}
         run: |
           ./gradlew assembleDebug --stacktrace \
             -PSUPABASE_URL="$SUPABASE_URL" \
-            -PSUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+            -PSUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            -PFIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+            -PFIREBASE_APP_ID="$FIREBASE_APP_ID" \
+            -PFIREBASE_API_KEY="$FIREBASE_API_KEY" \
+            -PFIREBASE_SENDER_ID="$FIREBASE_SENDER_ID"
 
       - name: Upload unit test report
         if: failure()

@@ -3,6 +3,44 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## Unreleased — Phase 3: push notifications (FCM)
+
+Alerts move from "the app polls every 15 minutes" to "the app is told",
+with polling kept as a fallback. **Everything builds and runs exactly as
+before until Firebase is configured** — see `PUSH_SETUP.md`. Requests and
+offers need an internet connection either way.
+
+- **FCM without the google-services plugin** — the four Firebase identifiers
+  arrive as BuildConfig fields; `FcmPush` initialises Firebase explicitly,
+  so a build with no Firebase values keeps compiling on CI and behaves
+  exactly like 1.6 (poll only).
+- **Device tokens** (`device_tokens` table, SQL in
+  `supabase_fcm_migration.sql` / `supabase_fcm_policies.sql`, each with a
+  rollback): a user may only write and read their own token rows; the
+  manager may read all. Rows are upserted by token at sign-in and on token
+  rotation, and deleted on sign-out.
+- **Three server events** (pg_net triggers in `supabase_fcm_triggers.sql`):
+  offer created → the requester's devices; offer accepted → the donor's
+  devices; Urgent/Critical request created → every compatible, available,
+  and eligible donor's devices (server-side re-implementation of the poll's
+  filters; Normal requests are never pushed).
+- **`supabase/functions/push-notify`** Edge Function: verifies the webhook
+  secret, resolves recipients from `device_tokens`, signs a service-account
+  JWT itself, and sends data-only FCM v1 messages. The service-account JSON
+  lives only in a Supabase secret — never in this repository.
+- **Client notifications** for offers and acceptances on their own
+  DEFAULT-importance channel (`peer_activity`), shown once per offer event
+  (first name, blood group, city — never a phone number) and tapping opens
+  the request. Urgent requests reuse the existing high-importance flow.
+- **Dedup is shared**: the remembered-id files are common to push and poll,
+  so an event is never announced twice no matter which path gets there
+  first.
+- **Polling stays** as the fallback for urgent requests and, when Firebase
+  is not configured, now also announces offers on your requests and
+  accepted offers (previously these were visible only in-app). Delivery
+  remains approximate, which the README states (polling = minutes, push =
+  seconds).
+
 ## Unreleased — Phase 2: peer-to-peer requests
 
 Any signed-in user can now ask for blood, and donors can offer to help

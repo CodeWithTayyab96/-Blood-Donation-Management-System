@@ -6,9 +6,7 @@ blood requests for a blood bank / hospital blood unit.
 **Platform:** Android 8.0 (API 26) and above
 **Language:** Kotlin · **Storage:** Supabase (online) with SQLite as the
 offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
-(local SQLite only) remains the safe fallback release.
-
-## Features
+(local SQLite only) remains the safe fallback release.## Features
 
 - **Sign-in and roles** — real accounts through Supabase Auth
   (email + password). A Manager (full access) and Donors (view
@@ -93,9 +91,33 @@ How it works, and why it is not instant:
   it sent. It is hidden in release builds.
 
 
+## Push notifications (v1.7, Phase 3)
+
+**Requests and offers need an internet connection.** Notification delivery
+is "best effort" in every mode, and the app says so honestly:
+
+- **With Firebase configured**, offers, acceptances and compatible
+  Urgent/Critical requests arrive as data-only FCM pushes within seconds of
+  being created. The message carries no patient name; the app builds the
+  notification itself, so the exact same lock-screen, channel and
+  once-per-event rules apply as for the poll. Setup steps: `PUSH_SETUP.md`
+  (a Firebase project, a service-account JSON stored only as a Supabase
+  secret, and one Edge Function).
+- **Without Firebase (fallback build), the 15-minute WorkManager poll
+  remains** — schedule unchanged, dedup shared, and Normal requests still
+  never alert. Peer events (offers/acceptances) are also announced by the
+  poll while no push path exists.
+- **Dedup is shared between both paths**, configured per device in its own
+  plain prefs file (`request_alerts`, `peer_alerts`): a request or offer the
+  push already announced can never be announced again by the poll, and vice
+  versa.
+- **Sign-out stops pushes** for that device (token row deleted) and stops
+  the poll for that user. The token is re-uploaded on the next sign-in.
+
 ## Screenshots
 
 _Add screenshots here after running the app._
+
 
 ## Supabase mode (v1.4)
 
