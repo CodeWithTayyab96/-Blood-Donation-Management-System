@@ -20,6 +20,8 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.AppUpdater
 import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.AiCoach
+import com.tayyab.blooddonation.util.AiRules
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.RequestAlertScheduler
 import com.tayyab.blooddonation.util.RequestAlertWorker
@@ -36,6 +38,12 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val REQUEST_NOTIFICATIONS = 1001
+
+        /** Phase 4 AI card cache file, and the three keys in it. */
+        const val AI_PREFS = "ai_coach"
+        const val KEY_AI_MSG_DAY = "message_day"
+        const val KEY_AI_MSG_TEXT = "message_text"
+        const val KEY_AI_FAIL_DAY = "fail_day"
     }
 
     private lateinit var db: DbHelper
@@ -59,6 +67,12 @@ class MainActivity : AppCompatActivity() {
         // background: it needs network I/O.
         val appContext = applicationContext
         Background.run { FcmPush.refreshToken(appContext) }
+
+        // Phase 4 AI card: fetch today's personalised line at most once per
+        // calendar day, behind the same privacy rules as everything else;
+        // failures mark the day skipped so an unconfigured server is not
+        // pinged on every dashboard open.
+        refreshAiCardIfNeeded()
 
         // Donors get the ~15-minute request poll; managers do not. Any poll left
         // behind by a previous donor session is stopped here.
@@ -105,6 +119,11 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
+        }
+        // Phase 4 AI helper: open to everyone signed in; the Fallback text on
+        // its screen shows when the ai-coach function is not yet deployed.
+        findViewById<Button>(R.id.btnAskDonate).setOnClickListener {
+            startActivity(Intent(this, AskDonateActivity::class.java))
         }
         findViewById<Button>(R.id.btnSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -315,6 +334,50 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun refreshAiCardIfNeeded() {
+        val prefs = getSharedPreferences(AI_PREFS, MODE_PRIVATE)
+        val today = LocalDate.now().toEpochDay()
+        val messageCached = prefs.contains(KEY_AI_MSG_TEXT) &&
+            prefs.getLong(KEY_AI_MSG_DAY, -1L) == today
+        val cachedDay = prefs.getLong(KEY_AI_MSG_DAY, -1L).takeIf { it >= 0 }
+        if (!AiRules.shouldFetch(today, cachedDay, prefs.getLong(KEY_AI_FAIL_DAY, -1L).takeIf { it >= 0 }, messageCached)) {
+            return
+        }
+        // Only a signed-in donor has all four facts worth sending; managers and
+        // requesters without a profile keep the plain local fact of the day.
+        val donor = Session.donorId?.let { db.getDonor(it) }
+        if (donor == null) return
+        Background.run {
+            val days = donor.lastDonationDate?.let {
+                try {
+                    java.time.temporal.ChronoUnit.DAYS.between(
+                        java.time.LocalDate.parse(it), java.time.LocalDate.now()
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            val facts = AiCoach.Facts(
+                firstName = donor.name.substringBefore(' ').ifBlank { "friend" },
+                donationCount = db.donationsForDonor(donor.id).size,
+                daysSinceLastDonation = days,
+                bloodGroup = donor.bloodGroup
+            )
+            val message = AiCoach.motivation(facts)
+            prefs.edit()
+                .apply {
+                    if (message != null) {
+                        putString(KEY_AI_MSG_TEXT, message)
+                        putLong(KEY_AI_MSG_DAY, today)
+                    } else {
+                        putLong(KEY_AI_FAIL_DAY, today)
+                    }
+                }
+                .apply()
+            runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+        }
+    }
+
     private fun renderFromLocal() {
         findViewById<TextView>(R.id.tvStatDonors).text = db.donorCount().toString()
         findViewById<TextView>(R.id.tvStatUnits).text = db.totalUnitsInStock().toString()
@@ -324,10 +387,15 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvStockSummary).text =
             BloodCompatibility.ALL_GROUPS.joinToString("\n") { g -> "$g : ${stock[g] ?: 0} unit(s)" }
 
-        // Daily motivation card: one fact per day, stable for the day and the
-        // same on every device (derived from the epoch day, not wall-clock text).
+        // Daily motivation card: the personalised AI line for today when one
+        // was already fetched and cached (and it IS today's), otherwise the
+        // plain local fact of the day — which is what appears offline too.
+        val prefs = getSharedPreferences(AI_PREFS, MODE_PRIVATE)
+        val aiText = prefs.getString(KEY_AI_MSG_TEXT, null)
+        val today = LocalDate.now().toEpochDay()
         findViewById<TextView>(R.id.tvFact).text =
-            MotivationFacts.factFor(LocalDate.now().toEpochDay())
+            if (aiText != null && prefs.getLong(KEY_AI_MSG_DAY, -1L) == today) aiText
+            else MotivationFacts.factFor(today)
 
         // Donor milestones, computed from the local donation history. Only a
         // signed-in donor has a profile to count; managers without one skip it.

@@ -36,6 +36,9 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Phase 4 AI helper. Anything may open it; only the fact fields
+             described in its layout ever leave the phone. -->
+        <activity android:name=".ui.AskDonateActivity" android:exported="false" />
         <activity android:name=".ui.RequestDetailActivity" android:exported="false" />
         <activity android:name=".ui.AddRequestActivity" android:exported="false" />
         <activity android:name=".ui.CreateRequestActivity" android:exported="false" />
