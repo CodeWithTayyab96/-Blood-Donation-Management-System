@@ -49,8 +49,8 @@ object PushParser {
         if (data.isEmpty()) return null
         return when (data["type"]) {
             TYPE_URGENT -> urgent(data)
-            TYPE_OFFER -> offer(data, urgent = false)
-            TYPE_ACCEPTED -> offer(data, urgent = true)
+            TYPE_OFFER -> offer(data, accepted = false)
+            TYPE_ACCEPTED -> offer(data, accepted = true)
             else -> null
         }
     }
