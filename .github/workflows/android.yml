@@ -28,11 +28,15 @@ jobs:
 
       # Supabase secrets (v1.3): same names as in release.yml. A debug
       # build without them still works — the app just runs offline.
-      - name: Build debug APK
+      #
+      # The test task runs here too: ci.yml deliberately skips main to avoid a
+      # duplicate build, so without this main would have no test coverage at all.
+      - name: Run unit tests and build debug APK
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
+          ./gradlew testDebugUnitTest --stacktrace
           ./gradlew assembleDebug --stacktrace \
             -PSUPABASE_URL="$SUPABASE_URL" \
             -PSUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
