@@ -740,7 +740,7 @@ end $runner$;
 -- A savepoint undoes the control's writes while keeping role + claim.
 savepoint t12_control;
 set local "request.jwt.claims" =
-  '{"sub":"66666666-6666-6666-6666-666666666666","app_metadata":{"role":"MANAGER"},"user_metadata":{}}';
+  '{"sub":"66666666-6666-6666-6666-666666666666","app_metadata":{},"user_metadata":{}}';
 do $runner$ declare v_rows int; begin
   -- Guard: without this the control could pass vacuously if the role were
   -- ever reset (RLS is skipped for the table owner / superuser).
