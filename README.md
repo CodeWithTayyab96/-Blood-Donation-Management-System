@@ -226,10 +226,6 @@ Without them the app runs offline on SQLite, like v1.2.
 built or published**: a debug-signed build cannot update an installed copy in
 place, so the only APK that leaves CI is the signed release one.
 
-The app seeds five sample donors on first launch so every screen can be
-explored immediately; the same five donors are seeded in Supabase, so
-the online and local copies start in step.
-
 ## Releases and updates
 
 **A push to `main` that changes the app is the release.** The `Release APK`

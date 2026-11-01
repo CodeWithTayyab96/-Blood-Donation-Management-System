@@ -1,0 +1,202 @@
+name: Deploy Edge Functions
+
+# Manual only: nothing here runs on a push, and nothing here touches any
+# project except the one you confirm.
+#
+# Why this exists: deploying an Edge Function used to need the Supabase CLI on
+# your laptop. This workflow does it from the repository instead, then checks
+# its own work.
+#
+# Authentication:
+#   SUPABASE_ACCESS_TOKEN  a personal access token from
+#                          supabase.com/dashboard/account/tokens
+#                          (Account -> Access Tokens -> Generate new token)
+#                          It is NOT the anon key and NOT the service_role key.
+#
+# Function secrets (OPENROUTER_API_KEY, AI_MODEL, FCM_SERVICE_ACCOUNT_JSON,
+# PUSH_WEBHOOK_SECRET) are NOT here: they live in the Supabase dashboard under
+# Edge Functions -> Secrets. See RUNBOOK.md, section E4.
+#
+# After deploying, every function is called WITHOUT a token. The run must fail
+# unless the function refuses the caller:
+#   delete-account, ai-coach : 401 (JWT verification is ON)
+#   push-notify              : 401 or 403 (deployed with --no-verify-jwt, so
+#                              its own webhook-secret check answers 403)
+# A 404 means the deploy did not reach this project.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type lwxfvxemhboxpoicrpbx to confirm the target project"
+        type: string
+        required: true
+      push_notify:
+        description: "Also deploy push-notify WITHOUT JWT verification (needed for the FCM triggers)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-edge-functions
+  cancel-in-progress: false
+
+env:
+  PROJECT_REF: lwxfvxemhboxpoicrpbx
+  FUNCTIONS_URL: https://lwxfvxemhboxpoicrpbx.supabase.co/functions/v1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Confirm the target project
+        env:
+          CONFIRM: ${{ inputs.confirm_project }}
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRM" != "$PROJECT_REF" ]; then
+            echo "::error::Type $PROJECT_REF in confirm_project. Nothing was deployed."
+            exit 1
+          fi
+          echo "Target confirmed: $PROJECT_REF"
+
+      - name: Check the access token secret
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is missing. Add it under Settings -> Secrets and variables -> Actions (see RUNBOOK.md, E1 and E2)."
+            exit 1
+          fi
+          echo "SUPABASE_ACCESS_TOKEN is set (value never printed)."
+
+      - name: Set up the Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # The CLI expects a project config next to supabase/functions. This repo
+      # deliberately keeps no config.toml (nothing here uses `supabase start`),
+      # so write the smallest one the deploy command needs. It is never
+      # committed and contains no secret.
+      - name: Prepare a minimal CLI config
+        run: |
+          set -euo pipefail
+          mkdir -p supabase
+          if [ ! -f supabase/config.toml ]; then
+            printf 'project_id = "%s"\n' "$PROJECT_REF" > supabase/config.toml
+            echo "Wrote a temporary supabase/config.toml (not committed)."
+          else
+            echo "Using the committed supabase/config.toml."
+          fi
+
+      # No --no-verify-jwt here, on purpose: these two only ever serve
+      # signed-in users, and the default is JWT verification ON.
+      - name: Deploy delete-account and ai-coach (JWT verification ON)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          supabase functions deploy delete-account --project-ref "$PROJECT_REF"
+          supabase functions deploy ai-coach --project-ref "$PROJECT_REF"
+
+      # Only when explicitly requested. The callers are SQL triggers, not
+      # users, so this one MUST be deployed without JWT verification; its
+      # PUSH_WEBHOOK_SECRET check is the real gate.
+      - name: Deploy push-notify WITHOUT JWT verification
+        if: ${{ inputs.push_notify == true }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          supabase functions deploy push-notify --project-ref "$PROJECT_REF" --no-verify-jwt
+
+      # The CLI flag is not proof. Read the project back and assert the
+      # setting that actually protects the function.
+      - name: Assert the JWT setting on the project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DEPLOY_PUSH: ${{ inputs.push_notify }}
+        run: |
+          set -euo pipefail
+          response=$(curl -sS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$PROJECT_REF/functions")
+          if ! printf '%s' "$response" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            echo "::error::Could not read the function list from the Management API."
+            printf '%s\n' "$response"
+            exit 1
+          fi
+
+          for fn in delete-account ai-coach; do
+            value=$(printf '%s' "$response" | jq -r --arg fn "$fn" \
+              '.[] | select(.slug == $fn) | .verify_jwt')
+            echo "$fn: verify_jwt=$value"
+            if [ -z "$value" ]; then
+              echo "::error::$fn is not deployed on $PROJECT_REF (the Management API does not list it)."
+              exit 1
+            fi
+            if [ "$value" != "true" ]; then
+              echo "::error::$fn must have JWT verification ON (verify_jwt=true), got '$value'."
+              exit 1
+            fi
+          done
+
+          if [ "$DEPLOY_PUSH" = "true" ]; then
+            value=$(printf '%s' "$response" | jq -r \
+              '.[] | select(.slug == "push-notify") | .verify_jwt')
+            echo "push-notify: verify_jwt=$value"
+            if [ -z "$value" ]; then
+              echo "::error::push-notify is not deployed on $PROJECT_REF."
+              exit 1
+            fi
+            if [ "$value" != "false" ]; then
+              echo "::error::push-notify must be deployed with --no-verify-jwt (verify_jwt=false), got '$value'."
+              exit 1
+            fi
+          fi
+
+      # The same check the runbook asks for by hand: call with no token.
+      - name: Call each function unauthenticated (must be refused)
+        env:
+          DEPLOY_PUSH: ${{ inputs.push_notify }}
+        run: |
+          set -euo pipefail
+
+          call() {
+            curl -s -o /dev/null -w '%{http_code}' \
+              -X POST "$FUNCTIONS_URL/$1" \
+              -H 'content-type: application/json' \
+              -d '{}'
+          }
+
+          expect_refusal() {
+            local name="$1"
+            shift
+            local code
+            code=$(call "$name")
+            echo "$name without a token -> HTTP $code (expected: $*)"
+            for want in "$@"; do
+              if [ "$code" = "$want" ]; then
+                return 0
+              fi
+            done
+            echo "::error::$name answered HTTP $code; expected $*. A 404 means the deploy did not reach this project."
+            return 1
+          }
+
+          expect_refusal delete-account 401
+          expect_refusal ai-coach 401
+
+          if [ "$DEPLOY_PUSH" = "true" ]; then
+            # Deployed without JWT verification, so the platform does not
+            # answer 401 for it; its own secret check answers 403.
+            expect_refusal push-notify 401 403
+          fi
+
+          echo "All deployed functions refuse unauthenticated callers."

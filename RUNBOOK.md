@@ -1,26 +1,32 @@
 # RUNBOOK — setting up this project on Supabase, end to end
 
-Three stages, strictly in order. Each stage ends with a **STOP AND TEST ON
+Four stages, strictly in order. Each stage ends with a **STOP AND TEST ON
 THE PHONE** checklist — do not start the next stage until every box on the
 previous one is checked. The app keeps working between stages: whatever a
 stage's server side is missing is handled silently (see
 [Stage resilience](#stage-resilience-what-the-app-does-when-a-stage-is-missing)).
 
-- **Stage A — finish the security model.** Peer-to-peer SQL and the manager
-  claim are already applied on this project; what is missing is
-  `supabase_role_policies.sql`, which is what actually enforces the
-  manager/donor split and stops anyone reading other people's phone numbers.
-  After A the app is fully usable by humans: requests, offers, moderation.
+- **Stage A — finish the security model.** The peer-to-peer SQL and the
+  manager claim may already be applied; the verifier in A0 tells you exactly
+  what is missing. `supabase_role_policies.sql` and
+  `supabase_role_hardening.sql` are what enforce the manager/donor split and
+  stop anyone reading other people's phone numbers. After A the app is fully
+  usable by humans: requests, offers, moderation.
 - **Stage B — FCM / Firebase push.** After B alerts arrive in seconds when
   the app is closed.
 - **Stage C — the AI helper.** Optional nicety; leave it last.
+- **Stage D — accounts: password recovery and deletion.** Optional; needs
+  custom SMTP and one Edge Function.
 
-Nothing here touches code: all changes are in the Supabase dashboard, in your
-terminal (`supabase` CLI), in the Firebase console, and in GitHub. Every SQL
-file below is replayed against a real Postgres in CI on every push (job **SQL
-checks**, `.github/workflows/sql.yml`), and the security rules are asserted
-there too — a red SQL CI run is a release blocker for the SQL files, never
-something to debug on the live project.
+Nothing here changes the app's code: all changes are in the Supabase
+dashboard, in GitHub Actions, in the Firebase console, and — only if you
+prefer it — in a terminal with the `supabase` CLI. The CLI is optional: Edge
+Functions deploy from **Actions → Deploy Edge Functions** (see
+[Deploying Edge Functions without a local CLI](#deploying-edge-functions-without-a-local-cli)).
+Every SQL file below is replayed against a real Postgres in CI on every push
+(job **SQL checks**, `.github/workflows/sql.yml`), and the security rules are
+asserted there too — a red SQL CI run is a release blocker for the SQL files,
+never something to debug on the live project.
 
 ---
 
@@ -63,25 +69,38 @@ listed at the end of each stage the runbook never depends on it.
 
 # Stage A — finish the security model
 
-## A0. Where your project is right now
+## A0. Where your project is right now — let the verifier tell you
 
-| File | State on your project | How it shows |
-|---|---|---|
-| `supabase_migration.sql` | applied | the four base tables exist |
-| `supabase_auth_migration.sql` | applied | `donors.auth_id` exists |
-| `fix_stock_rpc.sql` | applied (assumed) | the fulfil path needs `adjust_stock()` |
-| `supabase_auth_policies.sql` | applied | `"Authenticated full access"` exists on the base tables |
-| `supabase_p2p_migration.sql` | applied | `offers`, `contact_details`, `reports` exist |
-| `supabase_p2p_policies.sql` | applied | the `contact_details` policies exist |
-| `supabase_role_policies.sql` | **NOT applied** | `"Authenticated full access"` is still there |
-| Stage B (push) | not applied | no `device_tokens` table |
-| Stage C (AI) | not applied | no `ai_coach_usage` table |
+You may already have run some or all of the role and P2P policy files. That is
+fine: every file in this stage is re-runnable, and they are order-independent.
+Do not guess from a table — ask the database.
 
-Two consequences while the role file is missing, and both are invisible in the
-app: every signed-in account can write every row, and every signed-in account
-can read **every donor's phone number and every request's contact number**.
-The screens look correct because the app is doing the right thing — the
-database simply is not enforcing it.
+**First step, always: run `supabase_verify_policies.sql`** (SQL editor,
+read-only, safe any number of times). It prints one of:
+
+- **`ALL POLICIES OK`** — the security model is already in place. Skip A3–A5,
+  go to A8 (sign out and back in), then the phone checklist.
+- **one `PROBLEM: ...` row per mismatch** — each row says exactly what is
+  missing, unexpected or wrong. Use this table to pick the file to run, then
+  run the verifier again:
+
+| The verifier says | Run |
+|---|---|
+| `policy ... on donors/donations/requests/stock: MISSING`, or `authenticated can still SELECT donors.phone` / `requests.contact`, or `missing function public.donor_phone` / `request_contact` | `supabase_role_policies.sql` (A3) |
+| `policy ... on offers/contact_details/reports: MISSING`, or `UNEXPECTED` policies such as `requests write manager` | `supabase_p2p_policies.sql` (A4) |
+| `donations INSERT policy still lets a donor write donations`, `adjust_stock() is missing` or `adjust_stock() is not manager-guarded` | `supabase_role_hardening.sql` (A5) |
+| `missing function public.delete_account_data(uuid)` | Stage D4. **Expected until you do Stage D** — it does not block Stage A |
+
+The base files (`supabase_migration.sql`, `supabase_auth_migration.sql`,
+`fix_stock_rpc.sql`, `supabase_auth_policies.sql`, `supabase_p2p_migration.sql`)
+are assumed applied. If a base table or `adjust_stock()` is missing, the
+verifier says so — follow `SUPABASE_SETUP.md` up to that point first.
+
+While the role file is missing, two things are true and both are invisible in
+the app: every signed-in account can write every row, and every signed-in
+account can read **every donor's phone number and every request's contact
+number**. The screens look correct because the app is doing the right thing —
+the database simply is not enforcing it.
 
 ## A1. Prerequisite — the manager claim
 
@@ -111,7 +130,7 @@ the column change: they ask PostgREST for `select=*` on `donors` and
 quietly falls back to its local copy — it looks like "sync stopped" rather than
 an error. v1.7 asks for explicit columns and is unaffected.
 
-## A3. `supabase_role_policies.sql` — run it
+## A3. `supabase_role_policies.sql` — run it if A0 pointed here
 
 Paste the whole file into the SQL editor and run it. It is re-runnable, and it
 is order-independent with `supabase_p2p_policies.sql`. What it changes:
@@ -130,20 +149,24 @@ is order-independent with `supabase_p2p_policies.sql`. What it changes:
   that table.
 
 **Verify now — `supabase_verify_policies.sql`.** Paste and run it. Read-only,
-safe any number of times. **Expected: exactly one row, `ALL POLICIES OK`.**
-Do not continue until it says that.
+safe any number of times. The problems this file owns must be gone: the
+`donors` / `donations` / `requests` / `stock` policies, `donor_phone` /
+`request_contact`, and the two phone-column privileges. A row such as
+`missing function public.delete_account_data(uuid)` belongs to Stage D and can
+stay until then.
 
-## A4. `supabase_p2p_policies.sql` — re-run it (recommended, ~30 seconds)
+## A4. `supabase_p2p_policies.sql` — re-run it if A0 pointed here
 
-The copy on your project is the old one: it had a `DROP POLICY` naming a
-policy that never existed, and it did not grant the two P2P columns. Re-running
-the current file is safe (it drops all twelve of its own policies first) and
-makes the project match the file byte for byte. Strictly optional — A3 already
-grants those columns — but it is what CI tests, so run it.
+If the verifier reports `offers`, `contact_details` or `reports` problems, or
+`UNEXPECTED` policies such as `requests write manager`, run the current file.
+That also makes the project match CI byte for byte. It is safe to re-run (it
+drops all twelve of its own policies first). Strictly optional when the
+verifier is already clean for those tables.
 
-**Verify again — `supabase_verify_policies.sql`. Expected: `ALL POLICIES OK`.**
+**Verify again — `supabase_verify_policies.sql`.** The rows this file owns
+must be gone; anything you have not run yet may still appear.
 
-## A5. `supabase_role_hardening.sql` — run it
+## A5. `supabase_role_hardening.sql` — run it if A0 pointed here
 
 The one file the user-app work adds. It makes two things true that were only
 true in the app before:
@@ -155,12 +178,12 @@ true in the app before:
   function.
 
 Re-runnable. Run it **after** A3 (it needs `is_manager()`) and after
-`fix_stock_rpc.sql` was ever applied (it replaces that function).
+`fix_stock_rpc.sql` was ever applied (it replaces that function). You only need
+it if the verifier reported one of the rows below.
 
-**Verify now — `supabase_verify_policies.sql`.** Still exactly one row,
-`ALL POLICIES OK`. Two new PROBLEM rows exist for this file:
-`donations INSERT policy still lets a donor write donations` and
-`adjust_stock() is not manager-guarded`.
+**Verify now — `supabase_verify_policies.sql`.** The two rows this file owns
+must be gone: `donations INSERT policy still lets a donor write donations` and
+`adjust_stock() is not manager-guarded` (and `adjust_stock() is missing`).
 
 **Rollback:** `supabase_role_hardening_rollback.sql` restores the old policy and
 the unguarded function.
@@ -225,6 +248,81 @@ rollback if you keep the role setup, and re-run `supabase_p2p_migration.sql` +
 
 ---
 
+# Deploying Edge Functions without a local CLI
+
+The three Edge Functions (`push-notify`, `ai-coach`, `delete-account`) are
+deployed by a manual GitHub Actions workflow, **Deploy Edge Functions**. No
+Supabase CLI, no Node and no Docker on your machine: it deploys straight from
+the repository, then checks its own work.
+
+It only ever runs when you start it — nothing in it runs on a push.
+
+## E1. Create the access token (once)
+
+1. Supabase dashboard → your account menu (top right) → **Account**.
+2. **Access Tokens** → **Generate new token** → name it `github-deploy`.
+3. Copy it now; the dashboard shows it once.
+
+This is a **personal access token for the Management API**. It is not the anon
+key and not the service_role key, and it is only used to deploy functions and
+read their settings. Store it in your password manager.
+
+## E2. Add it as a repository secret (once)
+
+GitHub → your repository → **Settings → Secrets and variables → Actions → New
+repository secret**:
+
+- Name: `SUPABASE_ACCESS_TOKEN`
+- Secret: the token from E1.
+
+Never put this token in the repository, a workflow file, the APK or the SQL
+editor. The workflow reads it as `secrets.SUPABASE_ACCESS_TOKEN` and never
+prints it.
+
+## E3. Run the workflow
+
+**Actions → Deploy Edge Functions → Run workflow**:
+
+- `confirm_project`: type `lwxfvxemhboxpoicrpbx`. Anything else stops the run
+  before a single deploy.
+- `push_notify`: leave unticked unless you are doing Stage B. Ticking it
+  deploys `push-notify` **without** JWT verification, which is what its
+  database triggers need.
+
+The workflow then:
+
+1. deploys `delete-account` and `ai-coach` with **JWT verification ON** (the
+   default — it never passes `--no-verify-jwt` for them);
+2. optionally deploys `push-notify` with `--no-verify-jwt`;
+3. reads the Management API back and fails unless `verify_jwt` is `true` for
+   the first two and `false` for `push-notify`;
+4. calls every deployed function **without a token** and fails unless it
+   refuses: `401` for `delete-account` and `ai-coach`, `401` or `403` for
+   `push-notify` (its own webhook-secret check answers 403). A `404` means the
+   deploy did not reach this project.
+
+That is the same check that the CLI instructions in B4, C3 and D4 ask you to do
+by hand.
+
+## E4. Function secrets stay in Supabase
+
+These are **Edge Function secrets** — not GitHub secrets, and not SQL:
+
+| Secret | Used by |
+|---|---|
+| `OPENROUTER_API_KEY`, `AI_MODEL` | `ai-coach` |
+| `FCM_SERVICE_ACCOUNT_JSON`, `PUSH_WEBHOOK_SECRET` | `push-notify` |
+
+Set them in the dashboard: **Edge Functions → Secrets** (or **Project Settings
+→ Edge Functions → Secrets**). A function reads a new value immediately; no
+redeploy is needed. Never put them in the repository, a workflow input, the
+APK or the SQL editor — the SQL editor keeps history, so a key pasted there is
+a leaked key.
+
+Only `SUPABASE_ACCESS_TOKEN` belongs in GitHub.
+
+---
+
 # Stage B — FCM / Firebase push
 
 ## B1. Firebase project + the four identifiers
@@ -249,10 +347,21 @@ Repo → Settings → Secrets and variables → Actions → add
 `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID`, `FIREBASE_API_KEY`, `FIREBASE_SENDER_ID`
 (just names + values; the workflows already pass them to Gradle).
 
-Then run the **Build Android APK** workflow manually (Actions tab →
-Build Android APK → Run workflow) and install THAT APK on the phone
-(replaces the Stage A one — all local data carries over; the SQLite upgrade
-runs in place).
+Then rebuild with those identifiers baked in. There is no separate "build an
+APK" workflow any more: a push to `main` that changes `app/`, the build files
+or `CHANGELOG.md` **is** the build and the release (`Release APK`).
+
+1. Bump `versionCode` (+1) and `versionName` in `app/build.gradle.kts`.
+2. Add that version's `## <versionName>` section to `CHANGELOG.md`.
+3. Commit both and push to `main`.
+
+The workflow runs the SQL checks and the unit tests, builds the signed APK and
+publishes it. For a rebuild with no code change, run
+**Actions → Release APK → Run workflow** and tick `force` — it still refuses if
+the tag for the current version already exists, so bump first.
+
+Install that APK on the phone (it replaces the Stage A one — all local data
+carries over; the SQLite upgrade runs in place).
 
 **Verify:** on the phone nothing visibly changed yet — same account, and
 notifications still arrive only while the app is open. That is correct: the
@@ -282,6 +391,9 @@ Take the whole JSON; never commit it, never log it.
 ```bash
 supabase functions deploy push-notify --no-verify-jwt
 ```
+
+**No CLI?** Run **Actions → Deploy Edge Functions** with `push_notify` ticked
+(see E3). It deploys the same way and verifies the function refuses callers.
 
 `--no-verify-jwt` is deliberately REQUIRED here: callers are database
 triggers, not user tokens. The webhook secret inside the code is the actual
@@ -434,6 +546,9 @@ so one unavailable model does not take the feature down.
 ```bash
 supabase functions deploy ai-coach
 ```
+
+**No CLI?** Run **Actions → Deploy Edge Functions** (leave `push_notify`
+unticked) — see E3. It deploys `ai-coach` with JWT verification ON.
 
 Do NOT pass `--no-verify-jwt` (the opposite of B4: this one only ever serves
 signed-in users, and re-checks their token with `auth.getUser` inside).
@@ -605,6 +720,9 @@ email"**.
    supabase functions deploy delete-account
    ```
 
+   **No CLI?** Run **Actions → Deploy Edge Functions** (leave `push_notify`
+   unticked) — see E3. It deploys `delete-account` with JWT verification ON.
+
 4. **Verify it is there, and that it refuses anonymous callers:**
 
    ```bash
@@ -737,7 +855,7 @@ named next to the step that created its objects.
 
 ## Stage resilience - what the app does when a stage is missing
 
-The app never requires all three stages to be applied; each missing one is a
+The app never requires all four stages to be applied; each missing one is a
 fallback, not an error. This is established in code and unit tests:
 
 - **Push parts (Stage B not applied):** `FcmPush` gates everything behind
