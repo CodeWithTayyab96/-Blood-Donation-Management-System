@@ -53,7 +53,7 @@ grant select, insert                  on reports         to authenticated;
 drop policy if exists "requests write manager" on requests;
 drop policy if exists "requests insert owner or manager" on requests;
 drop policy if exists "requests update owner or manager" on requests;
-drop policy if exists "requests delete owner or manager" on requests;
+drop policy if exists "requests delete manager" on requests;
 drop policy if exists "offers read" on offers;
 drop policy if exists "offers insert" on offers;
 drop policy if exists "offers update donor own" on offers;
