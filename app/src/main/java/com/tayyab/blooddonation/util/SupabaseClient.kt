@@ -163,7 +163,8 @@ object SupabaseClient {
                 if (code in 200..299) {
                     lastError = null
                 } else {
-                    lastError = "Supabase $method $path -> HTTP $code"
+                    lastError = "Supabase $method $path -> HTTP $code" +
+                        serverReason(text)?.let { ": $it" }.orEmpty()
                 }
                 code to text
             } finally {
@@ -173,6 +174,34 @@ object SupabaseClient {
             lastError = "Supabase $method $path failed: ${e.javaClass.simpleName}"
             -1 to null
         }
+    }
+
+    /**
+     * The server's own explanation, from a PostgREST error body.
+     *
+     * A bare "HTTP 403" is not enough to fix anything: the useful half is
+     * PostgREST's `message` ("new row violates row-level security policy for
+     * table \"donations\"") or its `details`/`hint`. This is what makes a
+     * screenshot worth sending. Nothing here is secret — it is a message the
+     * server chose to send to the client.
+     */
+    private fun serverReason(body: String?): String? {
+        if (body.isNullOrBlank()) return null
+        val text = try {
+            val obj = JSONObject(body)
+            obj.optString("message", "").takeIf { it.isNotBlank() }
+                ?: obj.optString("msg", "").takeIf { it.isNotBlank() }
+                ?: obj.optString("error", "").takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            body.take(160).takeIf { it.isNotBlank() }
+        } ?: return null
+        val hint = try {
+            JSONObject(body).optString("hint", "").takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+        val out = text.trim().replace('\n', ' ')
+        return if (hint != null && out.length + hint.length < 200) "$out (hint: $hint)" else out
     }
 
     // ------------------------------------------------------- connection check

@@ -12,20 +12,20 @@ import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.AiCoach
 import com.tayyab.blooddonation.util.AiRules
 import com.tayyab.blooddonation.util.Background
-import com.tayyab.blooddonation.util.Session
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
 /**
- * "Can I donate?" helper (Phase 4). One honest disclaimer, a length-limited
- * question box, and a reply that is presented as general information — never
- * as a permission to donate. The four neutral facts [AiCoach.Facts] are the
- * only personal data sent (see AiCoachPayloadTest); nobody's donor history is
- * shipped to a language model.
+ * "Can I donate?" helper. One honest disclaimer, a length-limited question box,
+ * and a reply that is presented as general information — never as a permission
+ * to donate.
  *
- * Every failure path shows the same fallback text instead of pretending the
- * AI said something: when the helper is offline, not configured, rate-limited
- * or simply unreachable, a licensed blood bank is the right place to ask.
+ * NO personal data is sent: only the sanitised question itself (see
+ * AiCoachPayloadTest). Nobody's name, blood group or donation history is
+ * shipped to a language model, and the answer is deliberately general, because
+ * eligibility is decided by a blood bank's screening, not by a model.
+ *
+ * Every failure path names itself — a limit reached, a helper that is not set
+ * up yet, or a helper that could not be reached — and every one of them ends by
+ * pointing at the licensed blood bank, which is where the real answer lives.
  */
 class AskDonateActivity : AppCompatActivity() {
 
@@ -52,40 +52,35 @@ class AskDonateActivity : AppCompatActivity() {
         button.isEnabled = false
 
         Background.run {
-            val reply = AiCoach.answer(factsFor(), question)
+            // Only the sanitised question is sent — no name, no blood group,
+            // no donation history. The helper answers general questions; a
+            // licensed blood bank decides anything individual.
+            val answer = AiCoach.answer(question)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 button.isEnabled = true
-                show(reply)
+                show(answer)
             }
         }
     }
 
-    /** The four neutral facts, exactly as they will travel (and no more). */
-    private fun factsFor(): AiCoach.Facts {
-        val donor = Session.donorId?.let { db.getDonor(it) }
-        val name = (donor?.name ?: Session.username ?: "friend").substringBefore(' ')
-        val days = donor?.lastDonationDate?.let {
-            try {
-                ChronoUnit.DAYS.between(LocalDate.parse(it), LocalDate.now())
-            } catch (_: Exception) {
-                null
-            }
+    private fun show(answer: AiCoach.Answer) {
+        val view = findViewById<TextView>(R.id.tvAnswer)
+        view.visibility = View.VISIBLE
+        view.text = when (answer) {
+            is AiCoach.Answer.Ok -> answer.text
+            is AiCoach.Answer.Limited ->
+                answer.message +
+                    "\n\nFor anything about your health or eligibility, the licensed blood " +
+                    "bank you plan to donate at decides after their screening."
+            is AiCoach.Answer.NotSetUp ->
+                answer.message +
+                    "\n\nFor anything about your health or eligibility, ask the licensed " +
+                    "blood bank or hospital — their screening decides."
+            is AiCoach.Answer.Failed ->
+                answer.message +
+                    "\n\nFor anything about your health or eligibility, ask the licensed " +
+                    "blood bank or hospital — their screening decides."
         }
-        return AiCoach.Facts(
-            firstName = name.ifBlank { "friend" },
-            donationCount = donor?.id?.let { db.donationsForDonor(it).size } ?: 0,
-            daysSinceLastDonation = days,
-            bloodGroup = donor?.bloodGroup ?: ""
-        )
-    }
-
-    private fun show(reply: String?) {
-        val answer = findViewById<TextView>(R.id.tvAnswer)
-        answer.visibility = View.VISIBLE
-        answer.text = reply
-            ?: "I could not reach the helper just now. For anything about your health, " +
-            "medicines or eligibility, ask the licensed blood bank or hospital you " +
-            "plan to donate at — their screening decides."
     }
 }

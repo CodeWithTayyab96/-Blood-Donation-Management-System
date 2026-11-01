@@ -1,45 +1,33 @@
 package com.tayyab.blooddonation.util
 
 import com.tayyab.blooddonation.BuildConfig
-import org.json.JSONObject
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Phase 4: the signed-in user's bridge to the `ai-coach` Supabase Edge
- * Function (same style as [SupabaseClient]: plain HttpURLConnection, no new
- * dependency).
+ * The signed-in user's bridge to the `ai-coach` Supabase Edge Function (same
+ * style as [SupabaseClient]: plain HttpURLConnection, no new dependency).
  *
- * Contract with the function (written before the first deploy, so both sides
- * agree): POST JSON `{kind, facts:{name, donations, days_since_last_donation,
- * blood_group}, question?}`, Authorization = the USER's Supabase access
- * token — the function runs with verify_jwt ON and resolves the caller from
- * it. A local-only session (demo manager, offline fallback login) has no
- * token and therefore never calls the provider; callers handle a null return
- * by keeping the local fact bank / fallback text.
+ * Contract with the function: `POST {"kind":"quote"}` or
+ * `POST {"kind":"question","question":"…"}`, Authorization = the USER's
+ * Supabase access token. The function runs with verify_jwt ON and resolves the
+ * caller from that token. A session with no token never calls it at all.
  *
- * The four facts above are the entire payload that reaches the provider:
- * nothing else about the user (phone, city, age, weight, gender, id) is ever
- * serialised — [payloadJson] builds the body by hand, precisely so the exact
- * bytes are unit-testable (org.json is stubbed out in local JVM tests). The
- * payload is additionally escaped with [jsonEscape], which the payload tests
- * pin down as well.
+ * **No personal data is sent.** An earlier version sent a first name, donation
+ * count, days since the last donation and blood group. None of it is needed —
+ * and a name is personal data — so the payload is now just the kind and, for a
+ * question, the sanitised question. [payloadJson] builds the body by hand,
+ * precisely so the exact bytes on the wire are unit-testable (org.json is
+ * stubbed out in local JVM tests and cannot be trusted there).
  *
- * Every call here is blocking, so it must run on a background thread;
- * nothing here ever throws.
+ * Every call here is blocking, so it must run on a background thread; nothing
+ * here ever throws.
  */
 object AiCoach {
 
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 30_000
-
-    /** The four neutral facts; see the privacy note above. */
-    data class Facts(
-        val firstName: String,
-        val donationCount: Int,
-        val daysSinceLastDonation: Long?,   // null = no donation on record
-        val bloodGroup: String
-    )
 
     /** Escapes the characters that would otherwise break the JSON string. */
     fun jsonEscape(text: String): String = buildString {
@@ -56,21 +44,13 @@ object AiCoach {
     }
 
     /**
-     * THE wire format — the only personal data the AI helper ever sends.
-     * Pure function, unit tested (AiCoachPayloadTest) against the exact
-     * contract in supabase/functions/ai-coach. [question] is sent only for
-     * the "question" kind, and must already be sanitised via
-     * [AiRules.sanitizeQuestion].
+     * THE wire format — the only thing that leaves the phone. Pure function,
+     * unit tested (AiCoachPayloadTest) against the contract in
+     * supabase/functions/ai-coach/index.ts.
      */
-    fun payloadJson(kind: String, facts: Facts, question: String? = null): String {
-        val days = facts.daysSinceLastDonation
+    fun payloadJson(kind: String, question: String? = null): String {
         return buildString {
             append("{\"kind\":\"").append(jsonEscape(kind)).append("\"")
-            append(",\"facts\":{\"name\":\"").append(jsonEscape(facts.firstName)).append("\"")
-            append(",\"donations\":").append(facts.donationCount.coerceAtLeast(0))
-            append(",\"days_since_last_donation\":")
-            if (days == null) append("null") else append(days)
-            append(",\"blood_group\":\"").append(jsonEscape(facts.bloodGroup)).append("\"}")
             if (kind == "question" && question != null) {
                 append(",\"question\":\"").append(jsonEscape(question)).append("\"")
             }
@@ -78,13 +58,49 @@ object AiCoach {
         }
     }
 
+    /**
+     * What came back from the "Can I donate?" helper.
+     *
+     * The distinction matters on screen: a limit the user hit is information
+     * ("five a day, and it resets tomorrow"), a helper that was never
+     * configured is a different thing entirely, and neither should be shown as
+     * a generic failure.
+     */
+    sealed class Answer {
+        /** The helper's reply, already trimmed and length-checked. */
+        data class Ok(val text: String) : Answer()
+
+        /** 429: the user's own five a day, or the project's daily cap. */
+        data class Limited(val message: String) : Answer()
+
+        /** 404/503: the function is not deployed, or has no API key. */
+        data class NotSetUp(val message: String) : Answer()
+
+        /** Anything else: offline, provider down, unexpected status. */
+        data class Failed(val message: String) : Answer()
+    }
+
+    /** Reads the server's `error` field without org.json (stubbed in tests). */
+    internal fun errorMessage(body: String): String? {
+        val m = Regex("\"error\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").find(body)
+        return m?.groupValues?.get(1)
+            ?.replace("\\n", " ")
+            ?.replace("\\\"", "\"")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    }
+
     private fun url(): String =
         BuildConfig.SUPABASE_URL.trimEnd('/') + "/functions/v1/ai-coach"
 
-    private fun request(facts: Facts, kind: String, question: String?): JSONObject? {
+    /**
+     * One call to the function. Returns (HTTP status, body). Status -1 means
+     * the request never completed — no connection, or no session.
+     */
+    private fun request(kind: String, question: String?): Pair<Int, String?> {
         val token = Session.accessToken
-        if (token.isNullOrBlank() || BuildConfig.SUPABASE_URL.isBlank()) return null
-        val body = payloadJson(kind, facts, question)
+        if (token.isNullOrBlank() || BuildConfig.SUPABASE_URL.isBlank()) return -1 to null
+        val body = payloadJson(kind, question)
         return try {
             val connection = URL(url()).openConnection() as HttpURLConnection
             try {
@@ -100,33 +116,72 @@ object AiCoach {
                 }
                 val code = connection.responseCode
                 val stream = if (code == 200) connection.inputStream else connection.errorStream
-                val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                if (code != 200 || text.isNullOrBlank()) return null
-                org.json.JSONObject(text)
+                code to stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
             } finally {
                 connection.disconnect()
             }
+        } catch (_: IOException) {
+            -1 to null
         } catch (_: Exception) {
-            null
+            -1 to null
         }
     }
 
+    internal fun replyText(body: String?): String? {
+        if (body.isNullOrBlank()) return null
+        val m = Regex("\"reply\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").find(body)
+        return m?.groupValues?.get(1)
+            ?.replace("\\n", " ")
+            ?.replace("\\\"", "\"")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    }
+
     /**
-     * Today's one-line personalised encouragement. Null on any failure; the
-     * dashboard then shows its local fact of the day, as it always has.
+     * Today's motivational line, from the shared daily quote bank.
+     *
+     * Null on ANY failure — offline, not configured, over the daily cap, or the
+     * model returning nothing usable. The caller then shows its local fact of
+     * the day, which is always a correct home screen; an AI card is a bonus,
+     * never a requirement. That is why this returns a nullable String rather
+     * than an error: there is nothing here the user needs to act on.
      */
-    fun motivation(facts: Facts): String? {
-        val json = try { request(facts, "motivation", null) } catch (e: Exception) { null } ?: return null
-        return AiRules.cleanReply(json.optString("reply", ""), AiRules.MAX_MOTIVATION_LENGTH)
+    fun quote(): String? {
+        val (code, body) = request("quote", null)
+        if (code != 200) return null
+        return replyText(body)?.let { AiRules.cleanReply(it, AiRules.MAX_MOTIVATION_LENGTH) }
     }
 
     /**
      * The "Can I donate?" helper's answer. [question] must already be
-     * sanitised through [AiRules.sanitizeQuestion]. Null on any failure —
-     * the screen shows a standard "ask a licensed blood bank" message.
+     * sanitised through [AiRules.sanitizeQuestion].
      */
-    fun answer(facts: Facts, question: String): String? {
-        val json = try { request(facts, "question", question) } catch (e: Exception) { null } ?: return null
-        return AiRules.cleanReply(json.optString("reply", ""), AiRules.MAX_REPLY_LENGTH)
+    fun answer(question: String): Answer {
+        val (code, body) = request("question", question)
+        val serverMessage = body?.let { errorMessage(it) }
+        return when {
+            code == 200 -> {
+                val text = replyText(body)?.let {
+                    AiRules.cleanReply(it, AiRules.MAX_ANSWER_LENGTH)
+                }
+                if (text.isNullOrBlank()) {
+                    Answer.Failed("The helper did not return an answer. Try again shortly.")
+                } else {
+                    Answer.Ok(text)
+                }
+            }
+            code == 429 -> Answer.Limited(
+                serverMessage
+                    ?: "You have reached today's limit for the helper. It resets tomorrow."
+            )
+            // 404: the function is not deployed. 503: it is deployed but has no
+            // API key, or the quote bank table is missing. Both are setup, and
+            // both must read as setup rather than as a broken app.
+            code == 404 || code == 503 -> Answer.NotSetUp(
+                "The AI helper is not set up yet. Everything else in the app works without it."
+            )
+            code < 0 -> Answer.Failed("No internet connection.")
+            else -> Answer.Failed(serverMessage ?: "The helper is unavailable (HTTP $code).")
+        }
     }
 }

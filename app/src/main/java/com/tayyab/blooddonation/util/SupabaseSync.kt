@@ -215,6 +215,21 @@ object SupabaseSync {
     )
 
     /**
+     * Why a donation did not reach the server.
+     *
+     * "Saved on this phone (not synced)" used to be the only failure message,
+     * which is useless when the real cause is a policy refusing the insert —
+     * exactly the kind of thing that has to be visible in a screenshot. So the
+     * failing step and the server's own words travel with the failure.
+     */
+    data class DonationFailure(
+        /** Which step failed — "the donation row", "the stock count". */
+        val stage: String,
+        /** Status plus the server's reason, ready to show or to screenshot. */
+        val detail: String
+    )
+
+    /**
      * Records a donation online: donation row, donor's last-donation date, and
      * stock +units.
      *
@@ -225,19 +240,48 @@ object SupabaseSync {
      * [DonationWrite.stockSynced] tells the caller whether the stock half
      * actually succeeded.
      */
+    sealed class DonationOutcome {
+        /**
+         * The donation row reached the server. [stockSynced] false means the
+         * stock half failed on its own; [stockDetail] then holds why, so the
+         * message can say more than "the stock did not update".
+         */
+        data class Recorded(
+            val donationId: Long,
+            val stockSynced: Boolean,
+            val stockDetail: String? = null
+        ) : DonationOutcome()
+
+        /** Nothing was recorded online. [failure] says which step and why. */
+        data class Rejected(val failure: DonationFailure) : DonationOutcome()
+    }
+
     fun recordDonationRemote(
         donor: Donor,
         units: Int,
         date: LocalDate = LocalDate.now()
-    ): DonationWrite? {
+    ): DonationOutcome {
         val dateStr = date.toString()
-        val donationId = SupabaseClient.insertDonation(donor.id, dateStr, units) ?: return null
-        if (donationId <= 0) return null
+        val donationId = SupabaseClient.insertDonation(donor.id, dateStr, units)
+        if (donationId == null || donationId <= 0) {
+            return DonationOutcome.Rejected(
+                DonationFailure(
+                    stage = "the donation row",
+                    detail = SupabaseClient.lastError
+                        ?: "the server did not accept the donation (no reason given)"
+                )
+            )
+        }
         SupabaseClient.updateDonorLastDonation(donor.id, dateStr)
         // A single server-side statement, so concurrent donations cannot lose a
         // unit — but it can still fail, and that must not be swallowed.
         val stockSynced = SupabaseClient.adjustStock(donor.bloodGroup, units)
-        return DonationWrite(donationId, stockSynced)
+        return DonationOutcome.Recorded(
+            donationId = donationId,
+            stockSynced = stockSynced,
+            stockDetail = if (stockSynced) null
+            else SupabaseClient.lastError ?: "the server refused the stock change"
+        )
     }
 
     /** Creates a request online; returns the server id, or null on failure. */

@@ -2,12 +2,14 @@ package com.tayyab.blooddonation.util
 
 /**
  * Phase 4 client rules for the AI helper — everything here is pure and unit
- * tested, because the wrapping ((Device) network call) cannot be.
+ * tested, because the network call around it cannot be.
  *
  * Privacy rules, enforced HERE and mirrored by the server:
- *  - exactly four neutral facts are ever sent: first name, donation count,
- *    days since the last donation, blood group. No phone, city, age, gender,
- *    weight or Auth id ever goes to the provider;
+ *  - NO personal data is sent. An earlier version sent a first name, donation
+ *    count, days since the last donation and blood group; none of it is needed
+ *    to write a motivational line or answer a general question, and a name is
+ *    personal data, so it is gone. The payload is the request kind and, for a
+ *    question, the question itself — nothing else;
  *  - questions are clamped so a screen cannot become a chat dump;
  *  - replies are clamped so a card stays a card.
  */
@@ -21,6 +23,7 @@ object AiRules {
 
     /** What an answer may occupy on the helper screen. */
     const val MAX_REPLY_LENGTH = 600
+    const val MAX_ANSWER_LENGTH = MAX_REPLY_LENGTH
 
     /**
      * Clamps and tidies a typed question: trims, collapses wild blank lines,

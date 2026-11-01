@@ -1092,6 +1092,64 @@ end $runner$;
 rollback;
 
 -- ---------------------------------------------------------------------------
+-- T17. The quote bank: every signed-in user can READ it, and NOBODY through
+--      the API can write it. Its text appears on every user's home screen, so
+--      a writable bank is a prompt-injection surface. The global cap table is
+--      untouchable by users for the same reason a rate limit always is.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test', '{}')
+on conflict (id) do nothing;
+
+insert into public.ai_quotes (for_date, quote)
+values (current_date, 'Donating blood is a quiet way to help a stranger.');
+insert into public.ai_provider_calls (day, calls) values (current_date, 1);
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+
+do $runner$ declare v_count int; begin
+  select count(*) into v_count from public.ai_quotes;
+  if v_count <> 1 then
+    raise exception 'CI-TEST FAIL: a signed-in user cannot read the quote bank (saw % row(s))', v_count;
+  end if;
+end $runner$;
+
+do $runner$ begin
+  begin
+    insert into public.ai_quotes (for_date, quote) values (current_date, 'INJECTED');
+    raise exception 'CI-TEST FAIL: a user wrote into the quote bank';
+  exception
+    when insufficient_privilege then null;   -- expected
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: quote insert refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+  if exists (select 1 from public.ai_quotes where quote = 'INJECTED') then
+    raise exception 'CI-TEST FAIL: an injected quote is in the bank';
+  end if;
+end $runner$;
+
+do $runner$ declare v_count int; begin
+  -- A rate-limit table anyone can read is a rate limit anyone can work around.
+  select count(*) into v_count from public.ai_provider_calls;
+  if v_count <> 0 then
+    raise exception 'CI-TEST FAIL: a user can read the global provider-call counter';
+  end if;
+  begin
+    update public.ai_provider_calls set calls = 0 where day = current_date;
+    raise exception 'CI-TEST FAIL: a user reset the global provider-call counter';
+  exception
+    when insufficient_privilege then null;   -- expected
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: counter update refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
 -- The job must reach THIS line. If any check failed, psql already died on the
 -- raised CI-TEST FAIL error before printing this.
 -- ---------------------------------------------------------------------------

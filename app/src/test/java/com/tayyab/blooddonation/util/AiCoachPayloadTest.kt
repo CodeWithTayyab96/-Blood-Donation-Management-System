@@ -4,71 +4,59 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Phase 4 privacy and wire contract: AiCoach.payloadJson is the ONLY thing
- * that travels to the AI provider, built by hand (pure string work) exactly
- * so these tests can run in the JVM without the stubbed org.json.
+ * Phase 4 privacy and wire contract: AiCoach.payloadJson is the ONLY thing that
+ * leaves the phone for the AI provider, built by hand (pure string work)
+ * exactly so these tests can run in the JVM without the stubbed org.json.
  *
- * The contract lives in supabase/functions/ai-coach/index.ts: keys
- * kind/facts{?question}, with facts = name, donations,
- * days_since_last_donation, blood_group — and nothing else.
+ * The contract lives in supabase/functions/ai-coach/index.ts:
+ * `{kind}` or `{kind, question}` — and nothing else. An earlier version also
+ * sent `facts{name, donations, days_since_last_donation, blood_group}`; those
+ * are gone, because a motivational line does not need a name and an
+ * eligibility answer must not be personalised. The tests below pin that down:
+ * if a fact ever creeps back, these fail.
  */
 class AiCoachPayloadTest {
 
-    private val facts = AiCoach.Facts(
-        firstName = "Tayyab Imran",
-        donationCount = 4,
-        daysSinceLastDonation = 128L,
-        bloodGroup = "B+"
-    )
-
     @Test
-    fun `motivation payload carries only kind and the four facts`() {
-        val json = AiCoach.payloadJson("motivation", facts)
-        // Top-level keys: kind, facts (no question).
-        assertTrue(json.startsWith("""{"kind":"motivation""""))
-        assertFalse(json.contains("\"question\""))
-        // The four whitelisted facts, in contract order.
-        assertTrue(
-            json.contains(
-                """"facts":{"name":"Tayyab Imran","donations":4,""" +
-                """"days_since_last_donation":128,"blood_group":"B+"}"""
-            )
-        )
-        // Length sanity: nothing else is smuggled in.
-        assertFalse(json.contains("phone") || json.contains("city") ||
-            json.contains("age") || json.contains("weight") ||
-            json.contains("gender") || json.contains("auth"))
+    fun `a quote request is just the kind`() {
+        assertEquals("""{"kind":"quote"}""", AiCoach.payloadJson("quote"))
     }
 
     @Test
-    fun `question payload adds exactly the question key`() {
-        val json = AiCoach.payloadJson("question", facts, "Can I donate today?")
+    fun `a question request adds exactly one key`() {
         assertEquals(
-            """{"kind":"question","facts":{"name":"Tayyab Imran","donations":4,""" +
-            """"days_since_last_donation":128,"blood_group":"B+"},""" +
-            """"question":"Can I donate today?"}""",
-            json
+            """{"kind":"question","question":"Can I donate today?"}""",
+            AiCoach.payloadJson("question", "Can I donate today?")
         )
     }
 
     @Test
-    fun `days since last donation can be null on the wire`() {
-        val json = AiCoach.payloadJson("motivation", facts.copy(daysSinceLastDonation = null))
-        assertTrue(json.contains("\"days_since_last_donation\":null"))
+    fun `no personal data of any kind reaches the provider`() {
+        // The four facts the old version sent, plus everything that was never
+        // sent, must not appear under any name.
+        for (json in listOf(
+            AiCoach.payloadJson("quote"),
+            AiCoach.payloadJson("question", "Can I donate?")
+        )) {
+            for (leak in listOf(
+                "facts", "name", "donations", "days_since", "blood_group",
+                "phone", "city", "age", "weight", "gender", "auth", "email"
+            )) {
+                assertFalse("$leak must never be sent: $json", json.contains(leak))
+            }
+        }
     }
 
     @Test
-    fun `negative donation counts are clamped`() {
-        val json = AiCoach.payloadJson("motivation", facts.copy(donationCount = -3))
-        assertTrue(json.contains("\"donations\":0"))
+    fun `a question is never sent for a quote request`() {
+        // payloadJson ignores the question unless the kind is "question", so a
+        // caller that passes one by mistake cannot leak it.
+        assertEquals("""{"kind":"quote"}""", AiCoach.payloadJson("quote", "ignored"))
     }
 
     @Test
     fun `quotes backslashes and newlines are escaped so the body stays valid JSON`() {
-        val json = AiCoach.payloadJson(
-            "question", facts,
-            "Can I \"donate\" on\nline\tone\\path?"
-        )
+        val json = AiCoach.payloadJson("question", "Can I \"donate\" on\nline\tone\\path?")
         // Structural quotes are NOT escaped — only the characters inside the
         // string value are: " -> \", newline -> \n, tab -> \t, \ -> \\.
         assertTrue(
@@ -80,14 +68,11 @@ class AiCoachPayloadTest {
 
     @Test
     fun `control characters are dropped, multibyte letters survive`() {
-        val json = AiCoach.payloadJson(
-            "motivation", facts.copy(firstName = "Zo\u0007e")
-        )
+        val json = AiCoach.payloadJson("question", "Zo\u0007e")
         assertFalse(json.contains("\u0007"))
         assertTrue(json.contains("Zoe"))
-        // A non-ASCII first name passes through unharmed.
-        assertTrue(AiCoach.payloadJson("motivation", facts.copy(firstName = "Zoë"))
-            .contains("Zoë"))
+        assertTrue(AiCoach.payloadJson("question", "کیا میں خون دے سکتا ہوں؟")
+            .contains("کیا میں خون دے سکتا ہوں؟"))
     }
 
     @Test

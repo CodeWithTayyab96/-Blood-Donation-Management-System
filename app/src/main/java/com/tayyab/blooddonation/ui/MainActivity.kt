@@ -316,33 +316,23 @@ class MainActivity : AppCompatActivity() {
         if (!AiRules.shouldFetch(today, cachedDay, prefs.getLong(KEY_AI_FAIL_DAY, -1L).takeIf { it >= 0 }, messageCached)) {
             return
         }
-        // Only a signed-in donor has all four facts worth sending; managers and
-        // requesters without a profile keep the plain local fact of the day.
-        val donor = Session.donorId?.let { db.getDonor(it) }
-        if (donor == null) return
+        // The quote comes from the SHARED daily bank on the server, so no
+        // personal data is sent and no donor profile is needed — any signed-in
+        // user can be encouraged. One call per day for the whole project, not
+        // one per user: free models only allow about 50 calls a day.
+        if (Session.accessToken.isNullOrBlank()) return
         Background.run {
-            val days = donor.lastDonationDate?.let {
-                try {
-                    java.time.temporal.ChronoUnit.DAYS.between(
-                        java.time.LocalDate.parse(it), java.time.LocalDate.now()
-                    )
-                } catch (_: Exception) {
-                    null
-                }
-            }
-            val facts = AiCoach.Facts(
-                firstName = donor.name.substringBefore(' ').ifBlank { "friend" },
-                donationCount = db.donationsForDonor(donor.id).size,
-                daysSinceLastDonation = days,
-                bloodGroup = donor.bloodGroup
-            )
-            val message = AiCoach.motivation(facts)
+            val message = AiCoach.quote()
             prefs.edit()
                 .apply {
                     if (message != null) {
                         putString(KEY_AI_MSG_TEXT, message)
                         putLong(KEY_AI_MSG_DAY, today)
                     } else {
+                        // No quote available (offline, not configured, daily
+                        // cap, or nothing usable generated). The card keeps
+                        // its local fact of the day — never an error, never a
+                        // blank card.
                         putLong(KEY_AI_FAIL_DAY, today)
                     }
                 }

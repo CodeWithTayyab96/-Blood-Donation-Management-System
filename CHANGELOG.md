@@ -3,6 +3,55 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.11 — 2026-11-01
+
+versionCode 12. The AI helper now costs almost nothing, sends nothing personal,
+and a donation that fails to record says why.
+
+### The AI helper sends no personal data at all
+
+- The request used to carry your first name, donation count, days since your
+  last donation and blood group. It carries **none of them now** — only the
+  question you typed. A motivational line does not need a name, and an
+  eligibility answer should never be personalised: a licensed blood bank decides
+  after screening, not a model.
+
+### One call a day for everyone, instead of one per user
+
+- Free models allow roughly **50 requests a day for your whole account**, so one
+  call per user would leave the 51st user with nothing and the helper would look
+  broken at random. Instead the first request of a day generates about **30
+  short quotes in a single call** and stores the ones that pass validation; every
+  other user that day is served from that bank for free. No scheduled job — the
+  bank is built by whoever asks first.
+- Every generated quote is checked before it is stored: length, **no medical
+  claims** (no cures, prevention, treatment, weight loss or detox), and **no
+  personal data** (no names, numbers, ages or blood groups).
+- The model is `openrouter/free` by default (set `AI_MODEL` to override), with a
+  fallback list of other `:free` models tried in order, so one unavailable model
+  does not take the feature down.
+- **"Can I donate?" is limited to 5 questions per user per day**, plus a project
+  cap of 40 calls a day — under the free limit, with the quote bank's calls
+  reserved. When you hit either, the app says so and says when it resets.
+
+### When the helper is not there, the app says so
+
+- Not deployed, or deployed without an API key → **"The AI helper is not set up
+  yet. Everything else in the app works without it."** The home card keeps its
+  local fact of the day, so a home screen is never blank and never shows an
+  error. Every answer, including the failures, ends by pointing at the licensed
+  blood bank, which is where the real decision is made.
+
+### Recording a donation now reports the real reason
+
+- "Saved on this phone (not synced)" hid the cause. Now a failure names the step
+  that failed and quotes the server, e.g. *"the donation row: HTTP 403: new row
+  violates row-level security policy for table \"donations\""* — so a screenshot
+  is enough to diagnose it. Recording a donation is manager-only in the database,
+  so this is what a non-manager sees.
+- If the donation row lands but the stock count does not, the message says that
+  and includes the server's reason for the stock call.
+
 ## 1.10 — 2026-11-01
 
 versionCode 11. You can now recover a forgotten password, and delete your own

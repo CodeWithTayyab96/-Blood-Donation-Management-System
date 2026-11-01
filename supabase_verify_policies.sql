@@ -16,7 +16,7 @@
 -- "Authenticated full access" policies, or "requests write manager", which
 -- supabase_p2p_policies.sql removes.
 --
--- Expected final state: 27 policies across 8 tables, RLS on for all 9 tables,
+-- Expected final state: 28 policies across 9 tables, RLS on for all 11 tables,
 -- no policy at all on ai_coach_usage, and no SELECT privilege for
 -- `authenticated` on donors.phone or requests.contact.
 --
@@ -57,7 +57,10 @@ with expected_all(tbl, pol, cmd) as (
     ('reports','reports insert','INSERT'),
     ('reports','reports read manager','SELECT'),
     ('device_tokens','device tokens own crud','ALL'),
-    ('device_tokens','device tokens read manager','SELECT')
+    ('device_tokens','device tokens read manager','SELECT'),
+    -- Phase 4 quote bank. Filtered out when the table has not been created
+    -- yet, so this file still works before supabase_ai_quotebank.sql runs.
+    ('ai_quotes','authenticated can read today''s quotes','SELECT')
 ), expected as (
   select e.tbl, e.pol, e.cmd
     from expected_all e
@@ -86,7 +89,8 @@ with expected_all(tbl, pol, cmd) as (
     from pg_tables t
    where t.schemaname = 'public'
      and t.tablename in ('donors','donations','requests','stock','offers',
-                         'contact_details','reports','device_tokens','ai_coach_usage')
+                         'contact_details','reports','device_tokens','ai_coach_usage',
+                         'ai_quotes','ai_provider_calls')
      and not t.rowsecurity
 ), privilege_problems as (
   select 'authenticated can still SELECT donors.phone' as problem
@@ -134,6 +138,22 @@ with expected_all(tbl, pol, cmd) as (
         and p.proname = 'adjust_stock'
         and position('is_manager' in coalesce(p.prosrc, '')) = 0
    )
+), quotebank_problems as (
+  -- The quote bank's text is shown on every user's home screen, so no user may
+  -- write it. It must be readable by signed-in users and writable by nobody
+  -- through the API.
+  select 'ai_quotes has a policy letting users write it' as problem
+   where exists (
+     select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'ai_quotes'
+        and cmd <> 'SELECT'
+   )
+  union all
+  select 'ai_provider_calls is readable or writable by users' as problem
+   where exists (
+     select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'ai_provider_calls'
+   )
 ), function_problems as (
   select 'missing function public.donor_phone(bigint)' as problem
    where to_regprocedure('public.donor_phone(bigint)') is null
@@ -164,6 +184,7 @@ with expected_all(tbl, pol, cmd) as (
   union all select problem from privilege_problems
   union all select problem from readable_problems
   union all select problem from hardening_problems
+  union all select problem from quotebank_problems
   union all select problem from function_problems
 )
 select 'ALL POLICIES OK' as result

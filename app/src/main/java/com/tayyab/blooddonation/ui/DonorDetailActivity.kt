@@ -49,27 +49,39 @@ class DonorDetailActivity : AppCompatActivity() {
                 // the same change locally. If the online step fails, the
                 // local record still stands and the user is told so.
                 Background.run {
-                    val written = SupabaseSync.recordDonationRemote(donor, 1)
-                    if (written != null) {
+                    val outcome = SupabaseSync.recordDonationRemote(donor, 1)
+                    val recorded = outcome as? SupabaseSync.DonationOutcome.Recorded
+                    if (recorded != null) {
                         // Keep the server id locally, so the pull that follows
                         // updates this row instead of adding a second one.
-                        db.recordDonationWithId(donor, 1, written.donationId)
+                        db.recordDonationWithId(donor, 1, recorded.donationId)
                     } else {
                         db.recordDonation(donor, 1)
                     }
                     runOnUiThread {
                         if (isFinishing || isDestroyed) return@runOnUiThread
-                        val message = if (written == null) {
-                            "Thank you for donating! Your donation was saved on this phone " +
-                                "(not yet synced to Supabase)."
-                        } else if (!written.stockSynced) {
-                            // The donation row landed but the stock call did
-                            // not. Saying "recorded" without this caveat is how
-                            // the two stock counts silently drift apart.
-                            "Thank you for donating! The donation was recorded, but the stock " +
-                                "count did not update on the server. Please tell the manager."
-                        } else {
-                            "Thank you for donating! 1 unit of ${donor.bloodGroup} added to stock."
+                        val message = when (outcome) {
+                            is SupabaseSync.DonationOutcome.Recorded ->
+                                if (outcome.stockSynced) {
+                                    "Thank you for donating! 1 unit of ${donor.bloodGroup} added to stock."
+                                } else {
+                                    // The donation row landed but the stock
+                                    // call did not. Saying "recorded" without
+                                    // this caveat is how the two stock counts
+                                    // silently drift apart.
+                                    "Thank you for donating! The donation was recorded, but the " +
+                                        "stock count did not update on the server\n" +
+                                        "${outcome.stockDetail}\nPlease tell the manager."
+                                }
+                            is SupabaseSync.DonationOutcome.Rejected ->
+                                // The old message said "saved on this phone",
+                                // which hid the real cause. Recording a
+                                // donation is manager-only in the database now,
+                                // so a donor who tries it gets a policy refusal
+                                // — and they need to see that, not a shrug.
+                                "The donation was NOT recorded on the server.\n" +
+                                    "${outcome.failure.stage}: ${outcome.failure.detail}\n" +
+                                    "It is saved on this phone only."
                         }
                         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                         refresh()
