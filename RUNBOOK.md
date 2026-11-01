@@ -356,6 +356,18 @@ The helper is optional: without it the home card shows its local fact of the
 day and the "Can I donate?" screen says the helper is not set up. Nothing else
 in the app depends on it.
 
+### ⚠️ Three different places — do not paste these into each other
+
+| What | Where it goes | What happens if you get it wrong |
+|---|---|---|
+| `supabase_ai_migration.sql`, `supabase_ai_quotebank.sql`, `supabase_verify_policies.sql` | **SQL Editor** → Run | nothing else |
+| `OPENROUTER_API_KEY`, `AI_MODEL` | **Dashboard → Edge Function Secrets**, or the Supabase CLI in a **terminal** | pasted into the SQL Editor → `42601: syntax error at or near "supabase"` |
+| `supabase functions deploy ai-coach` | a **terminal** with the Supabase CLI | same syntax error |
+
+**Only the `.sql` files go in the SQL Editor.** The others are not SQL. If you
+see `ERROR: 42601: syntax error at or near "supabase"`, you pasted a command
+into the SQL Editor — delete it and use one of the two routes below.
+
 ## C1. Two SQL files
 
 1. `supabase_ai_migration.sql` — the `ai_coach_usage` per-user counter. RLS ON
@@ -379,7 +391,21 @@ select count(*) from pg_policies where tablename = 'ai_quotes';
 It now also fails if `ai_quotes` has any non-SELECT policy, or if
 `ai_provider_calls` has any policy at all.
 
-## C2. Secrets
+## C2. Secrets — NOT the SQL Editor
+
+### Easiest: the dashboard (no terminal, no CLI)
+
+1. Open **Edge Function Secrets**:
+   `https://supabase.com/dashboard/project/<your-project-ref>/functions/secrets`
+   (or Project Settings → Edge Functions → Secrets).
+2. **Key** = `OPENROUTER_API_KEY`, **Value** = your OpenRouter key → **Save**.
+3. Repeat with **Key** = `AI_MODEL`, **Value** = `openrouter/free` (optional —
+   that is already the default).
+
+You can paste several at once. **Functions read a new secret immediately — you
+do not need to redeploy.**
+
+### Or: the Supabase CLI, in a terminal
 
 ```bash
 supabase secrets set OPENROUTER_API_KEY=sk-or-v1-YOUR-KEY-HERE
@@ -388,6 +414,14 @@ supabase secrets set AI_MODEL=openrouter/free          # optional; this is the d
 
 **Verify:** `supabase secrets list` shows both — values never print.
 
+### ⚠️ Never put a key in the SQL Editor
+
+Anything you type there is saved in your query history and can appear in the
+Logs panel. If that happens, **delete the key at openrouter.ai/keys and make a
+new one** before setting it properly — a pasted key is a public key.
+
+Also: never commit a key. It must only ever exist in Edge Function Secrets.
+
 `AI_MODEL` may be any OpenRouter model id. The **default is `openrouter/free`**,
 which routes to whichever free model is available. If it is unavailable, the
 function tries a list of other `:free` models in order
@@ -395,7 +429,7 @@ function tries a list of other `:free` models in order
 `deepseek/deepseek-r1:free`, `mistralai/mistral-small-3.1-24b-instruct:free`),
 so one unavailable model does not take the feature down.
 
-## C3. Deploy ai-coach — JWT verification stays ON
+## C3. Deploy ai-coach — a terminal command, not SQL
 
 ```bash
 supabase functions deploy ai-coach

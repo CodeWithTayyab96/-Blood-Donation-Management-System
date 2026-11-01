@@ -163,12 +163,25 @@ Optional, and off until you deploy it. When it is off the home card keeps its
 local fact of the day and the helper screen says **"The AI helper is not set up
 yet"** — never a blank or broken screen.
 
+**SQL Editor:** `supabase_ai_migration.sql`, then `supabase_ai_quotebank.sql`.
+
+**Secrets — NOT the SQL Editor** (dashboard: Edge Function Secrets; key
+`OPENROUTER_API_KEY`, and optionally `AI_MODEL` = `openrouter/free`). Or, in a
+**terminal**:
+
 ```bash
-# SQL, in this order: supabase_ai_migration.sql then supabase_ai_quotebank.sql
 supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...   # never in the repo
 supabase secrets set AI_MODEL=openrouter/free          # optional; the default
+```
+
+**Deploy — also a terminal command:**
+
+```bash
 supabase functions deploy ai-coach                     # JWT verification ON
 ```
+
+Pasting either command into the SQL Editor gives
+`ERROR: 42601: syntax error at or near "supabase"` — they are not SQL.
 
 The free tier's ~50 requests/day are spent as **one call per day for
 everyone**: the first request of a day generates ~30 quotes in a single call,
