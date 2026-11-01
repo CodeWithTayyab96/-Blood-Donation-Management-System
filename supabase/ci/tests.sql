@@ -613,14 +613,14 @@ do $runner$ begin
     raise exception 'CI-TEST FAIL: donor''s own donation did not move stock via the RPC';
   end if;
 end $runner$;
-do $runner$ begin
-  begin
-    update stock set units = 1000 where blood_group = 'B+';
-    raise exception 'CI-TEST FAIL: a donor wrote the stock table directly';
-  exception
-    when others then
-      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
-  end;
+do $runner$ declare v_rows int; begin
+  -- A denied UPDATE is SILENT (0 rows, no error), so assert the row count
+  -- instead of waiting for an exception.
+  update stock set units = 1000 where blood_group = 'B+';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a donor wrote the stock table directly (% row(s))', v_rows;
+  end if;
   -- And unknown groups through the RPC are rejected, not invented.
   begin
     perform public.adjust_stock('ZZ', 1);
