@@ -3,6 +3,21 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.12 — 2026-11-01
+
+versionCode 13. The connection check no longer reports a healthy server as
+unreachable.
+
+### Check 2 now uses a public endpoint
+
+- "Server reachable" called `GET /rest/v1/`, which Supabase now restricts to
+  the service_role key, so a working project showed HTTP 401 "Invalid API key
+  (Only the service_role API key can be used for this endpoint)".
+- It now calls the public Auth health endpoint (`/auth/v1/health`) with the
+  anon key. Any HTTP answer — 200, 401, even 500 — counts as reachable and the
+  status code is shown; only a request that never completes fails.
+- The app still uses only the anon key. No service_role key is used or stored.
+
 ## 1.11 — 2026-11-01
 
 versionCode 12. The AI helper now costs almost nothing, sends nothing personal,
