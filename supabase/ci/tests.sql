@@ -633,6 +633,108 @@ end $runner$;
 rollback;
 
 -- ---------------------------------------------------------------------------
+-- T12. A user whose role claim exists ONLY in user_metadata is a normal
+--      user. GoTrue copies auth.users.raw_user_meta_data into the JWT's
+--      `user_metadata` field; is_manager() must read ONLY
+--      auth.jwt() -> 'app_metadata' ->> 'role', so such a JWT must give
+--      no manager power anywhere.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_user_meta_data, raw_app_meta_data)
+values
+  -- the fake manager: MANAGER in user_metadata, NOTHING in app_metadata
+  ('66666666-6666-6666-6666-666666666666', 'ci.fakemanager@example.test',
+   '{"role":"MANAGER"}', '{}'),
+  -- an ordinary requester whose request they must not touch
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}', '{}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id)
+values ('CI Donor One', 25, 'Male', 'B+', '0300-0000001', 'X', 70,
+        '33333333-3333-3333-3333-333333333333');
+insert into contact_details (user_id, phone)
+values ('33333333-3333-3333-3333-333333333333', '0300-0000001');
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values ('CI Patient A', 'H', 'B+', 1, 'Normal', 'ci', 'Pending',
+        '11111111-1111-1111-1111-111111111111', 'X');
+
+set local role authenticated;
+set local "request.jwt.claims" =
+  '{"sub":"66666666-6666-6666-6666-666666666666","app_metadata":{},"user_metadata":{"role":"MANAGER"}}';
+do $runner$ begin
+  -- the helper itself must say no, so no policy can ever disagree
+  if public.is_manager() then
+    raise exception 'CI-TEST FAIL: is_manager() treated a user_metadata-only role as MANAGER';
+  end if;
+end $runner$;
+do $runner$ declare v_rows int; begin
+  -- manager-only INSERT on donors
+  insert into donors (name, age, gender, blood_group, phone, city, weight)
+  values ('CI Fake Manager Seed', 30, 'Male', 'O-', '2', 'X', 75);
+  delete from donors where name = 'CI Fake Manager Seed';
+  raise exception 'CI-TEST FAIL: a user_metadata-only manager inserted into donors';
+exception
+  when others then
+    if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+end $runner$;
+do $runner$ declare v_rows int; begin
+  -- deny-by-silence checks: UPDATE/DELETE another user's request = 0 rows
+  update requests set status = 'Cancelled' where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a user_metadata-only manager cancelled someone else''s request (% row(s))', v_rows;
+  end if;
+  delete from requests where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a user_metadata-only manager deleted a request (% row(s))', v_rows;
+  end if;
+end $runner$;
+
+-- visibility stays personal: own row only, others' phones unreachable
+do $runner$ begin
+  insert into contact_details (user_id, phone)
+  values ('66666666-6666-6666-6666-666666666666', '0300-0000006');
+  if (select count(*) from contact_details
+       where user_id <> '66666666-6666-6666-6666-666666666666') <> 0 then
+    raise exception 'CI-TEST FAIL: a user_metadata-only manager read other users'' contact details';
+  end if;
+end $runner$;
+
+-- device_tokens: the manager-read-all policy must not apply either
+do $runner$ begin
+  insert into device_tokens (user_id, token)
+  values ('66666666-6666-6666-6666-666666666666', 'ci-token-fake-mgr');
+  if (select count(*) from device_tokens
+       where user_id <> '66666666-6666-6666-6666-666666666666') <> 0 then
+    raise exception 'CI-TEST FAIL: a user_metadata-only manager read other users'' FCM tokens';
+  end if;
+end $runner$;
+
+-- Control: the SAME checks with the claim in the RIGHT place must show the
+-- manager powers exist (so the negatives above mean policy, not schema,
+-- rejection). Replaces nothing: run in a fresh transaction.
+begin;
+set local "request.jwt.claims" =
+  '{"sub":"66666666-6666-6666-6666-666666666666","app_metadata":{"role":"MANAGER"},"user_metadata":{}}';
+do $runner$ declare v_rows int; begin
+  if not public.is_manager() then
+    raise exception 'CI-TEST FAIL: is_manager() does not honour a genuine app_metadata MANAGER';
+  end if;
+  delete from requests where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then
+    raise exception 'CI-TEST FAIL: a real manager lost hard-delete on requests (% rows)', v_rows;
+  end if;
+  if (select count(*) from contact_details
+       where user_id = '33333333-3333-3333-3333-333333333333') <> 1 then
+    raise exception 'CI-TEST FAIL: a real manager lost contact_details access';
+  end if;
+end $runner$;
+rollback;
+
+rollback;
+
+-- ---------------------------------------------------------------------------
 -- The job must reach THIS line. If any check failed, psql already died on the
 -- raised CI-TEST FAIL error before printing this.
 -- ---------------------------------------------------------------------------
