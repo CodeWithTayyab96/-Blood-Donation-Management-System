@@ -28,6 +28,7 @@ import com.tayyab.blooddonation.util.RequestAlertWorker
 import com.tayyab.blooddonation.util.RequestAlerts
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.util.UpdateNotifier
 import com.tayyab.blooddonation.util.UpdateWorker
 import com.tayyab.blooddonation.util.MotivationFacts
 import com.tayyab.blooddonation.util.DonationStats
@@ -39,10 +40,6 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val REQUEST_NOTIFICATIONS = 1001
-
-        /** Set by [com.tayyab.blooddonation.util.UpdateNotifier] when its
-         *  "version available" notification is tapped. */
-        const val EXTRA_SHOW_UPDATE_PROMPT = "show_update_prompt"
 
         /** Phase 4 AI card cache file, and the three keys in it. */
         const val AI_PREFS = "ai_coach"
@@ -250,8 +247,8 @@ class MainActivity : AppCompatActivity() {
      */
     private fun handleUpdatePrompt() {
         val fromNotification =
-            intent?.getBooleanExtra(EXTRA_SHOW_UPDATE_PROMPT, false) == true
-        intent?.removeExtra(EXTRA_SHOW_UPDATE_PROMPT)
+            intent?.getBooleanExtra(UpdateNotifier.EXTRA_SHOW_UPDATE_PROMPT, false) == true
+        intent?.removeExtra(UpdateNotifier.EXTRA_SHOW_UPDATE_PROMPT)
 
         val pending = AppUpdater.takePending(this)
         if (pending != null) {

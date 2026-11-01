@@ -23,6 +23,9 @@ object UpdateNotifier {
 
     private const val CHANNEL_ID = "app_updates"
     private const val NOTIFICATION_AVAILABLE = 4300
+
+    /** Read by MainActivity: the notification was tapped, so show the prompt. */
+    const val EXTRA_SHOW_UPDATE_PROMPT = "show_update_prompt"
     private const val NOTIFICATION_RESULT = 4301
 
     fun ensureChannel(context: Context) {
@@ -43,7 +46,7 @@ object UpdateNotifier {
         ensureChannel(context)
         val open = Intent(context, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra(MainActivity.EXTRA_SHOW_UPDATE_PROMPT, true)
+            putExtra(EXTRA_SHOW_UPDATE_PROMPT, true)
         }
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
