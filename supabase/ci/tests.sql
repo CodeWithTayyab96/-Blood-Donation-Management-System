@@ -538,10 +538,10 @@ insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id
 values ('CI Donor One', 25, 'Male', 'B+', '0300-0000001', 'X', 70, '33333333-3333-3333-3333-333333333333', true);
 insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
 values ('CI Patient A', 'H', 'B+', 1, 'Normal', 'ci', 'Pending', '11111111-1111-1111-1111-111111111111', 'X');
-insert into offers (request_id, donor_id, donor_auth_id, status)
+insert into offers (request_id, donor_id, donor_auth_id, donor_name, status)
 values ((select id from requests where patient_name = 'CI Patient A'),
         (select id from donors where name = 'CI Donor One'), '33333333-3333-3333-3333-333333333333',
-        'Completed');  -- Completed without both confirmations must be refused
+        'CI Donor One', 'Completed');  -- Completed without both confirmations must be refused
 insert into stock (blood_group, units) values ('B+', 0) on conflict (blood_group) do nothing;
 
 set local role authenticated;
