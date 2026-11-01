@@ -3,6 +3,47 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## Unreleased — Phase 4: AI helper (OpenRouter)
+
+Two optional features on a new **AI helper**, backed by the `ai-coach` Edge
+Function which calls OpenRouter's OpenAI-compatible API on your own key.
+**Everything works exactly as before until that function is deployed** — see
+`AI_SETUP.md`. No new app dependency: plain `HttpURLConnection` + `org.json`.
+
+- **"Can I donate? (AI helper)"** on every signed-in user's dashboard — a
+  general-information helper (`AskDonateActivity`), with a visible
+  NOT-medical-advice disclaimer, questions capped at 500 chars, answers at
+  600, and one fallback answer whenever the helper is offline, unconfigured
+  or rate-limited: ask a licensed blood bank.
+- **Personalised daily motivation line** — a donor's dashboard fact card is
+  upgraded to a once-a-day personalised encouragement (fetched at most once
+  per calendar day; a day where the fetch failed is not retried until
+  tomorrow). Without AI, the Phase 1 local fact bank still appears.
+- **Privacy by construction** — the ONLY personal data that ever reaches the
+  provider is four neutral facts (first name, donation count, days since
+  last donation, blood group). No phone, city, age, gender, weight, Auth id
+  or token is serialised, and the exact wire payload is pinned by unit tests
+  (`AiCoachPayloadTest`) against a hand-built JSON string
+  (`AiCoach.payloadJson`).
+- **Guardrails both sides** — system prompts forbid the model from claiming
+  donation cures/prevents/treats anything, promising weight loss or "detox",
+  or giving individual medical advice, and forbid asking the user for more
+  personal information. The Edge Function clamps replies to 600 chars and
+  answers only signed-in users (verify_jwt ON; the caller's access token is
+  re-verified server-side).
+- **Rate limit** — 30 calls per signed-in user per 24 h, tracked in a new
+  `ai_coach_usage` table (`supabase_ai_migration.sql`, with rollback). RLS is
+  ON with no policies: only the Edge Function's service role can touch it, so
+  a user cannot reset their own counter.
+- Unit tests for the request/reply clamps, the once-per-day cadence and the
+  wire payload (`AiRulesTest`, `AiCoachPayloadTest`).
+
+Known limits, stated plainly: the helper is general information, never
+permission to donate; no conversation memory; the limit is the app's once-a-
+day per user for the motivation card and the function's 30/24 h cap for both
+kinds. Phase 4 requires no client secrets — the API key lives only as a
+Supabase secret.
+
 ## Unreleased — Phase 3: push notifications (FCM)
 
 Alerts move from "the app polls every 15 minutes" to "the app is told",

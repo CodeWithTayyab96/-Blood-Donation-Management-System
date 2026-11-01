@@ -216,3 +216,10 @@ unaffected, and nothing in the app reads or writes `users`.
   webhook secret). Rollback: `supabase_fcm_triggers_rollback.sql`.
 - Full push setup (Firebase project, service account, Edge Function
   deploy, run order): see `PUSH_SETUP.md`.
+- `supabase_ai_migration.sql` — Phase 4 AI: the `ai_coach_usage`
+  rate-limit table (additive). RLS is enabled with NO policies on
+  purpose: only the `ai-coach` Edge Function's service role may touch
+  it, so a user cannot read or reset their own call counter. Apply
+  after the FCM files. Rollback: `supabase_ai_migration_rollback.sql`.
+- Full AI setup (OpenRouter key as a Supabase secret, Edge Function
+  deploy WITH verify_jwt, run order): see `AI_SETUP.md`.

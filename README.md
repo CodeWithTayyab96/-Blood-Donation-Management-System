@@ -114,6 +114,32 @@ is "best effort" in every mode, and the app says so honestly:
 - **Sign-out stops pushes** for that device (token row deleted) and stops
   the poll for that user. The token is re-uploaded on the next sign-in.
 
+## AI helper (v1.8, Phase 4)
+
+Two optional helpers on the signed-in user's dashboard, backed by your own
+OpenRouter key through one Edge Function. **Nothing changes until the
+`ai-coach` function is deployed** — without it the dashboard keeps showing
+the local fact of the day and the helper screen shows its fallback text.
+Setup: `AI_SETUP.md` (one SQL file, one Supabase secret, one deploy; no
+client secrets and no new app dependency).
+
+- **"Can I donate? (AI helper)"** — general, plain-text answers about
+  donating. Stated on the screen and enforced in the model's instructions:
+  this is information, never individual medical advice, and only a licensed
+  blood bank's screening actually decides.
+- **Personalised daily motivation** — the "Did you know?" card becomes a
+  short personalised encouragement for donors, fetched at most once per
+  calendar day, with the local fact bank as the offline / failure fallback.
+- **Privacy, by construction:** exactly four neutral facts ever leave the
+  phone — first name, donation count, days since the last donation, blood
+  group — and the exact payload is pinned by unit tests. No phone number,
+  city, age, gender, weight, user id or token is ever sent, nothing is
+  stored server-side, and the demo manager session can never reach the
+  provider at all.
+- **Limits:** questions ≤ 500 chars, replies ≤ 600, and 30 AI calls per
+  signed-in user per 24 h (a per-user quota in the database that the user
+  cannot reset).
+
 ## Screenshots
 
 _Add screenshots here after running the app._
