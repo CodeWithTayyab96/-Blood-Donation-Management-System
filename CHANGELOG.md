@@ -3,6 +3,40 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.8 — 2026-11-01
+
+versionCode 9. Updates install themselves, and a release is now something a
+push to `main` does.
+
+### In-app updates
+
+- The app checks for a new version **at launch and every ~12 hours** in the
+  background (WorkManager, network required). A newer `versionCode` produces a
+  notification; tapping it opens the app's update prompt. While the app is
+  open, the prompt appears directly instead.
+- The download shows real progress, and the file is **verified before anything
+  is installed**: it must be this package, signed with the same certificate as
+  the installed app, and a higher `versionCode`. A mismatch is reported in
+  words instead of being handed to Android to fail obscurely.
+- Installation goes through **`PackageInstaller` with
+  `USER_ACTION_NOT_REQUIRED`** on Android 12+, so a same-signer update installs
+  without the system's "Do you want to update?" screen. Android still asks once
+  for **"install unknown apps"** for this app, and on Android 8–11 the system
+  may still show its own confirmation. The result comes back to the app, which
+  says "update installed" or shows the system's reason for refusing.
+
+### One signed build, published automatically
+
+- A push to `main` that changes `app/`, the build files or this changelog runs
+  the SQL checks and the unit tests, builds the **signed** APK, tags
+  `v<versionName>` and publishes a **normal** release — Latest — with
+  `app-release.apk`, `update.json` and the notes from this file.
+- **No debug APKs are built anywhere any more.** An unsigned or debug-signed
+  build can never update an installed copy in place, so it was never worth
+  producing.
+- The release refuses to run if `versionCode` did not increase, or if the tag
+  already exists. `[skip release]` in a commit message opts out.
+
 ## 1.7 — 2026-11-01 (pre-release)
 
 versionCode 8. Server-side privacy work, plus the client changes it requires.

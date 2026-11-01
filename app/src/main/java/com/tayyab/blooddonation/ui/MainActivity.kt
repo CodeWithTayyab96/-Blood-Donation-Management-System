@@ -28,6 +28,7 @@ import com.tayyab.blooddonation.util.RequestAlertWorker
 import com.tayyab.blooddonation.util.RequestAlerts
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.util.UpdateWorker
 import com.tayyab.blooddonation.util.MotivationFacts
 import com.tayyab.blooddonation.util.DonationStats
 import com.tayyab.blooddonation.util.FcmPush
@@ -38,6 +39,10 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val REQUEST_NOTIFICATIONS = 1001
+
+        /** Set by [com.tayyab.blooddonation.util.UpdateNotifier] when its
+         *  "version available" notification is tapped. */
+        const val EXTRA_SHOW_UPDATE_PROMPT = "show_update_prompt"
 
         /** Phase 4 AI card cache file, and the three keys in it. */
         const val AI_PREFS = "ai_coach"
@@ -58,6 +63,11 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
         db = DbHelper(this)
+
+        // Phase 1 updates: keep the 12-hour background check scheduled, then
+        // decide whether this launch should check now (see handleUpdatePrompt).
+        UpdateWorker.schedule(this)
+        handleUpdatePrompt()
 
         // Phase 3 push: make sure this device's FCM token row exists for the
         // signed-in user, in case Firebase rotated it since the last launch
@@ -226,6 +236,40 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
+    }
+
+    /**
+     * The updater's entry point on launch.
+     *
+     *  - an update the background worker found is offered straight away;
+     *  - a tap on the "version available" notification forces a check;
+     *  - otherwise a check runs at most once every 12 hours.
+     *
+     * It never announces "you are up to date" on its own — that only happens
+     * when the user asks for it from the dashboard.
+     */
+    private fun handleUpdatePrompt() {
+        val fromNotification =
+            intent?.getBooleanExtra(EXTRA_SHOW_UPDATE_PROMPT, false) == true
+        intent?.removeExtra(EXTRA_SHOW_UPDATE_PROMPT)
+
+        val pending = AppUpdater.takePending(this)
+        if (pending != null) {
+            showUpdateDialog(pending)
+            return
+        }
+        if (!fromNotification && !AppUpdater.shouldCheckNow(this)) return
+
+        Background.run {
+            val result = AppUpdater.checkForUpdate()
+            AppUpdater.markChecked(this)
+            if (result is AppUpdater.CheckResult.UpdateAvailable) {
+                AppUpdater.savePending(this, result.info)
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) showUpdateDialog(result.info)
+                }
+            }
+        }
     }
 
     private fun checkForUpdate() {

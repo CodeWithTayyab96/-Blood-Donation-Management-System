@@ -25,7 +25,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BloodDonation">
 
-        <!-- Lets the system installer read the APK file this app downloaded into its cache. -->
+        <!-- Receives the PackageInstaller result (success, failure, or "the
+             system still wants a tap"). Not exported: only this app and the
+             system that sends the result can reach it. -->
+        <receiver
+            android:name=".util.InstallResultReceiver"
+            android:exported="false" />
+
+        <!-- Legacy install path: the FileProvider is no longer used by the
+             updater (PackageInstaller reads the file directly), but it stays
+             declared for builds that still open an APK by URI. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
