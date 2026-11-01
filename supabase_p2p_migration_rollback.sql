@@ -32,11 +32,14 @@ drop function if exists public.complete_peer_donation(bigint);
 drop index if exists donations_donor_date_key;
 
 -- ---------------------------------------------------------------------------
--- 3. Drop the new tables (order matters: offers/reports reference requests)
+-- 3. Drop the new tables (dependents first)
 -- ---------------------------------------------------------------------------
+-- contact_details goes FIRST: once supabase_p2p_policies.sql is applied, its
+-- visibility policy searches offers, which is a real dependency that blocks
+-- `drop table offers` until that policy is gone (it dies with its table).
+drop table if exists contact_details;
 drop table if exists offers;
 drop table if exists reports;
-drop table if exists contact_details;
 
 -- ---------------------------------------------------------------------------
 -- 4. Drop the P2P policies on requests BEFORE the columns they reference
