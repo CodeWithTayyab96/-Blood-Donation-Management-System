@@ -105,54 +105,67 @@ update auth.users
 
 ## A2. Install the new APK BEFORE running the SQL
 
-Install an APK built **from this commit or later** on the phone you test
-with. v1.6 — the pre-release already on GitHub — predates the column change:
-it asks PostgREST for `select=*` on `donors` and `requests`, which the new
-column privileges reject with 42501, and the app then quietly falls back to its
-local copy. It looks like "sync stopped" rather than an error. Any build from
-the commit that added `donor_phone()` onwards asks for explicit columns and is
-unaffected.
+Install **v1.7 or later** on the phone you test with. v1.6 and older predate
+the column change: they ask PostgREST for `select=*` on `donors` and
+`requests`, which the new column privileges reject with 42501, and the app then
+quietly falls back to its local copy — it looks like "sync stopped" rather than
+an error. v1.7 asks for explicit columns and is unaffected.
 
-## A3. Run `supabase_role_policies.sql` — the only file you are missing
+## A3. `supabase_role_policies.sql` — run it
 
 Paste the whole file into the SQL editor and run it. It is re-runnable, and it
-is order-independent with `supabase_p2p_policies.sql` (either order gives the
-same final policy list). What it changes:
+is order-independent with `supabase_p2p_policies.sql`. What it changes:
 
 - creates `is_manager()` (reads `app_metadata.role` only);
 - replaces the four `"Authenticated full access"` policies with the
   manager/donor set on `donors`, `donations`, `requests`, `stock`;
 - adds `"donors insert own"`, so a new donor's registration can create its own
-  profile row — without it registration's profile insert is rejected;
+  profile row — without it, registration's profile insert is rejected;
 - removes `donors.phone` and `requests.contact` from the `authenticated`
-  SELECT grant and adds `donor_phone()` / `request_contact()`, which answer
+  SELECT grant, and adds `donor_phone()` / `request_contact()`, which answer
   only for the owner and the manager;
-- leaves `"requests write manager"` out when the P2P policies are already
-  installed (they own that table now), so the final list does not depend on
-  the order the two files ran in.
+- grants the columns the app reads by name — including the ones that arrived
+  with the P2P migration — but only when they exist;
+- leaves `"requests write manager"` out, because the P2P policies already own
+  that table.
 
-## A4. Verify — `supabase_verify_policies.sql`
+**Verify now — `supabase_verify_policies.sql`.** Paste and run it. Read-only,
+safe any number of times. **Expected: exactly one row, `ALL POLICIES OK`.**
+Do not continue until it says that.
 
-Paste the whole file into the SQL editor. It is read-only and safe to run any
-number of times. **Expected output: exactly one row, `ALL POLICIES OK`.**
+## A4. `supabase_p2p_policies.sql` — re-run it (recommended, ~30 seconds)
 
-Tables that do not exist yet are skipped, so the missing Stage B/C tables are
-not reported. If you see `PROBLEM` rows instead, they mean:
+The copy on your project is the old one: it had a `DROP POLICY` naming a
+policy that never existed, and it did not grant the two P2P columns. Re-running
+the current file is safe (it drops all twelve of its own policies first) and
+makes the project match the file byte for byte. Strictly optional — A3 already
+grants those columns — but it is what CI tests, so run it.
 
-| PROBLEM row | What happened | Fix |
-|---|---|---|
-| `policy <name> on <table>: MISSING` | the file that creates it never ran (or died part-way) | run that file, re-verify |
-| `policy Authenticated full access on <table>: UNEXPECTED` | `supabase_role_policies.sql` did not run, or failed before its DROP block | re-run it; the editor shows the failing line |
-| `policy requests write manager on requests: UNEXPECTED` | `supabase_p2p_policies.sql` has not been applied since the role file | re-run `supabase_p2p_policies.sql` (it is re-runnable) |
-| `authenticated can still SELECT donors.phone` / `requests.contact` | the column-privilege block at the end of the role file did not run | re-run the role file, re-verify |
-| `row level security is OFF on <table>` | the migration's `enable row level security` was rolled back | run `alter table <table> enable row level security;` |
-| `missing function public.donor_phone(bigint)` | same cause as the phone row | re-run the role file |
+**Verify again — `supabase_verify_policies.sql`. Expected: `ALL POLICIES OK`.**
 
-## A5. Sign out and back in on the phone
+## A5. Files you do NOT run
+
+| File | Why not |
+|---|---|
+| `supabase_p2p_migration.sql` | **unchanged** since you applied it (same commit as the original P2P phase). Re-running is harmless — everything is `if not exists` — but it changes nothing. |
+| `supabase_auth_policies.sql` | **never re-run now.** It is not idempotent, and it re-creates the four permissive `"Authenticated full access"` policies you just removed. |
+| `supabase_role_policies.sql` | safe to re-run, and the thing to re-run if the verifier ever reports a missing policy. |
+| `supabase_p2p_policies.sql` | safe to re-run (A4). |
+| `supabase_verify_policies.sql` | read-only; run it as often as you like. |
+
+## A6. If it breaks the app
+
+An APK older than 1.7 asks for `select=*` and will fail against the new column
+grants. The fix is to install the 1.7 APK. If you cannot, run
+`supabase_privacy_rollback.sql`: it restores table-level SELECT on `donors`
+and `requests` and nothing else. The verifier will then report two `PROBLEM`
+rows about the phone columns — that is the state you asked for. Re-run
+`supabase_role_policies.sql` to put the restriction back.
+
+## A7. Sign out and back in on the phone
 
 The access token issued before A3 carries no role, so the app treats that
-session as a donor until it refreshes. Log out and back in, then re-run the A4
-query if you want the database side confirmed again.
+session as a donor until it refreshes. Log out and back in.
 
 ## Stage A — STOP AND TEST ON THE PHONE
 

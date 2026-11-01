@@ -3,10 +3,12 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
-## 1.7 — unreleased
+## 1.7 — 2026-11-01 (pre-release)
 
-Ships after 1.6 (it needs a new versionCode). Server-side privacy work, plus
-the client changes it requires.
+versionCode 8. Server-side privacy work, plus the client changes it requires.
+Install this build **before** applying the updated SQL in RUNBOOK Stage A: the
+previous build asks for `select=*` on `donors` and `requests`, which the new
+column privileges reject.
 
 ### Phone numbers are no longer readable columns
 
@@ -41,7 +43,7 @@ the client changes it requires.
   `PROBLEM` row per mismatch. CI runs it after the forward pass and again
   after re-applying the two policy files in the opposite order.
 
-## 1.6 — unreleased
+## 1.6 — 2026-10-31 (pre-release)
 
 Not tagged or published yet. This section is the source of the release notes:
 the GitHub release body in `.github/workflows/release.yml` carries the same

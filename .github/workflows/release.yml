@@ -125,27 +125,25 @@ jobs:
           # generator: a tag published without touching it would ship the
           # previous version's notes under the new version number.
           body: |
-            **Blood Donation 1.6**
+            **Blood Donation 1.7**
 
-            - Ask for blood directly in the app: post a request, and compatible
-              donors can offer to help. A phone number is shown only after the
-              requester accepts an offer.
-            - Both sides confirm before a donation is recorded. Peer donations go
-              on the donor's history and deliberately do not change blood-bank
-              stock.
-            - Browse other people's open requests, or your own; cancel your own;
-              capped at three open requests.
-            - "I'm available to donate" switch on your profile, plus a manager
-              screen for reports.
-            - A daily motivation card, donation milestones and an optional daily
-              tip you can turn off in Settings.
-            - An optional "Can I donate?" helper that gives general information
-              and always says to ask a blood bank. Not medical advice.
-            - Alerts for urgent requests now also cover offers and acceptances,
-              and never show hospital or phone details on a locked screen.
-            - Fixes: dark-mode contrast on the dashboard, honest messages when
-              stock or a sync did not update, and a clearer warning when an
-              account is offline-only.
+            - Phone numbers are no longer readable by everyone. A donor's
+              number and a request's contact number are now visible only to
+              the person they belong to and to the manager — not to every
+              signed-in user, through the app or through the API.
+            - The donor list shows city and age; the donor detail says
+              "Phone: hidden" unless the number is yours. A request says
+              "Contact: shared after you accept an offer" until it is.
+            - Registration works under the tightened database rules: a new
+              donor's profile is created for them and reaches the server.
+            - The security SQL can now be applied in either order and re-run
+              safely, and a verifier reports the exact mismatch instead of
+              leaving a screen quietly empty.
+
+            **Install this build before applying the updated SQL.** The
+            previous build asks the server for every column; once the phone
+            columns are restricted it falls back to its local copy and looks
+            like sync has stopped.
 
             ---
 
