@@ -185,8 +185,9 @@ what changed):
   this repo. Without an anon key, the app runs fully offline, exactly
   like v1.2.
 - **Row Level Security note.** The old review-only file
-  (`supabase_policies_review.sql`, permissive anon access) must NOT
-  be applied — v1.4 replaces it with authenticated-only policies.
+  (`supabase_policies_review_DO_NOT_APPLY.sql`, permissive anon
+  access) must NOT be applied — v1.4 replaces it with authenticated-only
+  policies. The filename is the warning.
 
   **Role enforcement is client-side only unless you apply
   `supabase_role_policies.sql`.** With just

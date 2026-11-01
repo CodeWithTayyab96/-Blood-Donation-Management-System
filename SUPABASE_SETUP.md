@@ -150,7 +150,7 @@ unaffected, and nothing in the app reads or writes `users`.
   duplicate policy name if re-run, which simply means the policies
   are already there.
 - In Authentication → Providers: Email ON, "Confirm email" OFF.
-- Do NOT run `supabase_policies_review.sql`: it was the v1.3
+- Do NOT run `supabase_policies_review_DO_NOT_APPLY.sql`: it was the v1.3
   review-only idea (permissive anon access), it was never applied,
   and v1.4 replaces it with the authenticated policies above. With
   the authenticated policies in place, a PostgREST 401 means the
@@ -194,8 +194,8 @@ unaffected, and nothing in the app reads or writes `users`.
   this until you have read its header**: it needs the manager's
   `app_metadata.role` set first, and every session must sign in
   again before its token carries the claim.
-- `supabase_policies_review.sql` — v1.3 RLS policies for review
-  only. NEVER applied; do NOT apply it under v1.4.
+- `supabase_policies_review_DO_NOT_APPLY.sql` — v1.3 RLS policies,
+  kept for reference only. NEVER applied; do NOT apply it under v1.4.
 - `supabase_p2p_migration.sql` — peer-to-peer schema: the new
   `requests` / `donors` columns, and the `offers`, `contact_details`
   and `reports` tables, plus the open-request trigger and

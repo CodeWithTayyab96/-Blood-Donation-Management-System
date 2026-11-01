@@ -57,11 +57,13 @@ That is why:
    ```
 4. The **Release APK** workflow builds a signed `app-release.apk`,
    writes `update.json` (with the exact versionCode), and publishes
-   both to a GitHub Release with the same tag.
-5. Users on the old version open the app, tap **Check for Updates**
-   on the home screen, and get a prompt to download and install
-   the new version. Android will ask them once to allow installs
-   from this app — that is normal.
+   both as a **pre-release** with the same tag. Nothing is offered to
+   phones yet.
+5. Test the APK from the release page, then promote it:
+   `gh release edit v1.6 --prerelease=false`. Only then do users on the
+   old version get a prompt from **Check for Updates**. Android will ask
+   them once to allow installs from this app — that is normal.
+   Full tag/promote/rollback steps: `RELEASING.md`.
 
 ## Important: the first signed release
 

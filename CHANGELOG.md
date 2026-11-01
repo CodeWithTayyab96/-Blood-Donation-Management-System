@@ -3,199 +3,133 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
-## Unreleased — Phase 4: AI helper (OpenRouter)
+## 1.6 — unreleased
 
-Two optional features on a new **AI helper**, backed by the `ai-coach` Edge
-Function which calls OpenRouter's OpenAI-compatible API on your own key.
-**Everything works exactly as before until that function is deployed** — see
-`AI_SETUP.md`. No new app dependency: plain `HttpURLConnection` + `org.json`.
+Not tagged or published yet. This section is the source of the release notes:
+the GitHub release body in `.github/workflows/release.yml` carries the same
+list in short form, so the two cannot drift apart. Everything below is already
+on `main` and green in CI.
 
-- **"Can I donate? (AI helper)"** on every signed-in user's dashboard — a
-  general-information helper (`AskDonateActivity`), with a visible
-  NOT-medical-advice disclaimer, questions capped at 500 chars, answers at
-  600, and one fallback answer whenever the helper is offline, unconfigured
-  or rate-limited: ask a licensed blood bank.
-- **Personalised daily motivation line** — a donor's dashboard fact card is
-  upgraded to a once-a-day personalised encouragement (fetched at most once
-  per calendar day; a day where the fetch failed is not retried until
-  tomorrow). Without AI, the Phase 1 local fact bank still appears.
-- **Privacy by construction** — the ONLY personal data that ever reaches the
-  provider is four neutral facts (first name, donation count, days since
-  last donation, blood group). No phone, city, age, gender, weight, Auth id
-  or token is serialised, and the exact wire payload is pinned by unit tests
-  (`AiCoachPayloadTest`) against a hand-built JSON string
-  (`AiCoach.payloadJson`).
-- **Guardrails both sides** — system prompts forbid the model from claiming
-  donation cures/prevents/treats anything, promising weight loss or "detox",
-  or giving individual medical advice, and forbid asking the user for more
-  personal information. The Edge Function clamps replies to 600 chars and
-  answers only signed-in users (verify_jwt ON; the caller's access token is
-  re-verified server-side).
-- **Rate limit** — 30 calls per signed-in user per 24 h, tracked in a new
-  `ai_coach_usage` table (`supabase_ai_migration.sql`, with rollback). RLS is
-  ON with no policies: only the Edge Function's service role can touch it, so
-  a user cannot reset their own counter.
-- Unit tests for the request/reply clamps, the once-per-day cadence and the
-  wire payload (`AiRulesTest`, `AiCoachPayloadTest`).
+### Peer-to-peer requests
 
-Known limits, stated plainly: the helper is general information, never
-permission to donate; no conversation memory; the limit is the app's once-a-
-day per user for the motivation card and the function's 30/24 h cap for both
-kinds. Phase 4 requires no client secrets — the API key lives only as a
-Supabase secret.
-
-- **SQL is verified in CI** — a job on a plain Postgres 16 container replays
-  every SQL file in the documented order, runs the security-rule tests
-  (`supabase/ci/tests.sql`: contact details hidden until an offer is
-  accepted, someone else's requests/offers untouchable, availability is
-  personal, the 3-open-request cap, manager rights, anon reads nothing,
-  the quota table), then runs every rollback file in reverse, then re-applies
-  everything forward to prove the files work after a rollback. Both Edge
-  Functions get a `deno check` pass. The whole by-hand setup in one place
-  with a verification step after each step: `RUNBOOK.md`.
-
-## Unreleased — Phase 3: push notifications (FCM)
-
-Alerts move from "the app polls every 15 minutes" to "the app is told",
-with polling kept as a fallback. **Everything builds and runs exactly as
-before until Firebase is configured** — see `PUSH_SETUP.md`. Requests and
-offers need an internet connection either way.
-
-- **FCM without the google-services plugin** — the four Firebase identifiers
-  arrive as BuildConfig fields; `FcmPush` initialises Firebase explicitly,
-  so a build with no Firebase values keeps compiling on CI and behaves
-  exactly like 1.6 (poll only).
-- **Device tokens** (`device_tokens` table, SQL in
-  `supabase_fcm_migration.sql` / `supabase_fcm_policies.sql`, each with a
-  rollback): a user may only write and read their own token rows; the
-  manager may read all. Rows are upserted by token at sign-in and on token
-  rotation, and deleted on sign-out.
-- **Three server events** (pg_net triggers in `supabase_fcm_triggers.sql`):
-  offer created → the requester's devices; offer accepted → the donor's
-  devices; Urgent/Critical request created → every compatible, available,
-  and eligible donor's devices (server-side re-implementation of the poll's
-  filters; Normal requests are never pushed).
-- **`supabase/functions/push-notify`** Edge Function: verifies the webhook
-  secret, resolves recipients from `device_tokens`, signs a service-account
-  JWT itself, and sends data-only FCM v1 messages. The service-account JSON
-  lives only in a Supabase secret — never in this repository.
-- **Client notifications** for offers and acceptances on their own
-  DEFAULT-importance channel (`peer_activity`), shown once per offer event
-  (first name, blood group, city — never a phone number) and tapping opens
-  the request. Urgent requests reuse the existing high-importance flow.
-- **Dedup is shared**: the remembered-id files are common to push and poll,
-  so an event is never announced twice no matter which path gets there
-  first.
-- **Polling stays** as the fallback for urgent requests and, when Firebase
-  is not configured, now also announces offers on your requests and
-  accepted offers (previously these were visible only in-app). Delivery
-  remains approximate, which the README states (polling = minutes, push =
-  seconds).
-
-## Unreleased — Phase 2: peer-to-peer requests
-
-Any signed-in user can now ask for blood, and donors can offer to help
-directly. **Requires the two new SQL files to be applied** — see
-`supabase_p2p_migration.sql` (then `supabase_p2p_policies.sql`) and the
-safe order in `DESIGN_P2P.md §5`. Until the migration is applied the app
-simply behaves as before; the schema change is additive.
-
-- **Post a request** (`CreateRequestActivity`) — any signed-in user, even
+- **Post a request** (`CreateRequestActivity`) — any signed-in user, even one
   without a donor profile: blood group, city, units, urgency, an optional
-  needed-by date and a contact number. Capped at **3 open requests**; the
-  cap is enforced by a server trigger as well as the app.
-- **Browse / My requests** — the request list now has two views. *Browse*
-  shows open requests other people posted that this donor's group can
-  actually give to, nearest city first. *My requests* shows your own, with
-  Cancel. Managers still see everything.
+  needed-by date and a contact number. Capped at **3 open requests**; the cap
+  is enforced by a server trigger as well as by the app.
+- **Browse / My requests** — *Browse* shows open requests other people posted
+  that this donor's group can actually give to, nearest city first. *My
+  requests* shows your own, with Cancel. Managers still see everything.
 - **Offers** — a donor taps *I can donate*; the requester sees the donor's
   first name, blood group and city, and Accepts or Declines. Accepting moves
-  the request to *Matched*, and **only then** is a phone number revealed to
-  the other side. Phone numbers live in their own `contact_details` table and
-  the database — not the app — decides who may read them.
+  the request to *Matched*, and **only then** is a phone number revealed — to
+  the two parties, nobody else. Phones live in their own `contact_details`
+  table and the database, not the app, decides who may read them.
 - **Both sides confirm** before a donation is recorded. A peer donation is
   recorded on the donor's history and deliberately **does not** add units to
   blood-bank stock: it never entered the bank.
 - **"I'm available to donate"** switch on the profile, shown only while the
-  donor is eligible. Offering is refused by the server unless it is on.
-- **Reports and moderation** — anyone can report a request; managers get a
-  new moderation screen listing every report and offer, and can cancel a
-  reported request.
-- SQLite **DB v6**: additive `ALTER TABLE` plus three new tables, so an
-  upgrade keeps every existing row. Legacy/manager rows keep a null
-  `requester_id` and are treated as manager-owned.
-- Unit tests for the request/offer state machine (`P2pRules`).
+  donor is eligible. The server refuses an offer unless it is on.
+- **Moderation** — a manager-only screen listing reports and peer offers.
+- Limits, stated plainly: without the push deployment (below) offers and
+  acceptances arrive by the ~15-minute poll, not instantly; request expiry is
+  lazy and client-driven, not `pg_cron`; eligibility, health and identity are
+  self-reported and unverified.
 
-Known limits, stated plainly: nothing is verified (blood group, identity and
-health are all self-reported) — hence the safety notice on the request
-screen. There is still **no real-time**: until Phase 3 (FCM) offers arrive
-on the existing ~15-minute poll.
+### Alerts for urgent requests
 
-## Unreleased — Phase 1: motivation, milestones, tips
+- A signed-in donor is notified when a pending **Urgent** or **Critical**
+  request appears that their blood group can serve and they are eligible for.
+  **Normal** requests never alert.
+- Delivery is approximate: a `WorkManager` job polls about every 15 minutes
+  and only while online. Doze can delay it further.
+- **Once per request, ever** — notified ids are remembered on the device, so a
+  restart or a later poll cannot repeat a notification.
+- **Lock-screen privacy** — the notification is `VISIBILITY_PRIVATE` with a
+  generic public version; hospital, contact number and patient name are never
+  shown. Tapping opens that request.
+- **Android 13+** asks for the notification permission once, behind a short
+  explanation; declining is respected and granting it later takes effect
+  without a restart.
+- Debug builds gain a "Check requests now" button that runs the worker
+  immediately; it is hidden in release builds.
+
+### Motivation, milestones and tips
 
 All offline; no server or database changes.
 
 - **Daily motivation card** on the dashboard: one short, accurate fact per day
   (WHO / Red Cross style — no "cures", weight-loss or disease-prevention
-  claims), stable for the day and the same on every device. 32 facts in the
-  bank so a month does not repeat.
-- **Donation milestones**, computed locally from the donation history a donor
-  already has: badges at the 1st, 3rd, 5th and 10th donation, a current streak
-  (consecutive donations within 180 days), and a "you may have helped up to N
-  people" estimate (3 patients per donation, labelled an estimate). Shown only
-  when the signed-in person has a donor profile.
-- **Optional daily tip notification** — a practical, non-medical tip, on its
-  own low-importance channel. **Off by default**, at most one per day, never
-  between 21:00 and 09:00, with a toggle in a new **Settings** screen. Reuses
-  the existing notification permission handling; a missing permission is
-  swallowed, not crashed on.
+  claims), stable for the day and the same on every device. 32 facts, so a
+  month does not repeat.
+- **Donation milestones**, computed from the history a donor already has:
+  badges at the 1st, 3rd, 5th and 10th donation, a current streak (consecutive
+  donations within 180 days), and a "you may have helped up to N people"
+  estimate (3 patients per donation, labelled an estimate). Shown only when
+  the signed-in person has a donor profile.
+- **Optional daily tip** — a practical, non-medical tip on its own
+  low-importance channel. **Off by default**, at most one per day, never
+  between 21:00 and 09:00, with a toggle in a new **Settings** screen.
 - **Thank-you message** after a donation is recorded.
 - Unit tests for the milestone/streak math and the tip send-window rule.
 
-## 1.6 — 2026-10-31
+### Push notifications (optional — needs a Firebase project)
 
-### Urgent request alerts
+**The published APK is built without Firebase values** (no `FIREBASE_*`
+repository secrets exist), so it polls and never pushes. The code is complete
+and inert until those secrets are added — see `PUSH_SETUP.md`.
 
-- A signed-in donor is notified when a pending **Urgent** or **Critical** request
-  appears that their blood group can serve, provided they are eligible to donate.
-  Requests marked **Normal** do not alert — waking someone for routine stock
-  replenishment would only train donors to ignore the notifications.
-- Delivery is **approximate**. A `WorkManager` job polls about every 15 minutes
-  (the platform minimum for periodic work) and only while online, so an alert can
-  arrive late, and Doze can delay it further. There is no push service, no
-  Firebase and no server of our own.
-- **Once per request, ever.** Notified request ids are stored on the device, so a
-  restart or a later poll cannot produce a second notification for the same
-  request. Fulfilled requests stay remembered.
-- **Lock-screen privacy.** The notification is `VISIBILITY_PRIVATE` with a
-  generic public version ("A blood request needs your help"), so the hospital and
-  contact number are not readable on a locked screen. The patient's name is never
-  shown at all.
-- Tapping an alert opens that request's detail screen.
-- **Android 13+** asks for the notification permission once, behind a short
-  explanation. Declining is respected: the prompt does not return on every
-  launch, and granting it later from system settings takes effect automatically.
-- **Debug builds** gain a "Check requests now" button that runs the same worker
-  immediately instead of waiting for the next poll, and reports how many alerts
-  it sent. The button is hidden in release builds.
+- **FCM without the google-services plugin** — the four identifiers arrive as
+  BuildConfig fields and `FcmPush` initialises Firebase explicitly, so a build
+  with no Firebase values compiles and behaves exactly like 1.5.
+- **Device tokens** (`device_tokens`, with migration/policies/rollbacks): a
+  user may only read and write their own rows; the manager may read all. Rows
+  are upserted at sign-in and on token rotation, deleted on sign-out.
+- **Three server events** (pg_net triggers): offer created → the requester's
+  devices; offer accepted → the donor's devices; Urgent/Critical request
+  created → every compatible, available, eligible donor's devices.
+- **`push-notify` Edge Function** verifies the webhook secret, resolves
+  recipients, signs a service-account JWT itself and sends data-only FCM v1
+  messages. The service-account JSON lives only in a Supabase secret.
+- **Client notifications** for offers and acceptances on their own
+  `peer_activity` channel — first name, blood group, city, never a phone
+  number. Polling stays as the fallback, and both paths share the same
+  remembered-id files, so nothing is announced twice.
+
+### AI helper (optional — needs the `ai-coach` function deployed)
+
+**Everything works exactly as before until that function is deployed** — see
+`AI_SETUP.md`. No new app dependency: `HttpURLConnection` + `org.json`.
+
+- **"Can I donate? (AI helper)"** on every signed-in user's dashboard, with a
+  visible not-medical-advice disclaimer, questions capped at 500 characters,
+  answers at 600, and one fallback answer whenever the helper is offline,
+  unconfigured or rate-limited: ask a licensed blood bank.
+- **Personalised daily motivation line** — the fact card is upgraded to a
+  once-a-day personalised line (fetched at most once per calendar day; a failed
+  day is not retried until tomorrow). Without AI, the local fact bank still
+  appears.
+- **Privacy by construction** — the only personal data that ever reaches the
+  provider is four neutral facts (first name, donation count, days since last
+  donation, blood group). No phone, city, age, gender, weight, Auth id or
+  token is serialised, and the exact wire payload is pinned by
+  `AiCoachPayloadTest` against a hand-built JSON string.
+- **Guardrails both sides** — system prompts forbid medical claims and asking
+  for more personal data; the function clamps replies to 600 characters and
+  answers only signed-in users (verify_jwt ON, token re-verified server-side).
+- **Rate limit** — 30 calls per user per 24 h in `ai_coach_usage`, RLS ON with
+  no policies, so only the function's service role can touch it.
 
 ### Fixes
 
 - **Dark-mode contrast.** The dashboard's "Stock by blood group" heading and
-  summary were invisible in dark mode: the page background is a fixed light pink
-  while those two views inherited the dark theme's white text. They now set their
-  colour explicitly.
-- **Fulfil message contradicted the screen.** Fulfilling used the server's stock
-  but the screen shows the local count, so "In stock: 2" could sit next to "not
-  enough units". The message now names the server's number and the screen
-  refreshes from it.
+  summary were invisible in dark mode; they now set their colour explicitly.
+- **Fulfil message contradicted the screen.** The message now names the
+  server's number and the screen refreshes from it.
 - **Silent half-synced donations.** A donation whose stock increment failed was
-  reported as a plain success, leaving the local and online counts quietly
-  different. It now says the stock did not update.
-- **Local-only sessions are called out.** An account with no Supabase session
-  cannot read or write the backend at all, because the policies only accept
-  authenticated users. The dashboard now says so instead of looking like it is
-  syncing.
+  reported as a plain success; it now says the stock did not update.
+- **Local-only sessions are called out.** The dashboard says an account with no
+  Supabase session cannot read or write the backend, instead of looking like it
+  is syncing.
 
 ## 1.5 — 2026-10-31
 

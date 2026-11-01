@@ -1,7 +1,12 @@
 name: Release APK
 
 # Publishes a signed GitHub Release whenever a v* tag is pushed,
-# e.g. `git tag v1.2 && git push origin v1.2`.
+# e.g. `git tag v1.6 && git push origin v1.6`.
+#
+# The release is created as a PRE-RELEASE (prerelease: true). The in-app
+# updater reads /releases/latest, which ignores pre-releases, so tagging
+# never pushes a build onto phones by itself. Test, then promote — see
+# RELEASING.md.
 #
 # The in-app updater reads this release: it looks for update.json first
 # (for the exact versionCode), then for app-release.apk.
@@ -103,10 +108,56 @@ jobs:
           EOF
           cat update.json
 
+      # Published as a PRE-RELEASE on purpose. GitHub's /releases/latest
+      # endpoint — the only thing the in-app updater reads — ignores
+      # pre-releases, so a tag can never push itself onto phones that are
+      # already on a published release. Test the APK from this page, then
+      # promote it; see RELEASING.md and the note at the end of the body.
       - name: Publish GitHub Release with APK and update.json
         uses: softprops/action-gh-release@v2
         with:
           files: |
             app/build/outputs/apk/release/app-release.apk
             update.json
-          generate_release_notes: true
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            **Blood Donation 1.6**
+
+            - Ask for blood directly in the app: post a request, and compatible
+              donors can offer to help. A phone number is shown only after the
+              requester accepts an offer.
+            - Both sides confirm before a donation is recorded. Peer donations go
+              on the donor's history and deliberately do not change blood-bank
+              stock.
+            - Browse other people's open requests, or your own; cancel your own;
+              capped at three open requests.
+            - "I'm available to donate" switch on your profile, plus a manager
+              screen for reports.
+            - A daily motivation card, donation milestones and an optional daily
+              tip you can turn off in Settings.
+            - An optional "Can I donate?" helper that gives general information
+              and always says to ask a blood bank. Not medical advice.
+            - Alerts for urgent requests now also cover offers and acceptances,
+              and never show hospital or phone details on a locked screen.
+            - Fixes: dark-mode contrast on the dashboard, honest messages when
+              stock or a sync did not update, and a clearer warning when an
+              account is offline-only.
+
+            ---
+
+            **This is a pre-release.** GitHub's `latest` endpoint ignores
+            pre-releases, so the in-app updater does not offer this build to
+            anyone yet. That is deliberate: test it first.
+
+            **To promote it after testing** (this is the whole process):
+
+            1. Install `app-release.apk` from this page and run the test plan.
+            2. Untick "Set as a pre-release" on this page and save — or run
+               `gh release edit <tag> --prerelease=false`.
+            3. Nothing else changes. The APK and `update.json` are already
+               attached, so from then on phones on the previous release are
+               offered this versionCode.
+
+            **To withdraw it instead:** delete the release and the tag (see
+            RELEASING.md). The APK is never served from anywhere else.

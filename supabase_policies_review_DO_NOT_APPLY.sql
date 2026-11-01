@@ -1,4 +1,24 @@
 -- =====================================================================
+--  !!!  DO NOT APPLY THIS FILE  !!!
+--
+--  HISTORICAL ARTIFACT, KEPT FOR REFERENCE ONLY.
+--
+--  This is the v1.3 permissive policy set. It was superseded and must
+--  NEVER be run against any project, demo or live: it grants the anon
+--  role — the key baked into every APK — read/write on every table.
+--
+--  The policy set that IS meant to be applied, in this order:
+--    1. supabase_auth_policies.sql   RLS on, authenticated-only
+--    2. supabase_role_policies.sql   manager/donor split (the real one)
+--    3. supabase_p2p_policies.sql    peer-to-peer tables
+--    4. supabase_fcm_policies.sql    device tokens
+--
+--  The filename ends in _DO_NOT_APPLY.sql so it cannot be mistaken for
+--  a setup step. CI never applies it: .github/workflows/sql.yml lists
+--  the files it replays explicitly.
+-- =====================================================================
+--
+-- =====================================================================
 -- REVIEW ONLY — DO NOT RUN THIS BLIND, AND IT HAS NOT BEEN APPLIED.
 -- =====================================================================
 -- Why this file exists: the v1.3 app talks to Supabase PostgREST with

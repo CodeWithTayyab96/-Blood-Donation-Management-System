@@ -1,7 +1,7 @@
 -- Blood Donation v1.4 — Row Level Security for authenticated users.
 -- Run ONCE in the Supabase SQL editor, AFTER supabase_auth_migration.sql.
 --
--- This REPLACES the v1.3 idea in supabase_policies_review.sql (permissive
+-- This REPLACES the v1.3 idea in supabase_policies_review_DO_NOT_APPLY.sql (permissive
 -- anon access), which was review-only and was NEVER applied. Do NOT apply
 -- that file: with Auth in place, the anon key must no longer read or
 -- write donor data on its own.
