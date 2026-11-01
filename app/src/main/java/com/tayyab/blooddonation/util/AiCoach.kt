@@ -7,8 +7,8 @@ import java.net.URL
 
 /**
  * Phase 4: the signed-in user's bridge to the `ai-coach` Supabase Edge
- * Function (same style as [SupabaseClient]: plain HttpURLConnection +
- * org.json, no new dependency).
+ * Function (same style as [SupabaseClient]: plain HttpURLConnection, no new
+ * dependency).
  *
  * Contract with the function (written before the first deploy, so both sides
  * agree): POST JSON `{kind, facts:{name, donations, days_since_last_donation,
@@ -19,16 +19,21 @@ import java.net.URL
  * by keeping the local fact bank / fallback text.
  *
  * The four facts above are the entire payload that reaches the provider:
- * nothing else about the user (phone, city, age, weight, gender, id) is
- * ever serialised, which is also unit tested. Every call is blocking, so it
- * must run on a background thread; nothing here ever throws.
+ * nothing else about the user (phone, city, age, weight, gender, id) is ever
+ * serialised — [payloadJson] builds the body by hand, precisely so the exact
+ * bytes are unit-testable (org.json is stubbed out in local JVM tests). The
+ * payload is additionally escaped with [jsonEscape], which the payload tests
+ * pin down as well.
+ *
+ * Every call here is blocking, so it must run on a background thread;
+ * nothing here ever throws.
  */
 object AiCoach {
 
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 30_000
 
-    /** The four neutral facts; see [AiRules]' privacy note. */
+    /** The four neutral facts; see the privacy note above. */
     data class Facts(
         val firstName: String,
         val donationCount: Int,
@@ -36,28 +41,50 @@ object AiCoach {
         val bloodGroup: String
     )
 
+    /** Escapes the characters that would otherwise break the JSON string. */
+    fun jsonEscape(text: String): String = buildString {
+        for (ch in text) {
+            when (ch) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> if (ch.code >= 32) append(ch)
+            }
+        }
+    }
+
+    /**
+     * THE wire format — the only personal data the AI helper ever sends.
+     * Pure function, unit tested (AiCoachPayloadTest) against the exact
+     * contract in supabase/functions/ai-coach. [question] is sent only for
+     * the "question" kind, and must already be sanitised via
+     * [AiRules.sanitizeQuestion].
+     */
+    fun payloadJson(kind: String, facts: Facts, question: String? = null): String {
+        val days = facts.daysSinceLastDonation
+        return buildString {
+            append("{\"kind\":\"").append(jsonEscape(kind)).append("\"")
+            append(",\"facts\":{\"name\":\"").append(jsonEscape(facts.firstName)).append("\"")
+            append(",\"donations\":").append(facts.donationCount.coerceAtLeast(0))
+            append(",\"days_since_last_donation\":")
+            if (days == null) append("null") else append(days)
+            append(",\"blood_group\":\"").append(jsonEscape(facts.bloodGroup)).append("\"}")
+            if (kind == "question" && question != null) {
+                append(",\"question\":\"").append(jsonEscape(question)).append("\"")
+            }
+            append("}")
+        }
+    }
+
     private fun url(): String =
         BuildConfig.SUPABASE_URL.trimEnd('/') + "/functions/v1/ai-coach"
 
     private fun request(facts: Facts, kind: String, question: String?): JSONObject? {
         val token = Session.accessToken
         if (token.isNullOrBlank() || BuildConfig.SUPABASE_URL.isBlank()) return null
-        val body = JSONObject().apply {
-            put("kind", kind)
-            put(
-                "facts", JSONObject().apply {
-                    put("name", facts.firstName)
-                    put("donations", facts.donationCount)
-                    if (facts.daysSinceLastDonation != null) {
-                        put("days_since_last_donation", facts.daysSinceLastDonation)
-                    } else {
-                        put("days_since_last_donation", JSONObject.NULL)
-                    }
-                    put("blood_group", facts.bloodGroup)
-                }
-            )
-            if (kind == "question") put("question", question ?: "")
-        }
+        val body = payloadJson(kind, facts, question)
         return try {
             val connection = URL(url()).openConnection() as HttpURLConnection
             try {
@@ -69,13 +96,13 @@ object AiCoach {
                 connection.setRequestProperty("Accept", "application/json")
                 connection.doOutput = true
                 connection.outputStream.use { out ->
-                    out.write(body.toString().toByteArray(Charsets.UTF_8))
+                    out.write(body.toByteArray(Charsets.UTF_8))
                 }
                 val code = connection.responseCode
                 val stream = if (code == 200) connection.inputStream else connection.errorStream
                 val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                 if (code != 200 || text.isNullOrBlank()) return null
-                return JSONObject(text)
+                org.json.JSONObject(text)
             } finally {
                 connection.disconnect()
             }
