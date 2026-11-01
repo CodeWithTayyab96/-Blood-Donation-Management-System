@@ -92,7 +92,9 @@ do $runner$ begin
 end $runner$;
 
 -- Requester A accepts the offer on their own request (this must be allowed,
--- or nothing in the app could ever progress).
+-- or nothing in the app could ever progress). Back to requester A's identity
+-- first — the sanity block above ended as requester B.
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
 do $runner$ declare v_rows int; begin
   update offers set status = 'Accepted'
    where request_id in (select id from requests where requester_id = '11111111-1111-1111-1111-111111111111');
