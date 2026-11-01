@@ -8,10 +8,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
-import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.AiCoach
 import com.tayyab.blooddonation.util.AiRules
 import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.Session
 
 /**
  * "Can I donate?" helper. One honest disclaimer, a length-limited question box,
@@ -29,14 +29,11 @@ import com.tayyab.blooddonation.util.Background
  */
 class AskDonateActivity : AppCompatActivity() {
 
-    private lateinit var db: DbHelper
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Session.load(this)
         setContentView(R.layout.activity_ask_donate)
         title = "Can I donate?"
-        db = DbHelper(this)
 
         findViewById<Button>(R.id.btnAskVerify).setOnClickListener { ask() }
     }
