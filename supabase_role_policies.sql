@@ -61,6 +61,7 @@ drop policy if exists "Authenticated full access" on stock;
 -- would otherwise stop half-way).
 drop policy if exists "donors read" on donors;
 drop policy if exists "donors insert manager" on donors;
+drop policy if exists "donors insert own" on donors;
 drop policy if exists "donors update manager" on donors;
 drop policy if exists "donors update own" on donors;
 drop policy if exists "donors delete manager" on donors;
@@ -81,6 +82,15 @@ create policy "donors read" on donors
 
 create policy "donors insert manager" on donors
   for insert to authenticated with check (is_manager());
+
+-- A new donor creates their own profile at registration, and the app sends
+-- auth_id = their own Auth user id. This is the only self-service insert: it
+-- cannot create a row for somebody else, and a payload with a null auth_id
+-- (or no Auth id at all) is refused, because `auth_id = auth.uid()` is then
+-- NULL, not true. Without this policy, registration's profile insert is
+-- rejected and the donor can never offer to help.
+create policy "donors insert own" on donors
+  for insert to authenticated with check (auth_id = auth.uid());
 
 create policy "donors update manager" on donors
   for update to authenticated using (is_manager()) with check (is_manager());
@@ -117,8 +127,25 @@ create policy "donations delete manager" on donations
 create policy "requests read" on requests
   for select to authenticated using (true);
 
-create policy "requests write manager" on requests
-  for all to authenticated using (is_manager()) with check (is_manager());
+-- Requests: until the peer-to-peer policies are applied, only the manager may
+-- write them. supabase_p2p_policies.sql replaces this with owner-or-manager
+-- policies AND drops this one, so creating it unconditionally would make the
+-- final policy list depend on which of the two files ran last. It is therefore
+-- created only while the P2P policies are absent: role-then-p2p and
+-- p2p-then-role both end in the same state, and either file can be re-run.
+do $policy$
+begin
+  if not exists (
+    select 1
+      from pg_policies
+     where schemaname = 'public'
+       and tablename  = 'requests'
+       and policyname = 'requests insert owner or manager'
+  ) then
+    execute 'create policy "requests write manager" on requests '
+         || 'for all to authenticated using (is_manager()) with check (is_manager())';
+  end if;
+end $policy$;
 
 -- stock --------------------------------------------------------------------
 create policy "stock read" on stock
@@ -131,6 +158,109 @@ create policy "stock write manager" on stock
   for all to authenticated using (is_manager()) with check (is_manager());
 
 -- ---------------------------------------------------------------------------
+-- STEP 3 — column privileges: a phone number is not a column everyone may read
+-- ---------------------------------------------------------------------------
+-- RLS is row-level, so it cannot hide one column of a row it lets you read.
+-- Both phone numbers in this schema therefore come out of the SELECT grant:
+--
+--   donors.phone     the donor's personal number
+--   requests.contact the number a requester typed on their request
+--
+-- The app reads donors/requests with an explicit column list that omits both,
+-- and asks the SECURITY DEFINER helpers at the bottom of this file when it
+-- needs the number: a manager may read any, a user may read their own.
+--
+-- INSERT is untouched, so registration and the manager's "add donor" still
+-- write the phone; only reading it back is restricted. PostgREST is called
+-- with ?select=id on inserts and return=minimal on updates, so no query ever
+-- asks for the hidden columns implicitly.
+revoke select on public.donors   from authenticated;
+revoke select on public.requests from authenticated;
+
+grant select (id, name, age, gender, blood_group, city, weight,
+              last_donation_date, created_at, available_to_donate, auth_id)
+  on public.donors to authenticated;
+
+-- The peer-to-peer columns (requester_id, city, fulfilled_by, needed_by) are
+-- added by supabase_p2p_migration.sql, which may not have run yet — a grant
+-- naming a column that does not exist aborts the file. So the base columns
+-- are granted unconditionally and the P2P ones only when they are present.
+grant select (id, patient_name, hospital, blood_group, units_needed, urgency,
+              status, created_at)
+  on public.requests to authenticated;
+
+do $grants$
+declare
+  cols text;
+begin
+  select string_agg(quote_ident(c), ', ')
+    into cols
+    from unnest(array['requester_id', 'city', 'fulfilled_by', 'needed_by']) as c
+   where exists (
+     select 1
+       from information_schema.columns
+      where table_schema = 'public'
+        and table_name   = 'requests'
+        and column_name  = c
+   );
+  if cols is not null then
+    execute 'grant select (' || cols || ') on public.requests to authenticated';
+  end if;
+end $grants$;
+
+-- The donor's own phone, or any donor's phone for a manager; NULL otherwise.
+create or replace function public.donor_phone(p_donor_id bigint)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select d.phone
+    from public.donors d
+   where d.id = p_donor_id
+     and (public.is_manager() or d.auth_id = auth.uid());
+$$;
+
+-- The number typed on a request, for its requester or a manager; NULL
+-- otherwise (the app then says the contact is shared after an offer is
+-- accepted, which is when contact_details opens up).
+--
+-- plpgsql with one fixed statement on purpose: a SQL-language function is
+-- parsed and column-checked when it is created, and `requests.requester_id`
+-- only exists once supabase_p2p_migration.sql has run. This body is checked
+-- on first call instead, so the file applies in either order. The statement
+-- is a constant string; the id is a bound parameter.
+create or replace function public.request_contact(p_request_id bigint)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_contact text;
+begin
+  execute
+    'select r.contact from public.requests r
+      where r.id = $1
+        and (public.is_manager() or r.requester_id = auth.uid())'
+    into v_contact
+    using p_request_id;
+  return v_contact;
+end;
+$$;
+
+revoke all on function public.donor_phone(bigint)     from public;
+revoke all on function public.request_contact(bigint) from public;
+grant execute on function public.donor_phone(bigint)     to authenticated;
+grant execute on function public.request_contact(bigint) to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- To undo: drop the policies above and re-create "Authenticated full access"
--- from supabase_auth_policies.sql.
+-- from supabase_auth_policies.sql. That does NOT undo the column grants —
+-- restore them with:
+--   grant select on public.donors, public.requests to authenticated;
+--   drop function public.donor_phone(bigint);
+--   drop function public.request_contact(bigint);
 -- ---------------------------------------------------------------------------

@@ -48,14 +48,31 @@ object SupabaseSync {
     /** Downloads all donors and merges them into SQLite. False on failure. */
     fun pullDonors(db: DbHelper): Boolean {
         val donors = SupabaseClient.getDonors() ?: return false
-        for (d in donors) db.upsertDonor(d)
+        for (d in donors) {
+            // The list query carries no phone: that column is not readable.
+            // Keep the number this phone already knows only when it is the
+            // viewer's own row or the viewer is the manager — for everyone
+            // else the cached copy is cleared, so a number learned under the
+            // old permissive policies does not linger.
+            val local = db.getDonor(d.id)
+            val keep = local != null && local.phone.isNotBlank() &&
+                (Session.isManager || (local.authId != null && local.authId == Session.authUserId))
+            db.upsertDonor(if (keep) d.copy(phone = local!!.phone) else d)
+        }
         return true
     }
 
     /** Downloads all requests and merges them into SQLite. False on failure. */
     fun pullRequests(db: DbHelper): Boolean {
         val requests = SupabaseClient.getRequests() ?: return false
-        for (r in requests) db.upsertRequest(r)
+        for (r in requests) {
+            // Same rule as the donor phone: keep a cached contact number only
+            // for your own request, or when you are the manager.
+            val local = db.getRequest(r.id)
+            val keep = local != null && local.contact.isNotBlank() &&
+                (Session.isManager || (local.requesterId != null && local.requesterId == Session.authUserId))
+            db.upsertRequest(if (keep) r.copy(contact = local!!.contact) else r)
+        }
         return true
     }
 

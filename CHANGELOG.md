@@ -3,6 +3,44 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.7 — unreleased
+
+Ships after 1.6 (it needs a new versionCode). Server-side privacy work, plus
+the client changes it requires.
+
+### Phone numbers are no longer readable columns
+
+- `donors.phone` and `requests.contact` are out of the `authenticated` SELECT
+  grant. The app asks for explicit columns and reads a number through
+  `donor_phone()` / `request_contact()`, which answer only for the owner and
+  the manager. A signed-in user who is not a manager can no longer read
+  anyone else's phone number — not from the donor list, the request screen, or
+  the API. What they can still read about other donors: name, blood group,
+  city, age, gender, weight, last-donation date and availability.
+- The donor list shows city and age only; the donor detail shows
+  "Phone: hidden" unless the number is yours or you are the manager; a
+  request shows "Contact: shared after you accept an offer" until it is
+  accepted.
+- Cached numbers learned under the old permissive policies are dropped on the
+  next sync unless the row is your own (or you are the manager).
+
+### Registration works under the final policies
+
+- New `"donors insert own"` policy: a donor may create their own profile row
+  (`auth_id = auth.uid()`) and nothing else — not a row for another auth id,
+  not one with no auth id. Without it, registration's profile insert was
+  rejected as soon as the permissive policies were replaced, and a donor who
+  could not create a profile could never offer to help.
+
+### Policy files are order-independent
+
+- `supabase_role_policies.sql` and `supabase_p2p_policies.sql` can be applied
+  in either order, and either can be re-run. Both end in the same 27-policy
+  state, with `"requests write manager"` gone once the P2P policies are in.
+- New `supabase_verify_policies.sql` prints `ALL POLICIES OK` or one
+  `PROBLEM` row per mismatch. CI runs it after the forward pass and again
+  after re-applying the two policy files in the opposite order.
+
 ## 1.6 — unreleased
 
 Not tagged or published yet. This section is the source of the release notes:

@@ -765,6 +765,149 @@ rollback to savepoint t12_control;
 rollback;
 
 -- ---------------------------------------------------------------------------
+-- T13. A donor may create their OWN profile (the registration path) and
+--      nothing else: not a profile for another auth_id, and not one with no
+--      auth_id at all. T12 covers the third case — a user whose MANAGER claim
+--      is only in user_metadata — and still holds, because that insert carries
+--      no auth_id.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('22222222-2222-2222-2222-222222222222', 'ci.requester2@example.test', '{}')
+on conflict (id) do nothing;
+
+set local role authenticated;
+set local "request.jwt.claims" =
+  '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+
+-- own auth_id: allowed — this is what RegisterActivity does
+do $runner$ begin
+  insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id)
+  values ('CI Self Registered', 30, 'Male', 'A+', '0300-0000011', 'X', 70,
+          '11111111-1111-1111-1111-111111111111');
+  if (select count(*) from donors where name = 'CI Self Registered') <> 1 then
+    raise exception 'CI-TEST FAIL: a donor could not create their own profile';
+  end if;
+end $runner$;
+
+-- somebody else's auth_id: refused with an RLS denial, not something else
+do $runner$ begin
+  begin
+    insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id)
+    values ('CI Stolen Profile', 30, 'Male', 'A+', '0300-0000012', 'X', 70,
+            '22222222-2222-2222-2222-222222222222');
+    raise exception 'CI-TEST FAIL: a user created a donor profile for someone else';
+  exception
+    when insufficient_privilege then null;   -- expected
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: foreign-auth_id insert refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+end $runner$;
+
+-- no auth_id at all: refused (NULL is not "their own id")
+do $runner$ begin
+  begin
+    insert into donors (name, age, gender, blood_group, phone, city, weight)
+    values ('CI No Auth Id', 30, 'Male', 'A+', '0300-0000013', 'X', 70);
+    raise exception 'CI-TEST FAIL: a user created a donor row with no auth_id';
+  exception
+    when insufficient_privilege then null;   -- expected
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: null-auth_id insert refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T14. Phones are not a column anyone may read. A non-manager cannot select
+--      donors.phone or requests.contact at all (42501, from the column
+--      privileges in supabase_role_policies.sql), and the two SECURITY DEFINER
+--      helpers return NULL for other people's numbers while still answering
+--      for the owner and the manager.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('22222222-2222-2222-2222-222222222222', 'ci.requester2@example.test', '{}'),
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test',     '{}'),
+  ('55555555-5555-5555-5555-555555555555', 'manager@blood.local',        '{"role":"MANAGER"}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id)
+values ('CI Phone Donor', 30, 'Male', 'A+', '0300-1111111', 'Cividale', 70,
+        '33333333-3333-3333-3333-333333333333');
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values
+  ('CI Phone Req Own',   'H', 'A+', 1, 'Normal', '0300-2222222', 'Pending',
+   '11111111-1111-1111-1111-111111111111', 'Cividale'),
+  ('CI Phone Req Other', 'H', 'A+', 1, 'Normal', '0300-3333333', 'Pending',
+   '22222222-2222-2222-2222-222222222222', 'Cividale');
+
+set local role authenticated;
+set local "request.jwt.claims" =
+  '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+
+-- the columns themselves are unreadable
+do $runner$ begin
+  begin
+    perform 1 from donors where phone is not null;
+    raise exception 'CI-TEST FAIL: a non-manager read donors.phone';
+  exception
+    when insufficient_privilege then null;   -- expected
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: donors.phone refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+  begin
+    perform 1 from requests where contact is not null;
+    raise exception 'CI-TEST FAIL: a non-manager read requests.contact';
+  exception
+    when insufficient_privilege then null;   -- expected
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: requests.contact refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+  -- the directory itself must still work
+  if (select count(*) from donors where city = 'Cividale') < 1 then
+    raise exception 'CI-TEST FAIL: the donor directory became unreadable';
+  end if;
+  if (select count(*) from requests) < 2 then
+    raise exception 'CI-TEST FAIL: requests became unreadable';
+  end if;
+end $runner$;
+
+-- the helpers answer for yourself, and stay silent about everyone else
+do $runner$ declare v text; begin
+  if public.donor_phone((select id from donors where name = 'CI Phone Donor')) is not null then
+    raise exception 'CI-TEST FAIL: donor_phone() revealed another donor''s number';
+  end if;
+  if public.request_contact((select id from requests where patient_name = 'CI Phone Req Other')) is not null then
+    raise exception 'CI-TEST FAIL: request_contact() revealed someone else''s contact number';
+  end if;
+  v := public.request_contact((select id from requests where patient_name = 'CI Phone Req Own'));
+  if v is distinct from '0300-2222222' then
+    raise exception 'CI-TEST FAIL: request_contact() withheld the requester''s own contact number (%)', coalesce(v, 'NULL');
+  end if;
+end $runner$;
+
+-- the manager sees both
+set local "request.jwt.claims" =
+  '{"sub":"55555555-5555-5555-5555-555555555555","app_metadata":{"role":"MANAGER"}}';
+do $runner$ begin
+  if public.donor_phone((select id from donors where name = 'CI Phone Donor')) is distinct from '0300-1111111' then
+    raise exception 'CI-TEST FAIL: the manager cannot read a donor phone';
+  end if;
+  if public.request_contact((select id from requests where patient_name = 'CI Phone Req Other')) is distinct from '0300-3333333' then
+    raise exception 'CI-TEST FAIL: the manager cannot read a request contact number';
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
 -- The job must reach THIS line. If any check failed, psql already died on the
 -- raised CI-TEST FAIL error before printing this.
 -- ---------------------------------------------------------------------------

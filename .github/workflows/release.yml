@@ -121,6 +121,9 @@ jobs:
             update.json
           prerelease: true
           generate_release_notes: false
+          # EDIT THIS BODY FOR EVERY RELEASE. It is a template, not a
+          # generator: a tag published without touching it would ship the
+          # previous version's notes under the new version number.
           body: |
             **Blood Donation 1.6**
 

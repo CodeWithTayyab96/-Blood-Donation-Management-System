@@ -6,9 +6,11 @@ previous one is checked. The app keeps working between stages: whatever a
 stage's server side is missing is handled silently (see
 [Stage resilience](#stage-resilience-what-the-app-does-when-a-stage-is-missing)).
 
-- **Stage A — peer-to-peer SQL + the manager role claim.** After A the app is
-  fully usable by humans: requests, offers, moderation. Everything A adds is
-  just absent server features later.
+- **Stage A — finish the security model.** Peer-to-peer SQL and the manager
+  claim are already applied on this project; what is missing is
+  `supabase_role_policies.sql`, which is what actually enforces the
+  manager/donor split and stops anyone reading other people's phone numbers.
+  After A the app is fully usable by humans: requests, offers, moderation.
 - **Stage B — FCM / Firebase push.** After B alerts arrive in seconds when
   the app is closed.
 - **Stage C — the AI helper.** Optional nicety; leave it last.
@@ -59,212 +61,131 @@ listed at the end of each stage the runbook never depends on it.
 
 ---
 
-# Stage A — peer-to-peer SQL + manager role claim
+# Stage A — finish the security model
 
-## A1. `supabase_migration.sql`
+## A0. Where your project is right now
 
-Tables `donors`, `donations`, `requests`, `stock` + 8 stock groups + 5 demo
-donors. Re-runnable (`if not exists` throughout).
+| File | State on your project | How it shows |
+|---|---|---|
+| `supabase_migration.sql` | applied | the four base tables exist |
+| `supabase_auth_migration.sql` | applied | `donors.auth_id` exists |
+| `fix_stock_rpc.sql` | applied (assumed) | the fulfil path needs `adjust_stock()` |
+| `supabase_auth_policies.sql` | applied | `"Authenticated full access"` exists on the base tables |
+| `supabase_p2p_migration.sql` | applied | `offers`, `contact_details`, `reports` exist |
+| `supabase_p2p_policies.sql` | applied | the `contact_details` policies exist |
+| `supabase_role_policies.sql` | **NOT applied** | `"Authenticated full access"` is still there |
+| Stage B (push) | not applied | no `device_tokens` table |
+| Stage C (AI) | not applied | no `ai_coach_usage` table |
 
-**Verify**
+Two consequences while the role file is missing, and both are invisible in the
+app: every signed-in account can write every row, and every signed-in account
+can read **every donor's phone number and every request's contact number**.
+The screens look correct because the app is doing the right thing — the
+database simply is not enforcing it.
+
+## A1. Prerequisite — the manager claim
+
+The role file drops the permissive policies. If no account carries the claim
+when it runs, every account becomes read-only. Check first:
+
 ```sql
-select count(*) from stock;    -- 8
-select count(*) from donors;   -- 5 (10 if you ran this project's CSV backup stage before)
-```
-**If it fails:** "already exists" → already applied, continue. Anything else
-→ the SQL editor prints the exact line; every statement here is plain DDL.
-
-## A2. `supabase_auth_migration.sql`
-
-Adds `donors.auth_id` + its unique index.
-
-**Verify**
-```sql
-select column_name from information_schema.columns
- where table_name = 'donors' and column_name = 'auth_id';   -- 1 row
-```
-
-## A3. `fix_stock_rpc.sql`
-
-The atomic `adjust_stock()` function. Re-runnable.
-
-**Verify**
-```sql
-select public.adjust_stock('O+', 0);   -- returns a number, no error
+select email, raw_app_meta_data ->> 'role' as role
+  from auth.users where email = 'tayyabuq1@gmail.com';
 ```
 
-## A4. `supabase_auth_policies.sql`
-
-RLS on the four tables + blanket access for any signed-in session. The
-per-role file in A6 tightens this — until it is applied, every signed-in user
-can write every row (the app's own UI apart). That is why A5/A6 must be done
-in the same sitting.
-
-**Verify**
-```sql
-select tablename, rowsecurity from pg_tables
- where schemaname = 'public'
- order by tablename;                    -- donors/donations/requests/stock: rowsecurity = t
-```
-
-## A5. Create the manager account in Supabase (not through the app)
-
-Dashboard → Authentication → **Users** → *Add user*: email
-**`tayyabuq1@gmail.com`**, a password YOU choose (store it in your password
-manager), and tick **Auto Confirm User**.
-
-Do **not** create this account with the app's "Register as a Donor" screen.
-Two reasons: that screen always creates a **donor profile** for the account,
-and the phone already carries a seeded local row for this address with role
-MANAGER, so registration refuses it with "Email already registered on this
-phone".
-
-The app matches this address to that seeded local row, and the local row is
-what gives the account the Manager UI. The server-side role is the claim in
-A6. Both must use the same address — if you change one, change the other
-(`DbHelper.seedManager` in the app, and STEP 1 in `supabase_role_policies.sql`).
-
-**Verify:** exactly one row, with `email_confirmed_at` set:
-```sql
-select id, email, email_confirmed_at from auth.users
- where email = 'tayyabuq1@gmail.com';
-```
-
-## A6. Set the manager role claim — THEN verify — then policies
-
-### A6.1 Creating the account is not enough: the role lives in app_metadata
-
-Run in the SQL editor (you can also use the alternative below):
+**Pass:** one row, `role = MANAGER`. **If NULL:** set it and re-check, do not
+continue until this passes:
 
 ```sql
 update auth.users
-   set raw_app_meta_data =
-         coalesce(raw_app_meta_data, '{}'::jsonb)
-         || jsonb_build_object('role', 'MANAGER')
+   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+                           || jsonb_build_object('role', 'MANAGER')
  where email = 'tayyabuq1@gmail.com';
 ```
 
-**Alternative without SQL:** Dashboard → Authentication → **Users** → click
-`tayyabuq1@gmail.com` → find `raw_app_meta_data` (usually shown as a JSON
-`app_metadata` field) → edit it to exactly:
-```json
-{ "role": "MANAGER" }
-```
-Save. ( Capitals matter: MANAGER, not "manager" or "Manager".)
+## A2. Install the new APK BEFORE running the SQL
 
-### A6.2 Verify the claim BEFORE running the policies
+Install an APK built **from this commit or later** on the phone you test
+with. v1.6 — the pre-release already on GitHub — predates the column change:
+it asks PostgREST for `select=*` on `donors` and `requests`, which the new
+column privileges reject with 42501, and the app then quietly falls back to its
+local copy. It looks like "sync stopped" rather than an error. Any build from
+the commit that added `donor_phone()` onwards asks for explicit columns and is
+unaffected.
 
-The policies read `auth.jwt() -> 'app_metadata' ->> 'role'`. A policy file
-applied while the claim is missing or wrongly spelled turns EVERY account
-read-only. So:
+## A3. Run `supabase_role_policies.sql` — the only file you are missing
 
-```sql
-select email,
-       raw_app_meta_data ->> 'role' as role
-  from auth.users
- where email = 'tayyabuq1@gmail.com';
-```
+Paste the whole file into the SQL editor and run it. It is re-runnable, and it
+is order-independent with `supabase_p2p_policies.sql` (either order gives the
+same final policy list). What it changes:
 
-**Pass condition:** exactly one row, and `role` = `MANAGER`.
-**If the role column is NULL or wrongly spelled (e.g. 'manager'):** fix the
-A6.1 update until this query passes. Do not run the policy file until it does.
+- creates `is_manager()` (reads `app_metadata.role` only);
+- replaces the four `"Authenticated full access"` policies with the
+  manager/donor set on `donors`, `donations`, `requests`, `stock`;
+- adds `"donors insert own"`, so a new donor's registration can create its own
+  profile row — without it registration's profile insert is rejected;
+- removes `donors.phone` and `requests.contact` from the `authenticated`
+  SELECT grant and adds `donor_phone()` / `request_contact()`, which answer
+  only for the owner and the manager;
+- leaves `"requests write manager"` out when the P2P policies are already
+  installed (they own that table now), so the final list does not depend on
+  the order the two files ran in.
 
-### A6.3 Sign out and back in on the phone
+## A4. Verify — `supabase_verify_policies.sql`
 
-An access token issued before A6.1 carries NO role — the app treats that
-session as a donor until it refreshes. In the installed APK: log out, log
-back in.
+Paste the whole file into the SQL editor. It is read-only and safe to run any
+number of times. **Expected output: exactly one row, `ALL POLICIES OK`.**
 
-**Then repeat the A6.2 check ON THE PHONE:** after A7 the manager must be
-able to add a donor (A7 makes that manager-only). If the phone refuses, the
-old token is still cached — sign out/in once more.
+Tables that do not exist yet are skipped, so the missing Stage B/C tables are
+not reported. If you see `PROBLEM` rows instead, they mean:
 
-## A7. `supabase_role_policies.sql` (STEP 2 of the file — the policies)
+| PROBLEM row | What happened | Fix |
+|---|---|---|
+| `policy <name> on <table>: MISSING` | the file that creates it never ran (or died part-way) | run that file, re-verify |
+| `policy Authenticated full access on <table>: UNEXPECTED` | `supabase_role_policies.sql` did not run, or failed before its DROP block | re-run it; the editor shows the failing line |
+| `policy requests write manager on requests: UNEXPECTED` | `supabase_p2p_policies.sql` has not been applied since the role file | re-run `supabase_p2p_policies.sql` (it is re-runnable) |
+| `authenticated can still SELECT donors.phone` / `requests.contact` | the column-privilege block at the end of the role file did not run | re-run the role file, re-verify |
+| `row level security is OFF on <table>` | the migration's `enable row level security` was rolled back | run `alter table <table> enable row level security;` |
+| `missing function public.donor_phone(bigint)` | same cause as the phone row | re-run the role file |
 
-Re-runnable (drops-then-creates every policy). safe to run only AFTER A6.2
-passed.
+## A5. Sign out and back in on the phone
 
-**Verify**
-```sql
-select count(*) from pg_policies
- where schemaname = 'public'
-   and policyname = 'donors update own';                        -- 1
-select count(*) from pg_policies
- where schemaname = 'public'
-   and policyname in ('donors read', 'donations read', 'requests read',
-                      'stock read');                            -- 4
-```
-
-## A8. `supabase_p2p_migration.sql`
-
-Requests/donors gain P2P columns; `offers`, `contact_details`, `reports`
-tables; the 3-open-request cap; `complete_peer_donation()`. Additive —
-nothing an older APK produced stops working yet (A9 is what rejects them).
-
-**Verify**
-```sql
-select count(*) from pg_tables
- where schemaname = 'public'
-   and tablename in ('offers', 'contact_details', 'reports');   -- 3
-select count(*) from pg_policies
- where schemaname = 'public'
-   and policyname = 'requests insert owner or manager';         -- 0 until A9!
-```
-
-**If it fails:** duplicate (donor, date) donations rows skip the unique
-index deliberately — the file prints a NOTICE telling you which table; dedupe
-then re-run.
-
-## A9. `supabase_p2p_policies.sql` — deploy the NEW APK to the phone FIRST
-
-**This is the enforcing step.** After it, older APKs can no longer write the
-new tables. Deploy the current APK (GitHub Actions builds it on every push —
-green required), install it on the phone you will test with, THEN run this
-file.
-
-**Verify**
-```sql
-select count(*) from pg_policies
- where schemaname = 'public'
-   and policyname in ('offers read', 'offers insert',
-                      'offers update donor own', 'offers update requester own',
-                      'contact_details read own manager or accepted party',
-                      'contact_details insert own', 'contact_details update own',
-                      'reports insert', 'reports read manager');   -- 9
-```
+The access token issued before A3 carries no role, so the app treats that
+session as a donor until it refreshes. Log out and back in, then re-run the A4
+query if you want the database side confirmed again.
 
 ## Stage A — STOP AND TEST ON THE PHONE
 
-Before Stage B, all of this must work in the installed APK:
+1. **Manager** — sign in as `tayyabuq1@gmail.com`: the dashboard says Manager,
+   the Moderation button is visible, and adding a donor succeeds. If the
+   "Offline-only session" warning is showing, the sign-in did not carry a
+   token — sign out and in again.
+2. **Requester create / cap** — a non-manager account posts three requests; a
+   fourth is refused with the "at most 3 open requests" message.
+3. **Offers** — a donor account sees a request it can give to, taps *I can
+   donate*; the requester sees first name / group / city and Accepts.
+4. **Phone numbers stay hidden** — before accepting, the request shows
+   `Contact: shared after you accept an offer` and the donor list shows no
+   numbers at all. After accepting, both sides see exactly one number each.
+   The manager sees numbers everywhere; a normal donor sees only their own.
+5. **Registration** — register a brand-new donor. It must NOT say "the donor
+   profile did not sync"; the row must appear in `donors` with an `auth_id`.
+   (This is what `"donors insert own"` is for.)
+6. **Contact self-service** — that new donor saves their own phone on *My
+   Profile* once.
+7. **Moderation** — the manager can cancel a reported request; a normal donor
+   cannot open that screen.
+8. **Availability** — a donor switches availability off; offering is refused;
+   switch it back on.
+9. **No data hole:** if anything except push/AI is broken, stop. Do not start
+   Stage B.
 
-1. **Requester create / cap** — a non-manager account posts one request, then
-   a second, then a third, then a fourth gets refused with the "at most 3
-   open requests" message.
-2. **Offers** — a separate donor account sees the request it can actually
-   give to (compatible group, nearest city first), taps *I can donate*;
-   the requester sees the offer (first name, group, city) and Accepts.
-3. **Phone numbers never leak** — before accepting, NO phone number (any
-   column!) is visible anywhere in the app; after accepting, both sides see
-   exactly one phone each.
-4. **Contact self-service** — a new donor taps *My Profile* and can save their
-   own phone number once (signed only to themselves).
-5. **Moderation** — the manager sees the report screen, can cancel a reported
-   request, and normal donors CANNOT see that screen.
-6. **Availability** — a donor switches their availability off; offers are
-   refused for it; switch it back on.
-7. **No data hole:** if anything EXCEPT push notifications / AI is broken —
-   STOP. Do not go to Stage B. The Stage A SQL and the APK are a pair; CI
-   runs both green, so a red phone test usually means either (a) A9 was run
-   before the new APK was installed — install the APK, continue — or (b) the
-   step's verify function above was skipped. Fix A first.
-8. Update your CSV backup: the three new tables (`offers`,
-   `contact_details`, `reports`) now exist — export them like the rest.
-
-**Rollback (still in Stage A; destroys P2P data only):**
-`supabase_p2p_migration_rollback.sql` — note it also drops the A9 policies;
-re-run `supabase_role_policies.sql` after it if you keep the role setup from
-A7, and re-run `supabase_p2p_migration.sql` + `supabase_p2p_policies.sql`
-when you go forward again.
+**Rollback (Stage A only):** `supabase_p2p_migration_rollback.sql` drops the
+P2P tables and their policies; the column privileges and the two helper
+functions are undone with the four lines at the end of
+`supabase_role_policies.sql`. Re-run `supabase_role_policies.sql` after a P2P
+rollback if you keep the role setup, and re-run `supabase_p2p_migration.sql` +
+`supabase_p2p_policies.sql` when you go forward again.
 
 ---
 
@@ -469,7 +390,7 @@ Two lock-outs are possible, and neither one loses data.
 
 ### Locked out #1 — "everything is read-only" (missing manager claim)
 
-Symptom: after A7 the manager can still browse but cannot add donors,
+Symptom: after A3 the manager can still browse but cannot add donors,
 record donations, fulfil or cancel anything.
 
 1. Causes: the claim was never set (A6 skipped), the role string is a
@@ -480,7 +401,7 @@ record donations, fulfil or cancel anything.
    select raw_app_meta_data ->> 'role' as role, updated_at
      from auth.users where email = 'tayyabuq1@gmail.com';
    ```
-   If NULL or wrong, re-run the A6.1 update until this returns `MANAGER`.
+   If NULL or wrong, re-run the A1 update until this returns `MANAGER`.
 3. Then **sign out and sign in again on the phone** — the new session picks
    the claim up. Do NOT touch runbook files here; the data behind this lock-out
    is a session token, not the database.
@@ -522,14 +443,14 @@ create policy "Authenticated full access" on stock
 
 Every row is intact (verify with the CSV row counts from Before you start) —
 you gave up only the role-split enforcement, temporarily. Then walk the
-Runbook from A6 again: A6.1/A6.2 (claim), A7 (`supabase_role_policies.sql`),
-A9 only if you ALSO want the P2P policies — every file in this runbook is
-safe to re-run from the top.
+Runbook from A1 again: A1 (the claim), A3 (`supabase_role_policies.sql`),
+then A4 (`supabase_verify_policies.sql`) must say `ALL POLICIES OK` — every
+file in this runbook is safe to re-run from the top.
 
 ### Locked out #3 — "I want the old app back"
 
 `supabase_p2p_migration_rollback.sql` (then `supabase_role_policies.sql`, if
-you had completed A7) puts the schema back to pre-P2P and the old APK keeps
+you had completed A3) puts the schema back to pre-P2P and the old APK keeps
 working; later stages can be rolled back in reverse — each rollback file is
 named next to the step that created its objects.
 

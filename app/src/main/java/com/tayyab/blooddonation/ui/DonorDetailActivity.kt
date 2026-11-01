@@ -125,7 +125,10 @@ class DonorDetailActivity : AppCompatActivity() {
             "Age: ${donor.age} years\n" +
             "Gender: ${donor.gender}\n" +
             "Weight: ${donor.weightKg} kg\n" +
-            "Phone: ${donor.phone}\n" +
+            // The phone is not a readable column: it is fetched by the pull
+            // above when this account may see it (the manager, or the donor
+            // themselves), and blank means "not yours to see".
+            "Phone: ${donor.phone.ifBlank { "hidden" }}\n" +
             "City: ${donor.city}\n" +
             "Last donation: ${donor.lastDonationDate ?: "Never"}"
         val (eligible, reason) = BloodCompatibility.eligibility(donor)

@@ -54,6 +54,23 @@ drop policy if exists "requests write manager" on requests;
 drop policy if exists "requests insert owner or manager" on requests;
 drop policy if exists "requests update owner or manager" on requests;
 drop policy if exists "requests delete owner or manager" on requests;
+drop policy if exists "offers read" on offers;
+drop policy if exists "offers insert" on offers;
+drop policy if exists "offers update donor own" on offers;
+drop policy if exists "offers update requester own" on offers;
+drop policy if exists "contact_details read own manager or accepted party" on contact_details;
+drop policy if exists "contact_details insert own" on contact_details;
+drop policy if exists "contact_details update own" on contact_details;
+drop policy if exists "reports insert" on reports;
+drop policy if exists "reports read manager" on reports;
+
+-- The column privileges in supabase_role_policies.sql cover the original
+-- columns only, and grant these four only when they already exist. This file
+-- always runs after the migration that creates them, so granting them here as
+-- well is what makes the two files order-independent: whichever one runs
+-- first, the columns end up readable. Grants are idempotent.
+grant select (requester_id, city, fulfilled_by, needed_by)
+  on public.requests to authenticated;
 
 create policy "requests insert owner or manager" on requests
   for insert to authenticated

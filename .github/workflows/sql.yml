@@ -106,6 +106,47 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/ci/tests.sql
 
+      # Two things are proved here, on the state the forward pass just built:
+      #   1. supabase_verify_policies.sql agrees the security state is the
+      #      intended one (it prints ALL POLICIES OK, or one PROBLEM row per
+      #      mismatch and this step fails).
+      #   2. Applying supabase_role_policies.sql and supabase_p2p_policies.sql
+      #      in the opposite order leaves the SAME policy list. Re-running them
+      #      the other way round is exactly that test, and it also proves both
+      #      files are re-runnable.
+      - name: Verify policies, and prove the policy files are order-independent
+        run: |
+          set -euo pipefail
+          snap() {
+            psql -v ON_ERROR_STOP=1 -qAt -c \
+              "select tablename||'|'||policyname||'|'||cmd
+                 from pg_policies where schemaname='public' order by 1"
+          }
+          check() {
+            local out
+            out=$(psql -v ON_ERROR_STOP=1 -qAt -f supabase_verify_policies.sql)
+            echo "$out"
+            if echo "$out" | grep -q '^PROBLEM'; then
+              echo "::error::Policy verification failed — see the PROBLEM rows above."
+              exit 1
+            fi
+            echo "$out" | grep -qx 'ALL POLICIES OK'
+          }
+          echo "=== order A: role policies, then p2p policies (the forward pass) ==="
+          snap > /tmp/policies_a.txt
+          check
+
+          echo "=== order B: p2p policies, then role policies ==="
+          psql -v ON_ERROR_STOP=1 -q -f supabase_p2p_policies.sql
+          psql -v ON_ERROR_STOP=1 -q -f supabase_role_policies.sql
+          snap > /tmp/policies_b.txt
+          if ! diff -u /tmp/policies_a.txt /tmp/policies_b.txt; then
+            echo "::error::The final policy list depends on the order the two files ran in."
+            exit 1
+          fi
+          check
+          echo "Both orders produce the same policy list."
+
       - name: Rollback pass (reverse order of every rollback file)
         run: |
           for f in \
@@ -144,6 +185,19 @@ jobs:
       - name: Security tests (after rollback + re-apply)
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/ci/tests.sql
+
+      # The rollback + re-apply must land on the same security state, not just
+      # a passing test file.
+      - name: Verify policies after rollback + re-apply
+        run: |
+          set -euo pipefail
+          out=$(psql -v ON_ERROR_STOP=1 -qAt -f supabase_verify_policies.sql)
+          echo "$out"
+          if echo "$out" | grep -q '^PROBLEM'; then
+            echo "::error::Policy verification failed after rollback + re-apply."
+            exit 1
+          fi
+          echo "$out" | grep -qx 'ALL POLICIES OK'
 
   deno-check:
     runs-on: ubuntu-latest

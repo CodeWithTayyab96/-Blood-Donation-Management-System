@@ -56,6 +56,23 @@ object SupabaseClient {
     private const val CONNECT_TIMEOUT_MS = 15_000
     private const val READ_TIMEOUT_MS = 30_000
 
+    /**
+     * The columns this app is allowed to read.
+     *
+     * `donors.phone` and `requests.contact` are deliberately absent: the
+     * database does not grant SELECT on them (see supabase_role_policies.sql),
+     * so `select=*` — or naming either column — fails the whole query with
+     * 42501. The two numbers are fetched one at a time through [donorPhone]
+     * and [requestContact], which the database answers only for the owner and
+     * the manager.
+     */
+    private const val DONOR_COLUMNS =
+        "id,name,age,gender,blood_group,city,weight,last_donation_date," +
+            "available_to_donate,auth_id"
+    private const val REQUEST_COLUMNS =
+        "id,patient_name,hospital,blood_group,units_needed,urgency,status," +
+            "created_at,requester_id,city,fulfilled_by,needed_by"
+
     /** True only when a project URL and a non-empty anon key were baked in. */
     val isConfigured: Boolean
         get() = BuildConfig.SUPABASE_URL.isNotBlank() &&
@@ -174,9 +191,16 @@ object SupabaseClient {
         return if (array.length() > 0) array.optJSONObject(0) else null
     }
 
-    /** POST one row; returns the server-assigned id, or null on failure. */
+    /**
+     * POST one row; returns the server-assigned id, or null on failure.
+     *
+     * `?select=id` keeps PostgREST's RETURNING clause to one column. The
+     * default `return=representation` would send the whole row back, and a
+     * `RETURNING *` needs SELECT on every column — including the phone columns
+     * `authenticated` no longer has.
+     */
     private fun insertRow(table: String, body: JSONObject): Long? {
-        val (code, response) = request("POST", "/$table", body)
+        val (code, response) = request("POST", "/$table?select=id", body)
         if (code !in 200..299 || response.isNullOrBlank()) return null
         return try {
             val parsed = JSONArray(response)
@@ -187,9 +211,15 @@ object SupabaseClient {
         }
     }
 
-    /** PATCH rows matched by [filter]; true only on a 2xx response. */
+    /**
+     * PATCH rows matched by [filter]; true only on a 2xx response.
+     *
+     * `return=minimal` because nothing reads the updated row: the default
+     * `return=representation` would make PostgREST run `RETURNING *`, which
+     * fails on tables where some columns (the phones) are not readable.
+     */
     private fun patchRows(table: String, filter: String, body: JSONObject): Boolean {
-        val (code, _) = request("PATCH", "/$table?$filter", body)
+        val (code, _) = request("PATCH", "/$table?$filter", body, "return=minimal")
         return code in 200..299
     }
 
@@ -252,7 +282,7 @@ object SupabaseClient {
     // ------------------------------------------------------------- donors
 
     fun getDonors(): List<Donor>? {
-        val array = getArray("/donors?select=*&order=name.asc") ?: return null
+        val array = getArray("/donors?select=$DONOR_COLUMNS&order=name.asc") ?: return null
         val out = ArrayList<Donor>()
         for (i in 0 until array.length()) {
             array.optJSONObject(i)?.let { out.add(donorFromJson(it)) }
@@ -261,8 +291,12 @@ object SupabaseClient {
     }
 
     fun getDonor(id: Long): Donor? {
-        val obj = firstObject("/donors?id=eq.$id&select=*") ?: return null
-        return donorFromJson(obj)
+        val obj = firstObject("/donors?id=eq.$id&select=$DONOR_COLUMNS") ?: return null
+        val donor = donorFromJson(obj)
+        // The phone is not a readable column; ask for it separately. The
+        // database answers for a manager and for the donor themselves, and
+        // stays silent for everyone else.
+        return donor.copy(phone = donorPhone(id) ?: "")
     }
 
     /**
@@ -271,8 +305,38 @@ object SupabaseClient {
      * profile (e.g. after reinstalling, when no local row exists yet).
      */
     fun getDonorByAuthId(authId: String): Donor? {
-        val obj = firstObject("/donors?auth_id=eq.$authId&select=*") ?: return null
-        return donorFromJson(obj)
+        val obj = firstObject("/donors?auth_id=eq.$authId&select=$DONOR_COLUMNS") ?: return null
+        val donor = donorFromJson(obj)
+        return donor.copy(phone = donorPhone(donor.id) ?: "")
+    }
+
+    /**
+     * The donor's phone number, or null when this account may not see it.
+     *
+     * [donors.phone] has no SELECT grant for `authenticated`; the database
+     * function decides per caller (the donor themselves, or a manager). A
+     * null therefore means "not yours to see", not "no number".
+     */
+    fun donorPhone(donorId: Long): String? {
+        val body = JSONObject().apply { put("p_donor_id", donorId) }
+        return scalarText("/rpc/donor_phone", body)
+    }
+
+    /**
+     * The contact number typed on a request, or null when this account may not
+     * see it (only the requester and a manager may).
+     */
+    fun requestContact(requestId: Long): String? {
+        val body = JSONObject().apply { put("p_request_id", requestId) }
+        return scalarText("/rpc/request_contact", body)
+    }
+
+    /** POSTs to an RPC that returns a single text value (or null). */
+    private fun scalarText(path: String, body: JSONObject): String? {
+        val (code, text) = request("POST", path, body)
+        if (code !in 200..299 || text.isNullOrBlank()) return null
+        val value = text.trim().removeSurrounding("\"")
+        return if (value.isEmpty() || value == "null") null else value
     }
 
     /**
@@ -378,7 +442,7 @@ object SupabaseClient {
     // ------------------------------------------------------------- requests
 
     fun getRequests(): List<BloodRequest>? {
-        val array = getArray("/requests?select=*&order=id.desc") ?: return null
+        val array = getArray("/requests?select=$REQUEST_COLUMNS&order=id.desc") ?: return null
         val out = ArrayList<BloodRequest>()
         for (i in 0 until array.length()) {
             array.optJSONObject(i)?.let { out.add(requestFromJson(it)) }
@@ -387,7 +451,12 @@ object SupabaseClient {
     }
 
     fun getRequest(id: Long): BloodRequest? {
-        val obj = firstObject("/requests?id=eq.$id&select=*") ?: return null
+        val obj = firstObject("/requests?id=eq.$id&select=$REQUEST_COLUMNS") ?: return null
+        val req = requestFromJson(obj)
+        // Same rule as the donor phone: the column is not readable, so the
+        // number is asked for separately and only the requester or a manager
+        // gets an answer.
+        return req.copy(contact = requestContact(id) ?: "")
         return requestFromJson(obj)
     }
 

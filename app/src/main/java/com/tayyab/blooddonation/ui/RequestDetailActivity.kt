@@ -179,7 +179,9 @@ class RequestDetailActivity : AppCompatActivity() {
             city +
             "Units needed: ${req.unitsNeeded}\n" +
             "Urgency: ${req.urgency}\n" +
-            "Contact: ${req.contact}\n" +
+            // Same rule: the requester and the manager see the number,
+            // everyone else is told when it becomes visible.
+            "Contact: ${req.contact.ifBlank { "shared after you accept an offer" }}\n" +
             "Requested on: ${displayDate(req.createdAt)}\n" +
             neededBy +
             "Status: ${req.status}\n" +

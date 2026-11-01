@@ -33,7 +33,7 @@ class DonorAdapter(
         val d = donors[pos]
         h.badge.text = d.bloodGroup
         h.name.text = d.name
-        h.meta.text = "${d.city} • ${d.age} yrs • ${d.phone}"
+        h.meta.text = "${d.city} • ${d.age} yrs"
         val (eligible, reason) = BloodCompatibility.eligibility(d)
         h.status.text = if (eligible) "✓ Eligible" else "✗ $reason"
         h.status.setTextColor(
