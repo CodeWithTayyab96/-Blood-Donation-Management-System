@@ -338,14 +338,18 @@ do $runner$ declare v_rows int; begin
 end $runner$;
 
 -- Stealing the row (moving auth_id to another account) must be refused too.
+-- The refusal must be an RLS denial (42501), not some unrelated error.
 do $runner$ begin
   begin
     update donors set auth_id = '33333333-3333-3333-3333-333333333333'
      where auth_id = '44444444-4444-4444-4444-444444444444';
     raise exception 'CI-TEST FAIL: a donor moved their profile to another auth_id';
   exception
+    when insufficient_privilege then
+      null;  -- expected: the WITH CHECK clause refused the new auth_id
     when others then
       if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: the auth_id takeover was refused with SQLSTATE % (%), not an RLS denial (42501)', sqlstate, sqlerrm;
   end;
 end $runner$;
 rollback;
@@ -446,8 +450,11 @@ do $runner$ begin
     values ('CI Anon Write', 30, 'Male', 'O-', '9', 'X', 70);
     raise exception 'CI-TEST FAIL: the anon role was able to INSERT into donors';
   exception
+    when insufficient_privilege then
+      null;  -- expected: RLS denied the write
     when others then
       if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: the anon insert was refused with SQLSTATE % (%), not an RLS denial (42501)', sqlstate, sqlerrm;
   end;
 end $runner$;
 rollback;
@@ -483,8 +490,11 @@ do $runner$ declare v_rows int; begin
   raise exception 'CI-TEST FAIL: a user registered a token FOR someone else';
 
 exception
+  when insufficient_privilege then
+    null;  -- expected: the insert for another user_id was refused by RLS
   when others then
     if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+    raise exception 'CI-TEST FAIL: the foreign-token insert was refused with SQLSTATE % (%), not an RLS denial (42501)', sqlstate, sqlerrm;
 end $runner$;
 rollback;
 
@@ -507,8 +517,11 @@ do $runner$ begin
     insert into ai_coach_usage (user_id, calls) values ('11111111-1111-1111-1111-111111111111', 999999);
     raise exception 'CI-TEST FAIL: a user can write their own ai_coach_usage quota';
   exception
+    when insufficient_privilege then
+      null;  -- expected: RLS is ON with no policies
     when others then
       if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: the quota insert was refused with SQLSTATE % (%), not an RLS denial (42501)', sqlstate, sqlerrm;
   end;
 end $runner$;
 
@@ -621,13 +634,17 @@ do $runner$ declare v_rows int; begin
   if v_rows <> 0 then
     raise exception 'CI-TEST FAIL: a donor wrote the stock table directly (% row(s))', v_rows;
   end if;
-  -- And unknown groups through the RPC are rejected, not invented.
+  -- And unknown groups through the RPC are rejected, not invented — with the
+  -- RPC's own 22023 (invalid_parameter_value), not an incidental error.
   begin
     perform public.adjust_stock('ZZ', 1);
     raise exception 'CI-TEST FAIL: adjust_stock accepted an unknown blood group';
   exception
+    when invalid_parameter_value then
+      null;  -- expected: errcode 22023 from adjust_stock
     when others then
       if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: adjust_stock rejected an unknown group with SQLSTATE % (%), not 22023', sqlstate, sqlerrm;
   end;
 end $runner$;
 rollback;
@@ -666,15 +683,19 @@ do $runner$ begin
     raise exception 'CI-TEST FAIL: is_manager() treated a user_metadata-only role as MANAGER';
   end if;
 end $runner$;
-do $runner$ declare v_rows int; begin
-  -- manager-only INSERT on donors
+do $runner$ begin
+  -- manager-only INSERT on donors. The refusal must be an RLS denial
+  -- (SQLSTATE 42501) — any other error (e.g. a constraint violation) would
+  -- make this test pass for the wrong reason.
   insert into donors (name, age, gender, blood_group, phone, city, weight)
   values ('CI Fake Manager Seed', 30, 'Male', 'O-', '2', 'X', 75);
-  delete from donors where name = 'CI Fake Manager Seed';
   raise exception 'CI-TEST FAIL: a user_metadata-only manager inserted into donors';
 exception
+  when insufficient_privilege then
+    null;  -- expected: RLS denied the insert
   when others then
     if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+    raise exception 'CI-TEST FAIL: the donors insert was refused with SQLSTATE % (%), not an RLS denial (42501)', sqlstate, sqlerrm;
 end $runner$;
 do $runner$ declare v_rows int; begin
   -- deny-by-silence checks: UPDATE/DELETE another user's request = 0 rows
@@ -712,11 +733,20 @@ end $runner$;
 
 -- Control: the SAME checks with the claim in the RIGHT place must show the
 -- manager powers exist (so the negatives above mean policy, not schema,
--- rejection). Replaces nothing: run in a fresh transaction.
-begin;
+-- rejection). This deliberately stays INSIDE T12's transaction: `set local
+-- role authenticated` is transaction-scoped, so a genuinely fresh transaction
+-- here would run as the CI superuser, bypass RLS, and make the delete below
+-- succeed no matter what the policies say — the control would prove nothing.
+-- A savepoint undoes the control's writes while keeping role + claim.
+savepoint t12_control;
 set local "request.jwt.claims" =
   '{"sub":"66666666-6666-6666-6666-666666666666","app_metadata":{"role":"MANAGER"},"user_metadata":{}}';
 do $runner$ declare v_rows int; begin
+  -- Guard: without this the control could pass vacuously if the role were
+  -- ever reset (RLS is skipped for the table owner / superuser).
+  if current_user <> 'authenticated' then
+    raise exception 'CI-TEST FAIL: the control is running as "%", not "authenticated" — RLS is bypassed and the control proves nothing', current_user;
+  end if;
   if not public.is_manager() then
     raise exception 'CI-TEST FAIL: is_manager() does not honour a genuine app_metadata MANAGER';
   end if;
@@ -730,7 +760,7 @@ do $runner$ declare v_rows int; begin
     raise exception 'CI-TEST FAIL: a real manager lost contact_details access';
   end if;
 end $runner$;
-rollback;
+rollback to savepoint t12_control;
 
 rollback;
 
