@@ -16,17 +16,13 @@
 name: SQL checks
 
 on:
+  # No `paths:` filter on purpose. "Release APK" refuses to publish unless the
+  # SQL checks for the same commit passed, so there must always BE a run for
+  # that commit — a filter would leave app-only pushes with nothing to wait
+  # for. The replay takes well under a minute.
   push:
     branches: [main]
-    paths:
-      - "**.sql"
-      - "supabase/**"
-      - ".github/workflows/sql.yml"
   pull_request:
-    paths:
-      - "**.sql"
-      - "supabase/**"
-      - ".github/workflows/sql.yml"
   workflow_dispatch:
 
 jobs:

@@ -1,88 +1,106 @@
 # Releasing
 
-Short version: **tag a commit whose `main` run is green, and the tag publishes
-a pre-release.** Test the APK from the release page, then promote it. Nothing
-reaches a phone's in-app updater until you promote.
+**You do not tag anything any more.** A push to `main` that changes the app is
+the release. The `Release APK` workflow builds it, tags it, and publishes it as
+a normal release, which becomes **Latest** — the thing the in-app updater reads.
 
-## Before you tag
+## What makes a release happen
 
-1. **Version.** `app/build.gradle.kts` must hold `versionCode` = last published
-   + 1 and `versionName` = the tag without the `v`. At the time of writing that
-   is `1.6` / `7`, so the tag is `v1.6`.
-2. **Signing secrets exist** (Settings → Secrets and variables → Actions):
-   `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEY_ALIAS`, `RELEASE_STORE_PASSWORD`,
-   `RELEASE_KEY_PASSWORD`. The workflow fails on purpose if the keystore secret
-   is missing — it will not publish an APK nobody can update over. See
-   `SIGNING.md`.
-3. **`main` is green.** Check the latest run of **Build Android APK** (it runs
-   the unit tests and builds) and **SQL checks**. Never tag a red or untested
-   commit: the release workflow only assembles — it does not run tests.
-4. **The changelog matches.** `CHANGELOG.md` has a section for this version,
-   and the release body in `.github/workflows/release.yml` carries the same
-   list in short form.
+The workflow runs on every push to `main`, then decides:
 
-## Tag and push
+| Changed in the commit | Release? |
+|---|---|
+| `app/**` | yes |
+| `build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`, `gradle/**` | yes |
+| `CHANGELOG.md` | yes |
+| only `supabase/**`, `*.sql`, `*.md`, `.github/**` | no — nothing installable changed |
+| anything, with `[skip release]` in the commit message | no |
 
-```bash
-git tag v1.6
-git push origin v1.6
+## The gates, in order
+
+1. **SQL checks for the same commit must pass.** They run in parallel; the
+   release job waits up to six minutes and then fails rather than publishing on
+   an unverified commit.
+2. **Unit tests** (`testDebugUnitTest`) must pass. They compile the app, so a
+   broken build stops here.
+3. **The tag must not exist.** Tag = `v` + `versionName`.
+4. **`versionCode` must be greater than the last release's.** The job reads the
+   previous release's `update.json` and fails with a clear message if it is not.
+   This is the rule that keeps the in-app updater sane: it compares
+   `versionCode`, and Android refuses to install a lower one over a higher.
+
+So the only thing you must do by hand is **bump both numbers and write the
+changelog, in the same commit as the change**:
+
+```kotlin
+// app/build.gradle.kts
+versionCode = 9          // always +1, never reused
+versionName = "1.8"      // the tag becomes v1.8
 ```
 
-The tag must match `versionName` exactly (`v1.6` ↔ `"1.6"`). The workflow
-compares the two and exits 1 with "Bump versionName (and versionCode) before
-tagging" if they disagree.
+```markdown
+<!-- CHANGELOG.md, at the top, newest first -->
+## 1.8 — 2026-11-02
 
-## What the tag does
-
-`.github/workflows/release.yml` runs on any `v*` tag:
-
-1. restores the keystore from `RELEASE_KEYSTORE_BASE64`;
-2. `assembleRelease` with the signing config and the Supabase properties
-   (Firebase properties too, if those secrets ever exist);
-3. deletes the keystore from the workspace;
-4. writes `update.json` with the exact `versionCode`, `versionName` and APK URL;
-5. publishes a GitHub Release with `app-release.apk` + `update.json`,
-   **marked as a pre-release**.
-
-## Promote it
-
-After the APK passes the test plan:
-
-```bash
-gh release edit v1.6 --prerelease=false
+- What changed, in plain English.
 ```
 
-(or untick **Set as a pre-release** on the release page and save).
+The workflow extracts everything under `## <versionName>` and uses it as the
+release notes. No section, no notes — the release still happens, but says so.
 
-**Why this matters:** the in-app updater reads
-`/repos/.../releases/latest`, and GitHub's `latest` endpoint ignores
-pre-releases. So while the release is a pre-release, phones on the previous
-version keep seeing the previous version and are never prompted. Promoting it
-is the single step that makes the new `versionCode` visible to them — no
-re-tag, no rebuild, no asset changes.
+## What gets published
 
-## Roll back
+- tag `v<versionName>` (annotated, pushed by the workflow);
+- a **normal** release — not a pre-release — marked **Latest**;
+- `app-release.apk` (signed) and `update.json`:
 
-Before anyone installed it:
-
-```bash
-gh release delete v1.6 --yes          # removes the release + its assets
-git push origin :refs/tags/v1.6       # deletes the tag on the remote
-git tag -d v1.6                       # ...and locally
+```json
+{ "versionName": "1.8", "versionCode": 9,
+  "apkUrl": "https://github.com/<owner>/<repo>/releases/download/v1.8/app-release.apk",
+  "tag": "v1.8" }
 ```
 
-The updater then sees the previous release again and phones stay where they
-are.
+Phones on an older version see it on their next update check (at app start and
+every ~12 hours) and are offered it by the in-app updater.
 
-**If a phone already installed it:** do **not** reuse that `versionCode` for
-the retry. Bump it (7 → 8) in the same commit as the fix. Android refuses to
-install a lower `versionCode` over a higher one, and the updater compares
-`versionCode` — reusing it leaves that phone unable to move forward cleanly.
+## Forcing a release
 
-## Notes
+Actions → **Release APK** → *Run workflow* → tick **force**. It runs the same
+gates from the current `main`, even if the last commit changed nothing
+installable. Use it after fixing a failed release without touching the app.
 
-- A pre-release is the default on purpose: a tag can never push itself onto
-  someone else's phone.
-- Deleting a tag does not delete the release, and deleting a release does not
-  delete the tag. Do both, as above.
-- Tags are the only trigger for a release. Pushing to `main` never publishes.
+## When a release fails
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Tag v1.8 already exists` | you bumped the name but not the number, or re-pushed an old commit | bump `versionName` |
+| `versionCode 8 is not greater than the last release's 8` | forgot the bump | bump `versionCode` and `versionName` |
+| `SQL checks finished 'failure'` | the SQL files are broken | fix them; the release waits for green |
+| `RELEASE_KEYSTORE_BASE64 is missing` | secrets were removed | see `SIGNING.md` |
+
+Nothing is published on a failure, so a red run costs you nothing but the
+retry.
+
+## Rolling a release back
+
+```bash
+gh release delete v1.8 --yes      # removes the release and its assets
+git push origin :refs/tags/v1.8   # deletes the tag on the remote
+git tag -d v1.8                   # ...and locally
+```
+
+**If a phone already installed it, do not reuse that `versionCode`** — bump it
+for the retry, or that phone can never move forward cleanly. Deleting a tag
+does not delete a release, and the other way round; do both, as above.
+
+## Things that are deliberately gone
+
+- **Debug APKs.** No workflow builds one. The only APK is signed with the
+  release key, because an unsigned or debug-signed build can never update an
+  installed copy in place.
+- **Manual tagging.** A `v*` tag pushed by hand no longer publishes anything;
+  `Release APK` only reacts to `main` and to a manual run of itself.
+- **Pre-releases.** Releases are normal, so they show as Latest. If you ever
+  need a build that phones must not pick up, run the workflow and immediately
+  tick *Set as a pre-release* on the result — but that is a manual step, and
+  the next normal release supersedes it.

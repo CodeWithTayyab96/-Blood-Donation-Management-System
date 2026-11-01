@@ -115,7 +115,7 @@ is "best effort" in every mode, and the app says so honestly:
 - **Sign-out stops pushes** for that device (token row deleted) and stops
   the poll for that user. The token is re-uploaded on the next sign-in.
 
-## AI helper (v1.8, Phase 4)
+## AI helper (optional, Phase 4)
 
 Two optional helpers on the signed-in user's dashboard, backed by your own
 OpenRouter key through one Edge Function. **Nothing changes until the
@@ -213,12 +213,38 @@ what changed):
 
 For a local Supabase-enabled build, pass the two properties (values
 stay on your machine / in CI secrets, never in the repo), e.g.
-`./gradlew assembleDebug -PSUPABASE_URL=... -PSUPABASE_ANON_KEY=...`.
+`./gradlew assembleRelease -PSUPABASE_URL=... -PSUPABASE_ANON_KEY=...`.
 Without them the app runs offline on SQLite, like v1.2.
+
+`assembleDebug` still exists for a quick local run, but **no debug APK is ever
+built or published**: a debug-signed build cannot update an installed copy in
+place, so the only APK that leaves CI is the signed release one.
 
 The app seeds five sample donors on first launch so every screen can be
 explored immediately; the same five donors are seeded in Supabase, so
 the online and local copies start in step.
+
+## Releases and updates
+
+**A push to `main` that changes the app is the release.** The `Release APK`
+workflow runs the SQL checks, the unit tests, builds the signed APK, tags
+`v<versionName>` and publishes a normal release that shows as **Latest**. No
+debug APKs and no manual tagging — see `RELEASING.md` for the gates and the
+rollback.
+
+The only manual step is bumping `versionCode` (+1) and `versionName` in
+`app/build.gradle.kts`, and adding a `## <versionName>` section to
+`CHANGELOG.md` in the same commit; the workflow uses that section as the
+release notes and refuses to publish if the version did not increase.
+
+**In the app**, the updater checks on launch and every ~12 hours in the
+background, posts a notification when a newer `versionCode` exists, and offers
+the update on the dashboard. The APK is downloaded with a progress dialog, its
+signing certificate is compared with the installed app's before anything is
+installed, and the install is handed to `PackageInstaller` with
+`USER_ACTION_NOT_REQUIRED`. Android still asks once for "install unknown apps"
+for this app, and on Android 8–11 the system may still show its own
+confirmation screen.
 
 ## Project structure
 
