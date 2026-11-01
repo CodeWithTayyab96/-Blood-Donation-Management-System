@@ -22,7 +22,6 @@ import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
-import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 
