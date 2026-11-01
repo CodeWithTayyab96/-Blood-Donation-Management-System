@@ -64,11 +64,12 @@ drop policy if exists "contact_details update own" on contact_details;
 drop policy if exists "reports insert" on reports;
 drop policy if exists "reports read manager" on reports;
 
--- The column privileges in supabase_role_policies.sql cover the original
--- columns only, and grant these four only when they already exist. This file
--- always runs after the migration that creates them, so granting them here as
--- well is what makes the two files order-independent: whichever one runs
--- first, the columns end up readable. Grants are idempotent.
+-- The column privileges in supabase_role_policies.sql cover the columns that
+-- existed when it ran. This file's migration adds donors.available_to_donate
+-- and four columns on requests, so granting them here is what makes the two
+-- files order-independent: whichever runs first, every column ends up
+-- readable. Grants are idempotent.
+grant select (available_to_donate) on public.donors to authenticated;
 grant select (requester_id, city, fulfilled_by, needed_by)
   on public.requests to authenticated;
 

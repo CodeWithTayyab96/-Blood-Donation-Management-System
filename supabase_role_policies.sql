@@ -178,13 +178,15 @@ revoke select on public.donors   from authenticated;
 revoke select on public.requests from authenticated;
 
 grant select (id, name, age, gender, blood_group, city, weight,
-              last_donation_date, created_at, available_to_donate, auth_id)
+              last_donation_date, created_at, auth_id)
   on public.donors to authenticated;
 
--- The peer-to-peer columns (requester_id, city, fulfilled_by, needed_by) are
--- added by supabase_p2p_migration.sql, which may not have run yet — a grant
--- naming a column that does not exist aborts the file. So the base columns
--- are granted unconditionally and the P2P ones only when they are present.
+-- Two columns arrive later than this file: donors.available_to_donate and the
+-- four P2P columns on requests come from supabase_p2p_migration.sql. A grant
+-- naming a column that does not exist aborts the file, so those are granted
+-- only when present — here, and again (unconditionally) in
+-- supabase_p2p_policies.sql, which always runs after that migration. Either
+-- order therefore ends with every column readable.
 grant select (id, patient_name, hospital, blood_group, units_needed, urgency,
               status, created_at)
   on public.requests to authenticated;
@@ -195,13 +197,21 @@ declare
 begin
   select string_agg(quote_ident(c), ', ')
     into cols
+    from unnest(array['available_to_donate']) as c
+   where exists (
+     select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'donors' and column_name = c
+   );
+  if cols is not null then
+    execute 'grant select (' || cols || ') on public.donors to authenticated';
+  end if;
+
+  select string_agg(quote_ident(c), ', ')
+    into cols
     from unnest(array['requester_id', 'city', 'fulfilled_by', 'needed_by']) as c
    where exists (
-     select 1
-       from information_schema.columns
-      where table_schema = 'public'
-        and table_name   = 'requests'
-        and column_name  = c
+     select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'requests' and column_name = c
    );
   if cols is not null then
     execute 'grant select (' || cols || ') on public.requests to authenticated';

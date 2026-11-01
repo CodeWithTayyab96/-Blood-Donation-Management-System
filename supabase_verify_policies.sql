@@ -96,6 +96,23 @@ with expected_all(tbl, pol, cmd) as (
   select 'authenticated can still SELECT requests.contact'
    where to_regclass('public.requests') is not null
      and has_column_privilege('authenticated', 'public.requests', 'contact', 'SELECT')
+), readable_problems as (
+  -- Columns the app asks for by name. If one of these loses its grant the
+  -- screen that reads it fails with 42501, so they are part of the contract
+  -- just as much as the policies are.
+  select format('authenticated cannot SELECT %s.%s', t.tbl, t.col) as problem
+    from (values ('donors',   'available_to_donate'),
+                 ('requests', 'requester_id'),
+                 ('requests', 'city'),
+                 ('requests', 'fulfilled_by'),
+                 ('requests', 'needed_by')) as t(tbl, col)
+   where exists (
+           select 1 from information_schema.columns c
+            where c.table_schema = 'public'
+              and c.table_name   = t.tbl
+              and c.column_name  = t.col
+         )
+     and not has_column_privilege('authenticated', format('public.%I', t.tbl), t.col, 'SELECT')
 ), function_problems as (
   select 'missing function public.donor_phone(bigint)' as problem
    where to_regprocedure('public.donor_phone(bigint)') is null
@@ -114,6 +131,7 @@ with expected_all(tbl, pol, cmd) as (
   select problem from policy_problems
   union all select problem from rls_problems
   union all select problem from privilege_problems
+  union all select problem from readable_problems
   union all select problem from function_problems
 )
 select 'ALL POLICIES OK' as result
