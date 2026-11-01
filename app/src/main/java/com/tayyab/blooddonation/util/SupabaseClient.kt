@@ -213,11 +213,54 @@ object SupabaseClient {
         if (isConfigured) Probe(true, "project URL and anon key are in this build")
         else Probe(false, "this build has no Supabase URL/key")
 
-    /** Reaches PostgREST at all (the root answers with the OpenAPI document). */
-    fun probeServer(): Probe {
-        val (code, _) = request("GET", "/")
-        return if (code in 200..299) Probe(true, "server answered HTTP $code")
-        else Probe(false, lastError ?: "HTTP $code")
+    /**
+     * Is the server answering at all?
+     *
+     * Deliberately not `GET /rest/v1/` any more: Supabase restricts that
+     * PostgREST root to the service_role key, which this app must never ship.
+     * `/auth/v1/health` is part of the public Auth API and accepts the anon
+     * key. Any HTTP response — 200, 401, even 500 — proves the server is
+     * reachable; only a request that never completes (no network, DNS,
+     * timeout) is a failure.
+     */
+    fun probeServer(): Probe = probeReachable(probeHealth())
+
+    /**
+     * Pure mapping from an HTTP status to the check-2 result. Kept separate
+     * from the network call so it can be unit-tested: -1 means the request
+     * never completed, any positive code is an answer from the server.
+     */
+    fun probeReachable(code: Int): Probe =
+        if (code > 0) Probe(true, "server answered HTTP $code")
+        else Probe(false, lastError ?: "no HTTP answer (code $code)")
+
+    /** GET /auth/v1/health with the anon key only. Returns the status or -1. */
+    private fun probeHealth(): Int {
+        if (!isConfigured) return -1
+        return try {
+            val url = BuildConfig.SUPABASE_URL.trimEnd('/') + "/auth/v1/health"
+            val connection = URL(url).openConnection() as HttpURLConnection
+            try {
+                connection.requestMethod = "GET"
+                connection.connectTimeout = CONNECT_TIMEOUT_MS
+                connection.readTimeout = READ_TIMEOUT_MS
+                // The anon key is the only key this app holds. It is public
+                // by design; the service_role key must never be used or
+                // stored here, and the health endpoint does not need it.
+                connection.setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                connection.setRequestProperty(
+                    "Authorization",
+                    "Bearer ${BuildConfig.SUPABASE_ANON_KEY}"
+                )
+                connection.setRequestProperty("Accept", "application/json")
+                connection.responseCode
+            } finally {
+                connection.disconnect()
+            }
+        } catch (e: Exception) {
+            lastError = "Supabase GET /auth/v1/health failed: ${e.javaClass.simpleName}"
+            -1
+        }
     }
 
     /** A real table read, with whatever session the app currently holds. */
