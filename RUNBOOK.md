@@ -419,6 +419,172 @@ local fact bank automatically.
 
 ---
 
+# Stage D — accounts: password recovery and deletion
+
+Everything in this stage is optional. Until you do it, **Forgot password?**
+fails with "no internet / server rejected" only if the emails are off, and
+**Delete my account** fails with "the account-deletion service is not set up on
+this project yet". Neither breaks anything else.
+
+## D1. Why custom SMTP comes first
+
+Supabase's built-in email service cannot serve real users:
+
+- it delivers **only to addresses that are members of your organisation**
+  (checked in the org's Team tab); every other address fails with
+  *Email address not authorized*;
+- it is rate-limited to about **2 messages per hour**, and that number can
+  change without notice;
+- it has no delivery guarantee.
+
+So configure a real SMTP server before testing either screen.
+
+### Gmail with an app password (quickest, fine for testing)
+
+1. Google Account → **Security** → turn on **2-Step Verification** (app
+   passwords do not exist without it).
+2. Security → search **App passwords** → create one → name it
+   `supabase-blood-donation` → copy the **16-character** password. It has
+   spaces in the display; paste it without them, or with them — both work,
+   but store it in your password manager now, because Google never shows it
+   again.
+3. Supabase dashboard → **Project Settings → Authentication → SMTP Settings**
+   → **Enable Custom SMTP**:
+
+   | Field | Value |
+   |---|---|
+   | Host | `smtp.gmail.com` |
+   | Port | `587` |
+   | Username | your full Gmail address |
+   | Password | the 16-character app password |
+   | Sender email | the same Gmail address |
+   | Sender name | `Blood Donation` |
+
+4. Save. Supabase imposes **30 messages per hour** on a newly configured
+   custom SMTP server; raise it at **Authentication → Rate Limits** once you
+   have confirmed delivery works.
+
+**Note:** a personal Gmail account works; a Google Workspace account only if
+the admin allows app passwords. Gmail's own daily sending ceiling also
+applies, which is why this is a testing arrangement, not a production one.
+
+### Brevo, later, with your own domain
+
+When you have a domain: create a Brevo account, verify the domain and set up
+SPF/DKIM, generate an **SMTP key**, and use host `smtp-relay.brevo.com`, port
+`587`, your Brevo login as the username and the SMTP key as the password. The
+free tier sends about 300 emails a day. Do this rather than Gmail before the
+app has real users — Gmail is not a transactional sender, and a shared Gmail
+reputation is not yours to spend.
+
+## D2. The two email templates
+
+**Authentication → Emails.** Two templates matter.
+
+**Reset password** — the app asks the user to type a 6-digit code, so the email
+must actually contain one. Make sure `{{ .Token }}` appears in the body; if the
+template only has `{{ .ConfirmationURL }}` the user gets a link and no code,
+and the second step of the screen cannot be completed. A minimal body:
+
+```html
+<h2>Reset your password</h2>
+<p>Enter this code in the app to choose a new password:</p>
+<p style="font-size:24px;letter-spacing:4px"><strong>{{ .Token }}</strong></p>
+<p>This code expires. If you did not ask for it, ignore this email.</p>
+```
+
+**Confirm signup** — `{{ .ConfirmationURL }}` is still right here (the app
+opens nothing; the user taps the link in their mail). Keep the default if you
+have not changed it. If sign-ups are failing, check that this template still
+has its confirmation URL.
+
+Supabase sends the same 200 response whether or not the address exists, so the
+app says "if that address is registered" — that is deliberate, not a bug.
+
+## D3. Rate limits, and what the user sees
+
+| Limit | Default | Where to change it |
+|---|---|---|
+| Built-in SMTP | ~2 messages/hour | — (use custom SMTP instead) |
+| Custom SMTP | 30 messages/hour | Authentication → Rate Limits |
+| Too many recovery attempts | HTTP 429 | Authentication → Rate Limits |
+
+The app turns 429 into **"Too many attempts. Wait a minute and try again."**,
+and an unconfirmed address into a dialog offering **"Resend confirmation
+email"**.
+
+## D4. Delete my account — SQL, then the function
+
+1. **Run `supabase_delete_account.sql`.** It creates
+   `public.delete_account_data(uuid)`.
+2. **Verify.** `supabase_verify_policies.sql` must still print
+   `ALL POLICIES OK`; it now also fails if that function is missing or the
+   service role cannot execute it.
+3. **Deploy the function — JWT verification stays ON** (the opposite of B4):
+   this one only ever serves signed-in users.
+
+   ```bash
+   supabase functions deploy delete-account
+   ```
+
+4. **Verify it is there, and that it refuses anonymous callers:**
+
+   ```bash
+   curl -i -X POST "https://<project-ref>.supabase.co/functions/v1/delete-account" \
+     -H "content-type: application/json" -d '{}'
+   # 401 {"error":"a signed-in user is required"}  ← correct
+   ```
+
+   A 404 means the function is not deployed; the app says so in words rather
+   than showing a status code.
+
+**Rollback:** `supabase_delete_account_rollback.sql` drops the function.
+Deleting the function does **not** restore anything already deleted — there is
+no undo for this action, which is why the app makes the user type DELETE.
+
+**What is deleted, and what is kept:**
+
+| Data | |
+|---|---|
+| profile (name, age, group, city, weight, phone) | deleted |
+| saved contact number | deleted |
+| device token | deleted |
+| offers, reports | deleted |
+| **open** (Pending) requests | deleted |
+| **fulfilled/matched** requests | **kept**, with the requester and number removed |
+| **donation history** | **kept**, attached to an anonymised "Deleted donor" row |
+
+The donor row is anonymised rather than deleted because `donations.donor_id`
+is `on delete cascade` — deleting the profile would erase the blood bank's
+record of real donations, and those rows are what the stock counts and the
+donor's milestones rest on.
+
+**Partial failure.** Step 1 (data) runs before step 2 (the Auth user). If 1
+succeeds and 2 fails, the function answers `dataDeleted: true` and the app says
+*your data was deleted but the login still exists*, wipes nothing, and keeps
+the user signed in so they can press the button again — the function is
+idempotent, so retrying finishes it and never touches another account. If
+nothing was deleted, the app says so and nothing is wiped.
+
+**Managers are refused** (403): deleting the only account that can administer
+the project would leave no one able to re-create it.
+
+## Stage D — STOP AND TEST ON THE PHONE
+
+1. **Forgot password** — sign out, tap *Forgot password?*, enter your address.
+   The email arrives with a 6-digit code; type it and a new password; sign in
+   with the new password.
+2. **Wrong code** — type `000000`: "that code did not work", and the screen
+   stays put.
+3. **Rate limit** — ask for three codes in a row: the third says "too many
+   attempts". Wait, then try again.
+4. **Delete account, dry run** — open *Settings → Delete my account* and read
+   the two lists. Press *Keep my account*; nothing should happen.
+5. **Delete account, for real** — do this on a **throwaway** donor account,
+   not your own. Type DELETE, confirm, and check afterwards: the phone is back
+   at the login screen, and in the SQL editor the donor row says
+   `Deleted donor` with a blank phone, while its donations are still there.
+
 ## If you get locked out
 
 Two lock-outs are possible, and neither one loses data.
