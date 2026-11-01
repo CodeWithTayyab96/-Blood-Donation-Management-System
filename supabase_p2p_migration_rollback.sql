@@ -39,7 +39,22 @@ drop table if exists reports;
 drop table if exists contact_details;
 
 -- ---------------------------------------------------------------------------
--- 4. Drop the new columns
+-- 4. Drop the P2P policies on requests BEFORE the columns they reference
+-- ---------------------------------------------------------------------------
+-- "requests insert/update owner or manager" test requester_id, a column this
+-- file removes four paragraphs down. Postgres happily drops a column that a
+-- policy still references — and afterwards EVERY authenticated request query
+-- dies with 'could not identify the target of the policy' / cache errors
+-- until the broken policies are removed by hand. Dropping them here is what
+-- makes the rollback complete: users keep read access ("requests read" from
+-- supabase_role_policies.sql is untouched) and managers keep full write
+-- access via that file's "requests write manager" if it is re-applied.
+drop policy if exists "requests insert owner or manager" on requests;
+drop policy if exists "requests update owner or manager" on requests;
+drop policy if exists "requests delete manager" on requests;
+
+-- ---------------------------------------------------------------------------
+-- 5. Drop the new columns
 -- ---------------------------------------------------------------------------
 alter table requests drop column if exists requester_id;
 alter table requests drop column if exists city;
@@ -53,7 +68,7 @@ alter table donors drop column if exists available_to_donate;
 -- donor profile from its Supabase Auth account.
 
 -- ---------------------------------------------------------------------------
--- 5. If you had already applied the policies
+-- 6. If you had already applied the policies
 -- ---------------------------------------------------------------------------
 -- supabase_p2p_policies.sql supersedes supabase_role_policies.sql. Rolling
 -- back the schema does not restore the old policies; if you need the pre-P2P

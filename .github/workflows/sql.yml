@@ -1,0 +1,162 @@
+# SQL checks — replays every repository SQL file against a plain Postgres 16
+# and runs the security-rule tests in supabase/ci/tests.sql. This verifies the
+# FILES, not the live project: CI never touches Supabase. Vanilla Postgres is
+# missing the platform's pieces (roles, auth schema, pg_net), so the CI-only
+# stubs in supabase/ci/ supply them.
+#
+# The plan, per the requested order:
+#   1. stubs.sql            — test-only roles + auth.uid()/auth.jwt() + grants
+#   2. forward pass         — every SQL file in the documented order
+#   3. security tests       — fail the job if any rule does not hold
+#   4. rollback pass        — every rollback file, in reverse order
+#   5. forward pass again   — prove the files still apply after a rollback
+#   6. security tests again — the rules must hold after the re-apply too
+# Plus deno check over the Edge Functions.
+
+name: SQL checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.sql"
+      - "supabase/**"
+      - ".github/workflows/sql.yml"
+  pull_request:
+    paths:
+      - "**.sql"
+      - "supabase/**"
+      - ".github/workflows/sql.yml"
+  workflow_dispatch:
+
+jobs:
+  sql-security:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGDATABASE: app
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The container is not "ready" the moment the step runner can reach it:
+      # initdb runs on first start. pg_isready is in the runner's client tools.
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready && break
+            sleep 2
+          done
+          pg_isready
+
+      - name: Apply test-only Supabase stubs (roles, auth schema, grants)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/ci/stubs.sql
+
+      # Documented order (SUPABASE_SETUP.md): the base files first, because
+      # the P2P policy file requires is_manager() and the donors policies
+      # from supabase_role_policies.sql; then the phase files.
+      - name: Forward pass 1 (documented order)
+        run: |
+          for f in \
+            supabase_migration.sql \
+            supabase_auth_migration.sql \
+            fix_stock_rpc.sql \
+            supabase_auth_policies.sql \
+            supabase_role_policies.sql \
+            supabase_p2p_migration.sql \
+            supabase_p2p_policies.sql \
+            supabase_fcm_migration.sql \
+            supabase_fcm_policies.sql \
+            supabase_ai_migration.sql ; do
+            echo "=== $f"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      # supabase_fcm_triggers.sql needs pg_net, which plain Postgres does not
+      # ship and CI cannot install. The CREATE EXTENSION line is stripped from
+      # a throwaway copy (the repo file stays untouched) and
+      # supabase/ci/pg_net_stub.sql provides a no-op net.http_post().
+      - name: pg_net stub + FCM triggers (placeholders unedited, as on CI)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/ci/pg_net_stub.sql
+          sed '/^create extension if not exists pg_net;$/d' supabase_fcm_triggers.sql \
+            | psql -v ON_ERROR_STOP=1 -q -f -
+          psql -v ON_ERROR_STOP=1 -qAtc "select public.push_url(), public.push_secret();"
+
+      - name: Security tests (forward pass)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/ci/tests.sql
+
+      - name: Rollback pass (reverse order of every rollback file)
+        run: |
+          for f in \
+            supabase_ai_migration_rollback.sql \
+            supabase_fcm_triggers_rollback.sql \
+            supabase_fcm_policies_rollback.sql \
+            supabase_fcm_migration_rollback.sql \
+            supabase_p2p_migration_rollback.sql ; do
+            echo "=== $f"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+      - name: Forward pass 2 (the files must still apply after a rollback)
+        run: |
+          # stubs.sql is NOT re-run here (roles/auth never gets rolled back;
+          # create role is not idempotent). That mirrors reality: a rollback
+          # of the feature files never removes the platform's own pieces.
+          for f in \
+            supabase_migration.sql \
+            supabase_auth_migration.sql \
+            fix_stock_rpc.sql \
+            supabase_auth_policies.sql \
+            supabase_role_policies.sql \
+            supabase_p2p_migration.sql \
+            supabase_p2p_policies.sql \
+            supabase_fcm_migration.sql \
+            supabase_fcm_policies.sql \
+            supabase_ai_migration.sql ; do
+            echo "=== $f"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+          psql -v ON_ERROR_STOP=1 -f supabase/ci/pg_net_stub.sql
+          sed '/^create extension if not exists pg_net;$/d' supabase_fcm_triggers.sql \
+            | psql -v ON_ERROR_STOP=1 -q -f -
+
+      - name: Security tests (after rollback + re-apply)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/ci/tests.sql
+
+  deno-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Type-checks both Edge Functions, including their remote imports.
+      # No secrets and no network calls are executed.
+      - name: deno check (ai-coach, push-notify)
+        run: |
+          deno check --quiet supabase/functions/ai-coach/index.ts
+          deno check --quiet supabase/functions/push-notify/index.ts

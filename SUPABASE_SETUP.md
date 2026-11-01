@@ -223,3 +223,10 @@ unaffected, and nothing in the app reads or writes `users`.
   after the FCM files. Rollback: `supabase_ai_migration_rollback.sql`.
 - Full AI setup (OpenRouter key as a Supabase secret, Edge Function
   deploy WITH verify_jwt, run order): see `AI_SETUP.md`.
+- The SQL files above are verified in CI on every push (fresh
+  Postgres, full forward pass, security-rule tests, rollback pass,
+  re-apply; `supabase/ci/` + `.github/workflows/sql.yml`). A failure
+  of that job is a release blocker — fix the SQL files, not the
+  project.
+- One page to set the whole project up by hand, in exact order, with
+  a verification check after every step: see `RUNBOOK.md`.

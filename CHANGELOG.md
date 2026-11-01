@@ -44,6 +44,16 @@ day per user for the motivation card and the function's 30/24 h cap for both
 kinds. Phase 4 requires no client secrets — the API key lives only as a
 Supabase secret.
 
+- **SQL is verified in CI** — a job on a plain Postgres 16 container replays
+  every SQL file in the documented order, runs the security-rule tests
+  (`supabase/ci/tests.sql`: contact details hidden until an offer is
+  accepted, someone else's requests/offers untouchable, availability is
+  personal, the 3-open-request cap, manager rights, anon reads nothing,
+  the quota table), then runs every rollback file in reverse, then re-applies
+  everything forward to prove the files work after a rollback. Both Edge
+  Functions get a `deno check` pass. The whole by-hand setup in one place
+  with a verification step after each step: `RUNBOOK.md`.
+
 ## Unreleased — Phase 3: push notifications (FCM)
 
 Alerts move from "the app polls every 15 minutes" to "the app is told",

@@ -1,0 +1,637 @@
+-- ============================================================================
+-- TEST-ONLY — supabase/ci/tests.sql
+-- NEVER run this on the live Supabase project (it would fail loudly there —
+-- it impersonates users by writing request.jwt.claims, which needs superuser,
+-- and its carbon-copy UUIDs are meaningless on real data).
+--
+-- Runs against the stubs in supabase/ci/stubs.sql after every repository SQL
+-- file has been applied in the documented order. Every check lives inside
+-- BEGIN ... ROLLBACK, so this file is a pure read/probe pass: it changes no
+-- data, is safe to re-run, and is run twice by CI (after the forward pass and
+-- again after rollback + re-apply).
+--
+-- Any failure raises a SQL error whose message starts with 'CI-TEST FAIL',
+-- and the job runs psql with ON_ERROR_STOP, so a failure fails the job —
+-- including a PASS that never prints (the marker select at the bottom).
+--
+-- Identity map
+--   R1 11111111-...  requester A      D1 33333333-...  donor A
+--   R2 22222222-...  requester B      D2 44444444-...  donor B
+--   M  55555555-...  the manager (raw_app_meta_data.role = MANAGER)
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- T1. contact_details is hidden until an offer is ACCEPTED — the only path
+--     that reveals a phone number. Covers both sides (requester reads donor
+--     and donor reads requester) and the negative control (a stranger).
+-- ---------------------------------------------------------------------------
+begin;
+
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('22222222-2222-2222-2222-222222222222', 'ci.requester2@example.test', '{}'),
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test',    '{}'),
+  ('44444444-4444-4444-4444-444444444444', 'ci.donor2@example.test',    '{}')
+on conflict (id) do nothing;
+
+-- Two donor profiles, the phone rows, and one open request + offer each (both
+-- still status 'Offered' / nothing accepted anywhere yet).
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id, available_to_donate)
+values
+  ('CI Donor One', 25, 'Male', 'B+', '0300-0000001', 'Cividale', 70,
+   '33333333-3333-3333-3333-333333333333', true),
+  ('CI Donor Two', 27, 'Female', 'O+', '0300-0000004', 'Cividale', 72,
+   '44444444-4444-4444-4444-444444444444', true);
+
+insert into contact_details (user_id, phone)
+values
+  ('11111111-1111-1111-1111-111111111111', '0300-0000002'),  -- requester A's phone
+  ('22222222-2222-2222-2222-222222222222', '0300-0000003'),  -- requester B's phone
+  ('33333333-3333-3333-3333-333333333333', '0300-0000001'),  -- donor A's phone
+  ('44444444-4444-4444-4444-444444444444', '0300-0000004');  -- donor B's phone
+
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values
+  ('CI Patient A', 'CI Hospital', 'B+', 1, 'Normal', 'ci', 'Pending',
+   '11111111-1111-1111-1111-111111111111', 'Cividale'),
+  ('CI Patient B', 'CI Hospital', 'O+', 1, 'Normal', 'ci', 'Pending',
+   '22222222-2222-2222-2222-222222222222', 'Cividale');
+
+insert into offers (request_id, donor_id, donor_auth_id, donor_name, donor_group, donor_city, status)
+values
+  ((select id from requests where patient_name = 'CI Patient A'),
+   (select id from donors where name = 'CI Donor One'),
+   '33333333-3333-3333-3333-333333333333', 'CI Donor One', 'B+', 'Cividale', 'Offered'),
+  ((select id from requests where patient_name = 'CI Patient B'),
+   (select id from donors where name = 'CI Donor Two'),
+   '44444444-4444-4444-4444-444444444444', 'CI Donor Two', 'O+', 'Cividale', 'Offered');
+
+-- As requester A: own contact row visible (sanity), NOBODY else's phone yet —
+-- the offer is only 'Offered'.
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  if (select count(*) from contact_details where user_id = '11111111-1111-1111-1111-111111111111') <> 1 then
+    raise exception 'CI-TEST FAIL: a user lost read access to their own contact details';
+  end if;
+  if (select count(*) from contact_details where user_id = '33333333-3333-3333-3333-333333333333') <> 0 then
+    raise exception 'CI-TEST FAIL: requester saw the donor''s phone while the offer was still OFFERED (must stay hidden until Accepted)';
+  end if;
+end $runner$;
+
+-- As requester B: same rule for the other pair.
+set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  if (select count(*) from contact_details where user_id = '44444444-4444-4444-4444-444444444444') <> 0 then
+    raise exception 'CI-TEST FAIL: unrelated requester saw a donor''s phone before any acceptance';
+  end if;
+  if (select count(*) from contact_details where user_id = '22222222-2222-2222-2222-222222222222') <> 1 then
+    raise exception 'CI-TEST FAIL: user cannot read their own contact details';
+  end if;
+end $runner$;
+
+-- Requester A accepts the offer on their own request (this must be allowed,
+-- or nothing in the app could ever progress).
+do $runner$ declare v_rows int; begin
+  update offers set status = 'Accepted'
+   where request_id in (select id from requests where requester_id = '11111111-1111-1111-1111-111111111111');
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then
+    raise exception 'CI-TEST FAIL: requester could not accept the offer on their own request (rows=%)', v_rows;
+  end if;
+end $runner$;
+
+-- After an acceptance, exactly ONE new row becomes readable per pair.
+do $runner$ begin
+  if (select count(*) from contact_details where user_id = '33333333-3333-3333-3333-333333333333') <> 1 then
+    raise exception 'CI-TEST FAIL: requester cannot read the donor''s contact details AFTER accepting the offer';
+  end if;
+  if (select count(*) from contact_details where user_id = '44444444-4444-4444-4444-444444444444') <> 0 then
+    raise exception 'CI-TEST FAIL: acceptance leaked UNRELATED contacts';
+  end if;
+end $runner$;
+
+-- Requester B accepts the offer on their request too; donor B (whose offer
+-- it is) must then see requester B's phone — the DONOR side of the same
+-- rule. Before that acceptance it must be hidden from them as well.
+set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  if (select count(*) from contact_details where user_id = '22222222-2222-2222-2222-222222222222') <> 0 then
+    raise exception 'CI-TEST FAIL: donor saw the requester''s phone before THEIR offer was accepted';
+  end if;
+end $runner$;
+set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  update offers set status = 'Accepted'
+   where request_id in (select id from requests where requester_id = '22222222-2222-2222-2222-222222222222');
+end $runner$;
+set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  if (select count(*) from contact_details where user_id = '22222222-2222-2222-2222-222222222222') <> 1 then
+    raise exception 'CI-TEST FAIL: donor cannot read the requester''s contact details AFTER their offer was accepted';
+  end if;
+  if (select count(*) from contact_details) <> 2 then
+    raise exception 'CI-TEST FAIL: donor B''s visible contacts exceeded their own pair (saw % rows)', (select count(*) from contact_details);
+  end if;
+end $runner$;
+
+-- Donor A's view must stay their own pair only: own phone + requester A.
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  if (select count(*) from contact_details) <> 2 then
+    raise exception 'CI-TEST FAIL: donor A''s visible contacts exceeded their own pair (saw % rows)', (select count(*) from contact_details);
+  end if;
+  if (select count(*) from contact_details where user_id = '44444444-4444-4444-4444-444444444444') <> 0 then
+    raise exception 'CI-TEST FAIL: donor A saw donor B''s phone';
+  end if;
+  if (select count(*) from contact_details where user_id = '22222222-2222-2222-2222-222222222222') <> 0 then
+    raise exception 'CI-TEST FAIL: donor A saw someone else''s requester phone';
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T2. The 3-open-requests cap: the 4th insert must be refused with the
+--     cap message; exactly three may exist first.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}')
+on conflict (id) do nothing;
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+
+do $runner$ begin
+  insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, requester_id, city)
+  values
+    ('CI Cap 1', 'H', 'B+', 1, 'Normal', 'ci', '11111111-1111-1111-1111-111111111111', 'X'),
+    ('CI Cap 2', 'H', 'B+', 1, 'Normal', 'ci', '11111111-1111-1111-1111-111111111111', 'X'),
+    ('CI Cap 3', 'H', 'B+', 1, 'Normal', 'ci', '11111111-1111-1111-1111-111111111111', 'X');
+  if (select count(*) from requests where requester_id = '11111111-1111-1111-1111-111111111111') <> 3 then
+    raise exception 'CI-TEST FAIL: a user could not insert three open requests';
+  end if;
+
+  begin
+    insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, requester_id, city)
+    values ('CI Cap 4', 'H', 'B+', 1, 'Normal', 'ci', '11111111-1111-1111-1111-111111111111', 'X');
+    raise exception 'CI-TEST FAIL: a 4th open request was accepted (limit is 3)';
+  exception
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      if sqlerrm not like '%Open request limit reached%' then
+        raise exception 'CI-TEST FAIL: 4th request failed with the wrong error: %', sqlerrm;
+      end if;
+  end;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T3. Another user's request is untouchable. Cancelling is an UPDATE; hard
+--     DELETE is manager-only — even the OWNER cannot erase their own.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('22222222-2222-2222-2222-222222222222', 'ci.requester2@example.test', '{}'),
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test',    '{}')
+on conflict (id) do nothing;
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values
+  ('CI Patient A', 'H', 'B+', 1, 'Normal', 'ci', 'Pending',
+   '11111111-1111-1111-1111-111111111111', 'X'),
+  ('CI Patient B', 'H', 'O+', 1, 'Normal', 'ci', 'Pending',
+   '22222222-2222-2222-2222-222222222222', 'X');
+
+-- Donor A attacks requester A's request.
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_rows int; begin
+  update requests set status = 'Cancelled' where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a user changed someone else''s request (% row(s))', v_rows;
+  end if;
+  delete from requests where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a user deleted someone else''s request (% row(s))', v_rows;
+  end if;
+end $runner$;
+
+-- Requester A cannot hard-delete their OWN request either (matches the
+-- policies: cancel by update, no personal erasure).
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_rows int; begin
+  delete from requests where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: request hard-delete is not manager-only (% row(s))', v_rows;
+  end if;
+  -- They CAN update their own (the cancel path).
+  update requests set status = 'Cancelled' where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then
+    raise exception 'CI-TEST FAIL: a user cannot cancel their OWN request (% rows)', v_rows;
+  end if;
+  -- But not someone else's.
+  update requests set status = 'Cancelled' where patient_name = 'CI Patient B';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a user changed someone else''s request (% row(s))', v_rows;
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T4. Another user's offer is untouchable; the offer table has NO delete
+--     policy at all, so even the donor who wrote it cannot erase it.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('22222222-2222-2222-2222-222222222222', 'ci.requester2@example.test', '{}'),
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test',    '{}'),
+  ('44444444-4444-4444-4444-444444444444', 'ci.donor2@example.test',    '{}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id, available_to_donate)
+values
+  ('CI Donor One', 25, 'Male', 'B+', '1', 'X', 70, '33333333-3333-3333-3333-333333333333', true),
+  ('CI Donor Two', 27, 'Male', 'O+', '2', 'X', 72, '44444444-4444-4444-4444-444444444444', true);
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values
+  ('CI Patient A', 'H', 'B+', 1, 'Normal', 'ci', 'Pending', '11111111-1111-1111-1111-111111111111', 'X'),
+  ('CI Patient B', 'H', 'O+', 1, 'Normal', 'ci', 'Pending', '22222222-2222-2222-2222-222222222222', 'X');
+insert into offers (request_id, donor_id, donor_auth_id, status)
+values
+  ((select id from requests where patient_name = 'CI Patient A'), (select id from donors where name = 'CI Donor One'), '33333333-3333-3333-3333-333333333333', 'Offered'),
+  ((select id from requests where patient_name = 'CI Patient B'), (select id from donors where name = 'CI Donor Two'), '44444444-4444-4444-4444-444444444444', 'Offered');
+
+-- Donor A attacks donor B's offer (on requester B's request).
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_rows int; begin
+  update offers set status = 'Accepted' where donor_name = 'CI Donor Two' or request_id in (select id from requests where requester_id = '22222222-2222-2222-2222-222222222222');
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a donor changed someone else''s offer (% row(s))', v_rows;
+  end if;
+  delete from offers where donor_name = 'CI Donor Two';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: offer rows are deletable by users (% row(s)) — there must be NO delete policy on offers', v_rows;
+  end if;
+end $runner$;
+
+-- Requester A attacks donor B's offer (an offer on somebody else's request).
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_rows int; begin
+  update offers set status = 'Accepted' where request_id in (select id from requests where requester_id = '22222222-2222-2222-2222-222222222222');
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a requester changed an offer on someone else''s request (% row(s))', v_rows;
+  end if;
+end $runner$;
+
+-- Sanity: requester A CAN still drive their own pair (donor A's offer).
+do $runner$ declare v_rows int; begin
+  update offers set status = 'Accepted' where donor_name = 'CI Donor One';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then
+    raise exception 'CI-TEST FAIL: the legitimate requester cannot accept the offer on their own request (% rows)', v_rows;
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T5. Availability is personal: a user can flip ONLY their own switch, and
+--     cannot hijack another profile or its auth_id.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test', '{}'),
+  ('44444444-4444-4444-4444-444444444444', 'ci.donor2@example.test', '{}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id, available_to_donate)
+values
+  ('CI Donor One', 25, 'Male', 'B+', '1', 'X', 70, '33333333-3333-3333-3333-333333333333', false),
+  ('CI Donor Two', 27, 'Male', 'O+', '2', 'X', 72, '44444444-4444-4444-4444-444444444444', false);
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_rows int; begin
+  update donors set available_to_donate = true where auth_id = '33333333-3333-3333-3333-333333333333';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 0 then
+    raise exception 'CI-TEST FAIL: a user set ANOTHER donor''s availability (% row(s))', v_rows;
+  end if;
+  update donors set available_to_donate = true where auth_id = '44444444-4444-4444-4444-444444444444';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then
+    raise exception 'CI-TEST FAIL: a donor cannot flip their OWN availability switch (% rows)', v_rows;
+  end if;
+end $runner$;
+
+-- Stealing the row (moving auth_id to another account) must be refused too.
+do $runner$ begin
+  begin
+    update donors set auth_id = '33333333-3333-3333-3333-333333333333'
+     where auth_id = '44444444-4444-4444-4444-444444444444';
+    raise exception 'CI-TEST FAIL: a donor moved their profile to another auth_id';
+  exception
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+  end;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T6. The manager sees and changes everything. Also files/reports.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('55555555-5555-5555-5555-555555555555', 'manager@blood.local', '{"role":"MANAGER"}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id)
+values ('CI Donor One', 25, 'Male', 'B+', '1', 'X', 70, '33333333-3333-3333-3333-333333333333');
+insert into contact_details (user_id, phone)
+values ('33333333-3333-3333-3333-333333333333', '0300-0000001');
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values ('CI Patient A', 'H', 'B+', 1, 'Normal', 'ci', 'Pending',
+        '11111111-1111-1111-1111-111111111111', 'X');
+insert into offers (request_id, donor_id, donor_auth_id, status)
+values ((select id from requests where patient_name = 'CI Patient A'), (select id from donors where name = 'CI Donor One'), '33333333-3333-3333-3333-333333333333', 'Accepted');
+
+-- Requester A files a report.
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  insert into reports (request_id, reporter_id, reason)
+  values ((select id from requests where patient_name = 'CI Patient A'),
+          '11111111-1111-1111-1111-111111111111', 'CI spam test');
+end $runner$;
+
+-- The manager: can read everything they just hid from users...
+set local "request.jwt.claims" = '{"sub":"55555555-5555-5555-5555-555555555555","app_metadata":{"role":"MANAGER"}}';
+do $runner$ begin
+  if (select count(*) from contact_details) < 1 then
+    raise exception 'CI-TEST FAIL: manager cannot read contact_details';
+  end if;
+  if (select count(*) from offers) < 1 then
+    raise exception 'CI-TEST FAIL: manager cannot read offers';
+  end if;
+  if (select count(*) from reports where reason = 'CI spam test') <> 1 then
+    raise exception 'CI-TEST FAIL: manager cannot read user reports';
+  end if;
+end $runner$;
+
+-- ...and can change everything: strangers' requests, donor rows, hard delete.
+do $runner$ declare v_rows int; begin
+  update requests set status = 'Cancelled' where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then raise exception 'CI-TEST FAIL: manager cannot moderate a request (% rows)', v_rows; end if;
+
+  delete from requests where patient_name = 'CI Patient A';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then raise exception 'CI-TEST FAIL: manager cannot hard-delete a request (% rows)', v_rows; end if;
+
+  update donors set weight = 71 where name = 'CI Donor One';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then raise exception 'CI-TEST FAIL: manager cannot edit a donor row (% rows)', v_rows; end if;
+
+  insert into donors (name, age, gender, blood_group, phone, city, weight)
+  values ('CI Manager Seed', 30, 'Male', 'O-', '3', 'X', 75);
+  delete from donors where name = 'CI Manager Seed';
+
+  update stock set units = 3 where blood_group = 'O-';
+  get diagnostics v_rows = row_count;
+  if v_rows <> 1 then raise exception 'CI-TEST FAIL: manager cannot adjust stock (% rows)', v_rows; end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T7. Anon (the key inside every APK): nothing, anywhere, by any means.
+-- ---------------------------------------------------------------------------
+begin;
+insert into donors (name, age, gender, blood_group, phone, city, weight, last_donation_date)
+values ('CI Anon Probe', 25, 'Male', 'B+', '1', 'X', 70, null);
+insert into contact_details (user_id, phone)
+values ('33333333-3333-3333-3333-333333333333', '0300-0000001');
+
+set local role anon;
+set local "request.jwt.claims" = '';
+do $runner$ begin
+  if (select count(*) from donors) <> 0
+    or (select count(*) from requests) <> 0
+    or (select count(*) from offers) <> 0
+    or (select count(*) from contact_details) <> 0
+    or (select count(*) from device_tokens) <> 0
+    or (select count(*) from reports) <> 0
+    or (select count(*) from ai_coach_usage) <> 0 then
+    raise exception 'CI-TEST FAIL: the anon role read rows from at least one table';
+  end if;
+end $runner$;
+
+-- And even a direct write must be refused (RLS ON, no anon policies).
+do $runner$ begin
+  begin
+    insert into donors (name, age, gender, blood_group, phone, city, weight)
+    values ('CI Anon Write', 30, 'Male', 'O-', '9', 'X', 70);
+    raise exception 'CI-TEST FAIL: the anon role was able to INSERT into donors';
+  exception
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+  end;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T8. device_tokens: a user owns exactly their own tokens.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test', '{}'),
+  ('44444444-4444-4444-4444-444444444444', 'ci.donor2@example.test', '{}')
+on conflict (id) do nothing;
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  insert into device_tokens (user_id, token)
+  values ('33333333-3333-3333-3333-333333333333', 'ci-token-a');
+end $runner$;
+
+set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_rows int; begin
+  insert into device_tokens (user_id, token)
+  values ('44444444-4444-4444-4444-444444444444', 'ci-token-b');
+
+  if (select count(*) from device_tokens where user_id = '33333333-3333-3333-3333-333333333333') <> 0 then
+    raise exception 'CI-TEST FAIL: a user read someone else''s FCM tokens (push impersonation possible)';
+  end if;
+
+  insert into device_tokens (user_id, token)
+  values ('33333333-3333-3333-3333-333333333333', 'ci-token-c');
+  raise exception 'CI-TEST FAIL: a user registered a token FOR someone else';
+
+exception
+  when others then
+    if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T9. ai_coach_usage: RLS ON with NO policies — a user cannot read or
+--     inflate their own quota; only the Edge Function (bypassrls) can.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}')
+on conflict (id) do nothing;
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  if (select count(*) from ai_coach_usage) <> 0 then
+    raise exception 'CI-TEST FAIL: a user can read the ai_coach_usage rate-limit table';
+  end if;
+  begin
+    insert into ai_coach_usage (user_id, calls) values ('11111111-1111-1111-1111-111111111111', 999999);
+    raise exception 'CI-TEST FAIL: a user can write their own ai_coach_usage quota';
+  exception
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+  end;
+end $runner$;
+
+-- Service role = what the Edge Function runs with: full control.
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+do $runner$ begin
+  insert into ai_coach_usage (user_id, calls) values ('11111111-1111-1111-1111-111111111111', 1);
+  if (select calls from ai_coach_usage where user_id = '11111111-1111-1111-1111-111111111111') <> 1 then
+    raise exception 'CI-TEST FAIL: service_role cannot manage the ai_coach_usage table';
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T10. complete_peer_donation: one call records ONE donation, completes the
+--      offer, fulfils the request, and sets the donor's last donation date —
+--      in a single transaction, from the DONOR's identity.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test',    '{}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id, available_to_donate)
+values ('CI Donor One', 25, 'Male', 'B+', '0300-0000001', 'X', 70, '33333333-3333-3333-3333-333333333333', true);
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values ('CI Patient A', 'H', 'B+', 1, 'Normal', 'ci', 'Pending', '11111111-1111-1111-1111-111111111111', 'X');
+insert into offers (request_id, donor_id, donor_auth_id, status)
+values ((select id from requests where patient_name = 'CI Patient A'),
+        (select id from donors where name = 'CI Donor One'), '33333333-3333-3333-3333-333333333333',
+        'Completed');  -- Completed without both confirmations must be refused
+insert into stock (blood_group, units) values ('B+', 0) on conflict (blood_group) do nothing;
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_done boolean; begin
+  -- Not accepted, no confirmations: refused, records nothing.
+  v_done := public.complete_peer_donation((select id from offers where donor_name = 'CI Donor One'));
+  if v_done then
+    raise exception 'CI-TEST FAIL: complete_peer_donation ran without an Accepted offer and both confirmations';
+  end if;
+  if (select count(*) from donations) <> 0 then
+    raise exception 'CI-TEST FAIL: complete_peer_donation recorded a donation despite refusing';
+  end if;
+end $runner$;
+
+-- Both sides confirm (timestamps), and the requester accepts.
+do $runner$ begin
+  update offers set status = 'Accepted' where donor_name = 'CI Donor One';
+  update offers set donor_confirmed_at = now() where donor_name = 'CI Donor One';
+end $runner$;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  update offers set requester_confirmed_at = now() where donor_name = 'CI Donor One';
+end $runner$;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ declare v_done boolean; begin
+  v_done := public.complete_peer_donation((select id from offers where donor_name = 'CI Donor One'));
+  if not v_done then
+    raise exception 'CI-TEST FAIL: complete_peer_donation refused a fully-confirmed accepted offer';
+  end if;
+  if (select count(*) from donations where donor_id = (select id from donors where name = 'CI Donor One')) <> 1 then
+    raise exception 'CI-TEST FAIL: peer donation was not recorded exactly once';
+  end if;
+  if (select status from offers where donor_name = 'CI Donor One') <> 'Completed' then
+    raise exception 'CI-TEST FAIL: the offer was not completed by the RPC';
+  end if;
+  if (select status from requests where patient_name = 'CI Patient A') <> 'Fulfilled' then
+    raise exception 'CI-TEST FAIL: the request was not fulfilled by the peer RPC';
+  end if;
+  if (select last_donation_date from donors where name = 'CI Donor One') is null then
+    raise exception 'CI-TEST FAIL: peer donation did not set the donor''s last donation date';
+  end if;
+  if (select units from stock where blood_group = 'B+') <> 0 then
+    raise exception 'CI-TEST FAIL: peer donation must NOT change blood-bank stock';
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T11. A signed-in donor CANNOT write stock directly (only via
+--      adjust_stock(), which is why that RPC is SECURITY DEFINER).
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test', '{}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id, available_to_donate)
+values ('CI Donor One', 25, 'Male', 'B+', '1', 'X', 70, '33333333-3333-3333-3333-333333333333', true);
+insert into donations (donor_id, date, units)
+values ((select id from donors where name = 'CI Donor One'), current_date, 1);
+update stock set units = 5 where blood_group = 'B+';
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  -- Their OWN donation must still move the stock count, through the RPC.
+  perform public.adjust_stock('B+', 1);
+  if (select units from stock where blood_group = 'B+') <> 6 then
+    raise exception 'CI-TEST FAIL: donor''s own donation did not move stock via the RPC';
+  end if;
+end $runner$;
+do $runner$ begin
+  begin
+    update stock set units = 1000 where blood_group = 'B+';
+    raise exception 'CI-TEST FAIL: a donor wrote the stock table directly';
+  exception
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+  end;
+  -- And unknown groups through the RPC are rejected, not invented.
+  begin
+    perform public.adjust_stock('ZZ', 1);
+    raise exception 'CI-TEST FAIL: adjust_stock accepted an unknown blood group';
+  exception
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+  end;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- The job must reach THIS line. If any check failed, psql already died on the
+-- raised CI-TEST FAIL error before printing this.
+-- ---------------------------------------------------------------------------
+select 'ALL SQL SECURITY TESTS PASSED' as ci_result;

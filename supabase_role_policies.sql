@@ -55,6 +55,24 @@ drop policy if exists "Authenticated full access" on donations;
 drop policy if exists "Authenticated full access" on requests;
 drop policy if exists "Authenticated full access" on stock;
 
+-- Also drop this file's OWN policies first: the file is deliberately safe to
+-- re-run (the CREATE POLICY statements below fail if the policy already
+-- exists, so a re-run — e.g. after its own rollback or a changed claim —
+-- would otherwise stop half-way).
+drop policy if exists "donors read" on donors;
+drop policy if exists "donors insert manager" on donors;
+drop policy if exists "donors update manager" on donors;
+drop policy if exists "donors update own" on donors;
+drop policy if exists "donors delete manager" on donors;
+drop policy if exists "donations read" on donations;
+drop policy if exists "donations insert" on donations;
+drop policy if exists "donations update manager" on donations;
+drop policy if exists "donations delete manager" on donations;
+drop policy if exists "requests read" on requests;
+drop policy if exists "requests write manager" on requests;
+drop policy if exists "stock read" on stock;
+drop policy if exists "stock write manager" on stock;
+
 -- donors -------------------------------------------------------------------
 -- Everyone signed in can read the donor list (the app's whole point is
 -- matching compatible donors to a request).
