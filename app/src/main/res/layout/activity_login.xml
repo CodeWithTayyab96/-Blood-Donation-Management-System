@@ -19,6 +19,9 @@
         <Button android:id="@+id/btnLogin" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="Sign In"
             android:layout_marginTop="16dp" />
+        <Button android:id="@+id/btnForgotPassword" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Forgot password?"
+            android:layout_marginTop="4dp" style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnRegister" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="Register as a Donor"
             android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />

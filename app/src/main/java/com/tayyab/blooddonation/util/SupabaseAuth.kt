@@ -202,6 +202,102 @@ object SupabaseAuth {
     }
 
     /** Signs in with email + password. Null on failure (see [lastError]). */
+    // ----------------------------------------------------- password recovery
+
+    /**
+     * Asks Supabase to send a recovery email.
+     *
+     * The email must contain the 6-digit code (`{{ .Token }}` in the template —
+     * see RUNBOOK), because the app asks the user to type it back. GoTrue
+     * answers 200 even when it decides not to send, so `true` means "accepted",
+     * not "delivered".
+     */
+    fun recover(email: String): Boolean {
+        lastError = null
+        val (code, body) = post("/recover", JSONObject().apply { put("email", email) })
+        if (code in 200..299) return true
+        lastError = errorMessage(code, body) ?: lastError
+        return false
+    }
+
+    /**
+     * Exchanges the 6-digit code for a session. On success the caller holds a
+     * real access token, which is the only thing allowed to set a new password.
+     */
+    fun verifyRecovery(email: String, code: String): AuthResult? {
+        lastError = null
+        val (status, body) = post("/verify", JSONObject().apply {
+            put("type", "recovery")
+            put("email", email)
+            put("token", code)
+        })
+        if (status !in 200..299) {
+            lastError = errorMessage(status, body)
+                ?: "That code is not valid any more. Ask for a new email."
+            return null
+        }
+        return sessionFrom(body)
+    }
+
+    /** Sets a new password for the session [accessToken] belongs to. */
+    fun updatePassword(accessToken: String, newPassword: String): Boolean {
+        lastError = null
+        val (code, body) = send(
+            "PUT", "/user",
+            JSONObject().apply { put("password", newPassword) },
+            accessToken
+        )
+        if (code in 200..299) return true
+        lastError = errorMessage(code, body) ?: lastError
+        return false
+    }
+
+    /** One raw Auth call with an explicit method and an optional bearer token. */
+    private fun send(
+        method: String,
+        path: String,
+        body: JSONObject,
+        token: String? = null
+    ): Pair<Int, String?> {
+        if (!isConfigured) {
+            lastError = "Supabase is not configured"
+            return -1 to null
+        }
+        return try {
+            val connection = URL(authUrl() + path).openConnection() as HttpURLConnection
+            try {
+                connection.requestMethod = method
+                connection.connectTimeout = CONNECT_TIMEOUT_MS
+                connection.readTimeout = READ_TIMEOUT_MS
+                connection.setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.setRequestProperty("Accept", "application/json")
+                if (!token.isNullOrBlank()) {
+                    connection.setRequestProperty("Authorization", "Bearer $token")
+                }
+                connection.doOutput = true
+                connection.outputStream.use { out ->
+                    out.write(body.toString().toByteArray(Charsets.UTF_8))
+                }
+                val code = connection.responseCode
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                if (code !in 200..299) {
+                    lastError = errorMessage(code, text) ?: "Supabase Auth -> HTTP $code"
+                }
+                code to text
+            } finally {
+                connection.disconnect()
+            }
+        } catch (e: IOException) {
+            lastError = "No internet connection"
+            -1 to null
+        } catch (e: Exception) {
+            lastError = "Request failed: ${e.javaClass.simpleName}"
+            -1 to null
+        }
+    }
+
     fun signIn(email: String, password: String): AuthResult? {
         val body = JSONObject().apply {
             put("email", email)

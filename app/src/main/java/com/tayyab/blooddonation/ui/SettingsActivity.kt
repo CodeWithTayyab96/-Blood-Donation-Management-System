@@ -40,6 +40,15 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(android.content.Intent(this, ConnectionCheckActivity::class.java))
         }
 
+        findViewById<Button>(R.id.btnDeleteAccount).setOnClickListener {
+            // Managers are refused server-side, so they are not stopped here —
+            // the refusal message explains why, which is more useful than a
+            // button that does nothing.
+            startActivity(
+                android.content.Intent(this, DeleteAccountActivity::class.java)
+            )
+        }
+
         findViewById<Button>(R.id.btnNotificationSettings).setOnClickListener {
             openSystemNotificationSettings()
         }

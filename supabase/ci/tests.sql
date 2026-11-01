@@ -968,6 +968,130 @@ end $runner$;
 rollback;
 
 -- ---------------------------------------------------------------------------
+-- T16. delete_account_data(): the personal rows go, the blood bank's record
+--      stays. A donor's own donation history must survive (anonymised), and
+--      one user's deletion must never touch another user's rows.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('11111111-1111-1111-1111-111111111111', 'ci.requester1@example.test', '{}'),
+  ('22222222-2222-2222-2222-222222222222', 'ci.requester2@example.test', '{}'),
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test',     '{}')
+on conflict (id) do nothing;
+
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id, available_to_donate)
+values
+  ('CI Leaver', 30, 'Male', 'A+', '0300-1111111', 'Leaverville', 70,
+   '11111111-1111-1111-1111-111111111111', true),
+  ('CI Stayer', 40, 'Female', 'B+', '0300-2222222', 'Stayville', 60,
+   '22222222-2222-2222-2222-222222222222', true);
+
+insert into donations (donor_id, date, units)
+values ((select id from donors where name = 'CI Leaver'), current_date - 100, 1);
+
+insert into requests (patient_name, hospital, blood_group, units_needed, urgency, contact, status, requester_id, city)
+values
+  ('CI Open',      'H', 'A+', 1, 'Normal', '0300-3333333', 'Pending',
+   '11111111-1111-1111-1111-111111111111', 'Leaverville'),
+  ('CI Fulfilled', 'H', 'A+', 1, 'Normal', '0300-4444444', 'Fulfilled',
+   '11111111-1111-1111-1111-111111111111', 'Leaverville'),
+  ('CI Other',     'H', 'B+', 1, 'Normal', '0300-5555555', 'Pending',
+   '22222222-2222-2222-2222-222222222222', 'Stayville');
+
+insert into offers (request_id, donor_id, donor_auth_id, donor_name, donor_group, donor_city, status)
+values ((select id from requests where patient_name = 'CI Other'),
+        (select id from donors where name = 'CI Leaver'),
+        '11111111-1111-1111-1111-111111111111', 'CI', 'A+', 'Leaverville', 'Offered');
+
+insert into contact_details (user_id, phone)
+values ('11111111-1111-1111-1111-111111111111', '0300-1111111'),
+       ('22222222-2222-2222-2222-222222222222', '0300-2222222');
+
+insert into device_tokens (user_id, token)
+values ('11111111-1111-1111-1111-111111111111', 'ci-token-leaver'),
+       ('22222222-2222-2222-2222-222222222222', 'ci-token-stayer');
+
+insert into reports (request_id, reporter_id, reason)
+values ((select id from requests where patient_name = 'CI Other'),
+        '11111111-1111-1111-1111-111111111111', 'CI report by the leaver');
+
+-- Someone else's id is refused for a signed-in user (the Edge Function passes
+-- the service role, which has no auth.uid() and may delete the given id).
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  begin
+    perform public.delete_account_data('22222222-2222-2222-2222-222222222222');
+    raise exception 'CI-TEST FAIL: a user deleted another user''s account data';
+  exception
+    when insufficient_privilege then null;   -- expected
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: foreign-id delete refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+end $runner$;
+reset role;
+
+-- The service-role path: delete the leaver.
+select public.delete_account_data('11111111-1111-1111-1111-111111111111');
+
+do $runner$ begin
+  if exists (select 1 from contact_details where user_id = '11111111-1111-1111-1111-111111111111') then
+    raise exception 'CI-TEST FAIL: the leaver''s contact_details row survived';
+  end if;
+  if exists (select 1 from device_tokens where user_id = '11111111-1111-1111-1111-111111111111') then
+    raise exception 'CI-TEST FAIL: the leaver''s device token survived';
+  end if;
+  if exists (select 1 from reports where reporter_id = '11111111-1111-1111-1111-111111111111') then
+    raise exception 'CI-TEST FAIL: the leaver''s report survived';
+  end if;
+  if exists (select 1 from offers where donor_auth_id = '11111111-1111-1111-1111-111111111111') then
+    raise exception 'CI-TEST FAIL: the leaver''s offer survived';
+  end if;
+  if exists (select 1 from requests where patient_name = 'CI Open') then
+    raise exception 'CI-TEST FAIL: the leaver''s open request survived';
+  end if;
+
+  -- Kept, but detached.
+  if not exists (
+    select 1 from requests
+     where patient_name = 'CI Fulfilled'
+       and requester_id is null
+       and contact = ''
+  ) then
+    raise exception 'CI-TEST FAIL: a fulfilled request was not kept and detached';
+  end if;
+
+  -- The donor row is anonymised, and the donation history survives it.
+  if not exists (
+    select 1 from donors
+     where name = 'Deleted donor' and phone = '' and city = ''
+       and auth_id is null and available_to_donate = false
+  ) then
+    raise exception 'CI-TEST FAIL: the donor row was not anonymised';
+  end if;
+  if (select count(*) from donations) <> 1 then
+    raise exception 'CI-TEST FAIL: the donation history was deleted with the account';
+  end if;
+
+  -- Another user's data is untouched.
+  if not exists (select 1 from contact_details where user_id = '22222222-2222-2222-2222-222222222222') then
+    raise exception 'CI-TEST FAIL: the other user''s contact_details row was deleted';
+  end if;
+  if not exists (select 1 from donors where name = 'CI Stayer' and auth_id is not null) then
+    raise exception 'CI-TEST FAIL: the other user''s donor row was changed';
+  end if;
+  if not exists (select 1 from requests where patient_name = 'CI Other' and status = 'Pending') then
+    raise exception 'CI-TEST FAIL: the other user''s request was deleted';
+  end if;
+  if not exists (select 1 from device_tokens where user_id = '22222222-2222-2222-2222-222222222222') then
+    raise exception 'CI-TEST FAIL: the other user''s device token was deleted';
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
 -- The job must reach THIS line. If any check failed, psql already died on the
 -- raised CI-TEST FAIL error before printing this.
 -- ---------------------------------------------------------------------------

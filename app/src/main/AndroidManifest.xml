@@ -52,6 +52,12 @@
              role is not MANAGER; a manager is redirected to MainActivity. -->
         <activity android:name=".ui.UserHomeActivity" android:exported="false" />
         <activity android:name=".ui.ConnectionCheckActivity" android:exported="false" />
+        <!-- Reached from the login screen. Not exported: nothing outside the
+             app can start it. -->
+        <activity android:name=".ui.ForgotPasswordActivity"
+            android:label="Reset password" android:exported="false" />
+        <activity android:name=".ui.DeleteAccountActivity"
+            android:label="Delete my account" android:exported="false" />
         <activity android:name=".ui.RequestDetailActivity" android:exported="false" />
         <activity android:name=".ui.AddRequestActivity" android:exported="false" />
         <activity android:name=".ui.CreateRequestActivity" android:exported="false" />

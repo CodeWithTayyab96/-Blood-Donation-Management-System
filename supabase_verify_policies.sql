@@ -148,6 +148,16 @@ with expected_all(tbl, pol, cmd) as (
   select 'authenticated cannot execute public.request_contact(bigint)'
    where to_regprocedure('public.request_contact(bigint)') is not null
      and not has_function_privilege('authenticated', 'public.request_contact(bigint)', 'EXECUTE')
+  -- Phase 3: "delete my account". The Edge Function calls this one, so it must
+  -- exist for the service role; the app's Delete button fails with a readable
+  -- message if it does not, but the verifier should say so first.
+  union all
+  select 'missing function public.delete_account_data(uuid)'
+   where to_regprocedure('public.delete_account_data(uuid)') is null
+  union all
+  select 'service_role cannot execute public.delete_account_data(uuid)'
+   where to_regprocedure('public.delete_account_data(uuid)') is not null
+     and not has_function_privilege('service_role', 'public.delete_account_data(uuid)', 'EXECUTE')
 ), all_problems as (
   select problem from policy_problems
   union all select problem from rls_problems

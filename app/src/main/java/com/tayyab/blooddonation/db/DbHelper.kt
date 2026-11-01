@@ -253,6 +253,34 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
 
     // ------------------------------------------------------------- accounts
     /**
+     * Empties every local table, for "Delete my account".
+     *
+     * The tables are emptied, not dropped: the schema stays, so an app that
+     * somehow survives this call still opens instead of crashing on a missing
+     * table. `users` goes too — that is what forces the next start to show the
+     * login screen rather than a cached, now-deleted account.
+     *
+     * Deliberately NOT in a transaction with anything server-side: the server
+     * has already deleted the account by the time this runs, so keeping the
+     * local copy would only leave the phone showing data that no longer exists.
+     */
+    fun wipeLocalData() {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            for (table in listOf(
+                "donations", "contact_details", "reports", "offers",
+                "requests", "donors", "stock", "users"
+            )) {
+                db.delete(table, null, null)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    /**
      * Inserts an account row. Returns the row id, or -1 when the username
      * already exists — `insert` does not throw on a primary-key conflict, it
      * just reports failure, so callers have to look at the result.

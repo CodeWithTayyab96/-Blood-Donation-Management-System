@@ -50,5 +50,20 @@
             android:text="Run the connection check"
             android:layout_marginTop="8dp"
             style="?attr/materialButtonOutlinedStyle" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Account" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/status_bad" android:layout_marginTop="26dp" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Delete your profile, contact number, offers and open requests, and close the account. This cannot be undone."
+            android:textSize="13sp" android:textColor="@color/text_secondary"
+            android:layout_marginTop="4dp" />
+
+        <Button android:id="@+id/btnDeleteAccount"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Delete my account"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/status_bad" />
     </LinearLayout>
 </ScrollView>

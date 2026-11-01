@@ -3,6 +3,45 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.10 — 2026-11-01
+
+versionCode 11. You can now recover a forgotten password, and delete your own
+account, from inside the app.
+
+### Forgot password
+
+- **Forgot password?** on the sign-in screen starts a code flow: the app asks
+  Supabase to email a 6-digit code, you type the code and a new password, and
+  the app exchanges the code for a session — because only a signed-in session
+  is allowed to set a password.
+- Every failure says which one it was: the address is not registered (Supabase
+  answers the same either way, on purpose), too many attempts, **rate limited**,
+  the code expired, the password too weak, or no internet. "Send the code again"
+  issues a fresh one.
+- This needs the **Reset password** email template to show `{{ .Token }}` —
+  otherwise the email has a link and no code. The exact dashboard steps are in
+  RUNBOOK.md.
+
+### Delete my account
+
+- Settings → **Delete my account**: a screen that says exactly what goes and
+  what stays, and asks you to type DELETE before it will do anything.
+- Deleted: your profile, contact number, device token, offers and open
+  requests, and the account itself. **Kept: your donation history**, detached
+  from your name — the blood bank has to keep its own record of donations, and
+  that history underpins the stock counts. Requests that were already fulfilled
+  are kept without your name or number.
+- The account itself is deleted by a new Edge Function (`delete-account`),
+  because removing an Auth user needs the service role key and that key must
+  never be on a phone. It takes the account to delete **from your token**, never
+  from the request body.
+- **Partial failure is handled:** if your data is deleted but the login somehow
+  survives, you are told so, nothing is wiped from the phone, and pressing the
+  button again safely finishes the job. If nothing was deleted, nothing is
+  wiped.
+- Manager accounts are refused — deleting the only account that can administer
+  the project would leave no one who could re-create it.
+
 ## 1.9 — 2026-11-01
 
 versionCode 10. The app now has two homes: one for donors, one for the blood

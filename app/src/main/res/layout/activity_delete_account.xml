@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    "Delete my account" — deliberately the slowest screen in the app. It states
+    what goes and what stays, and it will not act until the user types DELETE.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="24dp">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Delete my account" android:textSize="22sp"
+            android:textStyle="bold" android:textColor="@color/status_bad" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="This cannot be undone." android:textSize="15sp"
+            android:textStyle="bold" android:textColor="@color/text_secondary"
+            android:layout_marginTop="4dp" android:layout_marginBottom="16dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Deleted" android:textSize="16sp" android:textStyle="bold"
+            android:textColor="@color/text_accent" />
+        <TextView android:id="@+id/tvDeletedList" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="14sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="4dp"
+            android:lineSpacingExtra="3dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Kept" android:textSize="16sp" android:textStyle="bold"
+            android:textColor="@color/text_accent" android:layout_marginTop="18dp" />
+        <TextView android:id="@+id/tvKeptList" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="14sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="4dp"
+            android:lineSpacingExtra="3dp" />
+
+        <TextView android:id="@+id/tvReason" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="13sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="18dp" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Type DELETE to confirm" android:textSize="15sp"
+            android:textStyle="bold" android:layout_marginTop="20dp" />
+        <EditText android:id="@+id/etConfirm" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="DELETE"
+            android:inputType="textCapCharacters" android:autofillHints="none"
+            android:layout_marginTop="6dp" />
+
+        <Button android:id="@+id/btnDelete" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Delete my account"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/status_bad" />
+
+        <Button android:id="@+id/btnCancel" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Keep my account"
+            android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
+    </LinearLayout>
+</ScrollView>

@@ -83,7 +83,8 @@ jobs:
             supabase_role_hardening.sql \
             supabase_fcm_migration.sql \
             supabase_fcm_policies.sql \
-            supabase_ai_migration.sql ; do
+            supabase_ai_migration.sql \
+            supabase_delete_account.sql ; do
             echo "=== $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
@@ -147,6 +148,7 @@ jobs:
       - name: Rollback pass (reverse order of every rollback file)
         run: |
           for f in \
+            supabase_delete_account_rollback.sql \
             supabase_ai_migration_rollback.sql \
             supabase_fcm_triggers_rollback.sql \
             supabase_fcm_policies_rollback.sql \
@@ -173,7 +175,8 @@ jobs:
             supabase_role_hardening.sql \
             supabase_fcm_migration.sql \
             supabase_fcm_policies.sql \
-            supabase_ai_migration.sql ; do
+            supabase_ai_migration.sql \
+            supabase_delete_account.sql ; do
             echo "=== $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"
           done

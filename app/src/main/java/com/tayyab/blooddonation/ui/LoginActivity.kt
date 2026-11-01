@@ -198,6 +198,13 @@ class LoginActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnRegister).setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
         }
+
+        // Password recovery is its own screen: it needs three steps (send the
+        // code, type it, choose a new password), which the login screen cannot
+        // hold without becoming a form the user is afraid to touch.
+        findViewById<Button>(R.id.btnForgotPassword).setOnClickListener {
+            startActivity(Intent(this, ForgotPasswordActivity::class.java))
+        }
     }
 
     private fun goToMain() {
