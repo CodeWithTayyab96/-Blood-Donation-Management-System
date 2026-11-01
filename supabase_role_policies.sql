@@ -109,13 +109,13 @@ create policy "donors delete manager" on donors
 create policy "donations read" on donations
   for select to authenticated using (true);
 
--- Managers record donations for anyone; a donor may only record their own.
+-- Only a manager records a donation from the app. A donor's own peer
+-- donation is written by complete_peer_donation(), a SECURITY DEFINER
+-- function that runs as the table owner — the one path that records a peer
+-- donation, and the reason a donor never needs INSERT here.
 create policy "donations insert" on donations
   for insert to authenticated
-  with check (
-    is_manager()
-    or donor_id in (select id from donors where auth_id = auth.uid())
-  );
+  with check (is_manager());
 
 create policy "donations update manager" on donations
   for update to authenticated using (is_manager()) with check (is_manager());

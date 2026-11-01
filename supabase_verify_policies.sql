@@ -113,6 +113,27 @@ with expected_all(tbl, pol, cmd) as (
               and c.column_name  = t.col
          )
      and not has_column_privilege('authenticated', format('public.%I', t.tbl), t.col, 'SELECT')
+), hardening_problems as (
+  -- Phase 2: an ordinary user must not be able to write donations or stock.
+  select 'donations INSERT policy still lets a donor write donations' as problem
+   where exists (
+     select 1 from pg_policies
+      where schemaname = 'public' and tablename = 'donations'
+        and policyname = 'donations insert'
+        and coalesce(with_check, '') like '%auth.uid%'
+   )
+  union all
+  select 'adjust_stock() is missing'
+   where to_regprocedure('public.adjust_stock(text,integer)') is null
+  union all
+  select 'adjust_stock() is not manager-guarded'
+   where exists (
+     select 1 from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname = 'adjust_stock'
+        and position('is_manager' in coalesce(p.prosrc, '')) = 0
+   )
 ), function_problems as (
   select 'missing function public.donor_phone(bigint)' as problem
    where to_regprocedure('public.donor_phone(bigint)') is null
@@ -132,6 +153,7 @@ with expected_all(tbl, pol, cmd) as (
   union all select problem from rls_problems
   union all select problem from privilege_problems
   union all select problem from readable_problems
+  union all select problem from hardening_problems
   union all select problem from function_problems
 )
 select 'ALL POLICIES OK' as result

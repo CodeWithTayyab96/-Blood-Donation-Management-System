@@ -32,6 +32,14 @@ as $$
 declare
   v_units integer;
 begin
+  -- Stock is the blood bank's inventory: only a manager may move it. The
+  -- grant below has to stay (managers are the `authenticated` role too), so
+  -- the check lives inside the function, reading the caller's JWT claim.
+  if not public.is_manager() then
+    raise exception 'adjust_stock: only a manager may change stock'
+      using errcode = '42501';
+  end if;
+
   update stock
      set units = greatest(0, units + p_delta)
    where blood_group = p_group

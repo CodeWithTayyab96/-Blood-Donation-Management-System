@@ -604,28 +604,39 @@ end $runner$;
 rollback;
 
 -- ---------------------------------------------------------------------------
--- T11. A signed-in donor CANNOT write stock directly (only via
---      adjust_stock(), which is why that RPC is SECURITY DEFINER).
+-- T11. Stock is the blood bank's inventory: a signed-in donor cannot write it,
+--      and cannot call adjust_stock() either — the guard is inside the
+--      function, because managers are the `authenticated` role too. The
+--      manager can do both.
 -- ---------------------------------------------------------------------------
 begin;
 insert into auth.users (id, email, raw_app_meta_data)
-values ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test', '{}')
+values
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test', '{}'),
+  ('55555555-5555-5555-5555-555555555555', 'manager@blood.local',    '{"role":"MANAGER"}')
 on conflict (id) do nothing;
 insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id, available_to_donate)
 values ('CI Donor One', 25, 'Male', 'B+', '1', 'X', 70, '33333333-3333-3333-3333-333333333333', true);
-insert into donations (donor_id, date, units)
-values ((select id from donors where name = 'CI Donor One'), current_date, 1);
 update stock set units = 5 where blood_group = 'B+';
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+
 do $runner$ begin
-  -- Their OWN donation must still move the stock count, through the RPC.
-  perform public.adjust_stock('B+', 1);
-  if (select units from stock where blood_group = 'B+') <> 6 then
-    raise exception 'CI-TEST FAIL: donor''s own donation did not move stock via the RPC';
+  begin
+    perform public.adjust_stock('B+', 1);
+    raise exception 'CI-TEST FAIL: a donor moved blood-bank stock through adjust_stock()';
+  exception
+    when insufficient_privilege then null;   -- expected: manager-only
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: adjust_stock refused a donor with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+  if (select units from stock where blood_group = 'B+') <> 5 then
+    raise exception 'CI-TEST FAIL: a refused adjust_stock still changed the stock';
   end if;
 end $runner$;
+
 do $runner$ declare v_rows int; begin
   -- A denied UPDATE is SILENT (0 rows, no error), so assert the row count
   -- instead of waiting for an exception.
@@ -634,14 +645,21 @@ do $runner$ declare v_rows int; begin
   if v_rows <> 0 then
     raise exception 'CI-TEST FAIL: a donor wrote the stock table directly (% row(s))', v_rows;
   end if;
-  -- And unknown groups through the RPC are rejected, not invented — with the
-  -- RPC's own 22023 (invalid_parameter_value), not an incidental error.
+end $runner$;
+
+-- The manager may do both.
+set local "request.jwt.claims" = '{"sub":"55555555-5555-5555-5555-555555555555","app_metadata":{"role":"MANAGER"}}';
+do $runner$ begin
+  perform public.adjust_stock('B+', 1);
+  if (select units from stock where blood_group = 'B+') <> 6 then
+    raise exception 'CI-TEST FAIL: the manager could not move stock through adjust_stock()';
+  end if;
+  -- Unknown groups are still rejected with the RPC's own 22023.
   begin
     perform public.adjust_stock('ZZ', 1);
     raise exception 'CI-TEST FAIL: adjust_stock accepted an unknown blood group';
   exception
-    when invalid_parameter_value then
-      null;  -- expected: errcode 22023 from adjust_stock
+    when invalid_parameter_value then null;   -- expected
     when others then
       if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
       raise exception 'CI-TEST FAIL: adjust_stock rejected an unknown group with SQLSTATE % (%), not 22023', sqlstate, sqlerrm;
@@ -903,6 +921,48 @@ do $runner$ begin
   end if;
   if public.request_contact((select id from requests where patient_name = 'CI Phone Req Other')) is distinct from '0300-3333333' then
     raise exception 'CI-TEST FAIL: the manager cannot read a request contact number';
+  end if;
+end $runner$;
+rollback;
+
+-- ---------------------------------------------------------------------------
+-- T15. A donation is recorded by a manager, or by complete_peer_donation().
+--      The donor's own client cannot write the table: that would let anyone
+--      add donations to their own history and inflate their milestones.
+-- ---------------------------------------------------------------------------
+begin;
+insert into auth.users (id, email, raw_app_meta_data)
+values
+  ('33333333-3333-3333-3333-333333333333', 'ci.donor1@example.test', '{}'),
+  ('55555555-5555-5555-5555-555555555555', 'manager@blood.local',    '{"role":"MANAGER"}')
+on conflict (id) do nothing;
+insert into donors (name, age, gender, blood_group, phone, city, weight, auth_id)
+values ('CI Donor One', 25, 'Male', 'B+', '1', 'X', 70, '33333333-3333-3333-3333-333333333333');
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333333","app_metadata":{"role":"DONOR"}}';
+do $runner$ begin
+  begin
+    insert into donations (donor_id, date, units)
+    values ((select id from donors where name = 'CI Donor One'), current_date, 1);
+    raise exception 'CI-TEST FAIL: a donor recorded a donation for themselves';
+  exception
+    when insufficient_privilege then null;   -- expected: manager-only
+    when others then
+      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
+      raise exception 'CI-TEST FAIL: donor donation insert refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
+  end;
+  if (select count(*) from donations) <> 0 then
+    raise exception 'CI-TEST FAIL: a refused donation insert still wrote a row';
+  end if;
+end $runner$;
+
+set local "request.jwt.claims" = '{"sub":"55555555-5555-5555-5555-555555555555","app_metadata":{"role":"MANAGER"}}';
+do $runner$ begin
+  insert into donations (donor_id, date, units)
+  values ((select id from donors where name = 'CI Donor One'), current_date, 1);
+  if (select count(*) from donations) <> 1 then
+    raise exception 'CI-TEST FAIL: the manager could not record a donation';
   end if;
 end $runner$;
 rollback;
