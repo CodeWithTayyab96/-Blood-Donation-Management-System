@@ -347,6 +347,6 @@ Deno.serve(async (req) => {
     }
   } catch (e) {
     console.error("push-notify failed:", e);
-    return badRequest(500, String(e?.message ?? e));
+    return badRequest(500, String((e as Error)?.message ?? e));
   }
 });

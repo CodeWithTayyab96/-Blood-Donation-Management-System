@@ -62,7 +62,7 @@ returns uuid
 language sql
 stable
 as $$
-  select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb ->> 'sub';
+  select (coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb ->> 'sub')::uuid;
 $$;
 
 create or replace function auth.role()

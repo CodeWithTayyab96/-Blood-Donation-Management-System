@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       return reply(429, { error: "daily limit reached — try again tomorrow" });
     }
   } catch (e) {
-    return reply(500, { error: String(e?.message ?? e) });
+    return reply(500, { error: String((e as Error)?.message ?? e) });
   }
 
   const kind = body?.kind === "question" ? "question" : "motivation";
