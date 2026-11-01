@@ -3,6 +3,55 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.9 — 2026-11-01
+
+versionCode 10. The app now has two homes: one for donors, one for the blood
+bank. The manager role comes from the sign-in token, not from the phone.
+
+### A home for ordinary users
+
+- Signing in as anything other than a manager opens a new home screen: today's
+  fact, an "I want to donate" switch with the next eligible date, and one
+  button per job — ask for blood, my requests, browse requests, the AI helper,
+  my profile, settings, log out. The manager dashboard is unchanged and only
+  managers see it.
+- **The role is read from the JWT's `app_metadata`, never from the phone.** The
+  local `users` row no longer grants anything, so editing it — or an old build
+  that wrote MANAGER into it — cannot unlock the manager screens. A token-less
+  (offline) session is an ordinary user, which is correct: every manager action
+  needs the server anyway.
+
+### Ordinary users cannot touch the blood bank's records
+
+- **Recording a donation** is manager-only in the database now, not just on the
+  screen. A donor's own peer donation is still recorded, by
+  `complete_peer_donation()`.
+- **Stock** can only be moved by a manager: `adjust_stock()` refuses anyone
+  whose token is not MANAGER. The grant has to stay (managers are the
+  `authenticated` role too), so the guard is inside the function.
+- What an ordinary user can still do through the API: read donors (no phone
+  numbers), read requests (no contact numbers), read their own contact row and
+  any pair they are party to on an accepted offer, create/update/delete their
+  own requests, create offers when available, confirm their side of a
+  donation, file a report, and manage their own device token. Nothing else.
+
+### Sign-in
+
+- **The local-only `manager` / `manager123` login is gone.** A username without
+  an email is refused, and the seeded row is deleted from the database on
+  upgrade. Every account is a Supabase Auth account.
+- **Registration, requests, offers and donations are online-only.** They no
+  longer save a local-only copy that nobody else can see: if the server refuses
+  or there is no connection, the screen says so and writes nothing. Cached data
+  is still readable offline.
+- **Real reasons instead of "not synced":** wrong email or password, email not
+  confirmed, too many attempts, no internet, or the server's own message with
+  its HTTP status. An unconfirmed address offers **"Resend confirmation email"**
+  right there.
+- **Settings → Connection check:** five checks in the order they can fail —
+  configuration, server reachable, session valid, a read works, helper
+  functions answer — each with the reason.
+
 ## 1.8 — 2026-11-01
 
 versionCode 9. Updates install themselves, and a release is now something a

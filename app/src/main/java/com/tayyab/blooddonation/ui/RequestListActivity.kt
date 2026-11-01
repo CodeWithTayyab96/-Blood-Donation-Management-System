@@ -34,6 +34,13 @@ import com.tayyab.blooddonation.util.SupabaseSync
  */
 class RequestListActivity : AppCompatActivity() {
 
+    companion object {
+        /** Open the list on a particular tab: the user home links to both. */
+        const val EXTRA_MODE = "mode"
+        const val MODE_BROWSE = "browse"
+        const val MODE_MINE = "mine"
+    }
+
     private enum class Mode { BROWSE, MINE }
 
     private lateinit var db: DbHelper
@@ -64,6 +71,8 @@ class RequestListActivity : AppCompatActivity() {
         } else {
             findViewById<Button>(R.id.btnTabBrowse).setOnClickListener { switchTo(Mode.BROWSE) }
             findViewById<Button>(R.id.btnTabMine).setOnClickListener { switchTo(Mode.MINE) }
+            // Arriving from the home screen: open the tab that was asked for.
+            if (intent?.getStringExtra(EXTRA_MODE) == MODE_MINE) switchTo(Mode.MINE)
         }
 
         findViewById<FloatingActionButton>(R.id.fabAddRequest).setOnClickListener {

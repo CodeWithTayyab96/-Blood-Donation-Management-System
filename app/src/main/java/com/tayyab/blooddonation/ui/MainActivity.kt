@@ -29,6 +29,7 @@ import com.tayyab.blooddonation.util.RequestAlerts
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 import com.tayyab.blooddonation.util.UpdateNotifier
+import com.tayyab.blooddonation.util.UpdatePrompt
 import com.tayyab.blooddonation.util.UpdateWorker
 import com.tayyab.blooddonation.util.MotivationFacts
 import com.tayyab.blooddonation.util.DonationStats
@@ -55,6 +56,13 @@ class MainActivity : AppCompatActivity() {
         Session.load(this)
         if (!Session.isLoggedIn) {
             startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+        // This is the manager dashboard. An ordinary user has their own home,
+        // decided from the JWT role — never from the local users row.
+        if (!Session.isManager) {
+            startActivity(Intent(this, UserHomeActivity::class.java))
             finish()
             return
         }
@@ -249,24 +257,7 @@ class MainActivity : AppCompatActivity() {
         val fromNotification =
             intent?.getBooleanExtra(UpdateNotifier.EXTRA_SHOW_UPDATE_PROMPT, false) == true
         intent?.removeExtra(UpdateNotifier.EXTRA_SHOW_UPDATE_PROMPT)
-
-        val pending = AppUpdater.takePending(this)
-        if (pending != null) {
-            showUpdateDialog(pending)
-            return
-        }
-        if (!fromNotification && !AppUpdater.shouldCheckNow(this)) return
-
-        Background.run {
-            val result = AppUpdater.checkForUpdate()
-            AppUpdater.markChecked(this)
-            if (result is AppUpdater.CheckResult.UpdateAvailable) {
-                AppUpdater.savePending(this, result.info)
-                runOnUiThread {
-                    if (!isFinishing && !isDestroyed) showUpdateDialog(result.info)
-                }
-            }
-        }
+        UpdatePrompt.checkOnLaunch(this, fromNotification)
     }
 
     private fun checkForUpdate() {
@@ -295,70 +286,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showUpdateDialog(info: AppUpdater.UpdateInfo) {
-        val notes = if (info.notes.isBlank()) {
-            "A new version is available."
-        } else {
-            info.notes.take(500)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Update available: v${info.versionName}")
-            .setMessage(
-                "You have v${BuildConfig.VERSION_NAME}.\n\n$notes\n\n" +
-                    "The new version will be downloaded from GitHub Releases " +
-                    "and opened in the system installer. Your donor data stays on this phone."
-            )
-            .setPositiveButton("Download and install") { _, _ ->
-                startUpdateDownload(info)
-            }
-            .setNegativeButton("Later", null)
-            .show()
+        UpdatePrompt.show(this, info)
     }
 
     private fun startUpdateDownload(info: AppUpdater.UpdateInfo) {
-        if (!AppUpdater.canInstallPackages(this)) {
-            AlertDialog.Builder(this)
-                .setTitle("Allow installing updates")
-                .setMessage(
-                    "Android needs your permission before this app can install " +
-                        "its own updates. Turn on \"Allow from this source\" on the " +
-                        "next screen, then press Check for updates again."
-                )
-                .setPositiveButton("Open settings") { _, _ ->
-                    AppUpdater.openInstallPermissionScreen(this)
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-            return
-        }
-        // A plain non-cancellable dialog showing the percentage, instead of the
-        // deprecated android.app.ProgressDialog (which renders unstyled under a
-        // Material theme and is removed in newer SDKs).
-        val progress = AlertDialog.Builder(this)
-            .setTitle("Downloading update")
-            .setMessage("Downloading v${info.versionName}...")
-            .setCancelable(false)
-            .create()
-        progress.show()
-        Background.run {
-            AppUpdater.downloadAndInstall(
-                this,
-                info,
-                onProgress = { percent ->
-                    runOnUiThread {
-                        if (!isFinishing && !isDestroyed) {
-                            progress.setMessage("Downloading v${info.versionName}... $percent%")
-                        }
-                    }
-                },
-                onError = { message ->
-                    runOnUiThread {
-                        if (!isFinishing && !isDestroyed) progress.dismiss()
-                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                    }
-                }
-            )
-            runOnUiThread { if (!isFinishing && !isDestroyed) progress.dismiss() }
-        }
+        UpdatePrompt.startDownload(this, info)
     }
 
     private fun refresh() {

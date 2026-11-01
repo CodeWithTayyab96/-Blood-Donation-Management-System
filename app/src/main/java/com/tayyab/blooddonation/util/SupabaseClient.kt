@@ -175,6 +175,39 @@ object SupabaseClient {
         }
     }
 
+    // ------------------------------------------------------- connection check
+
+    /** One line of the Settings -> Connection check screen. */
+    data class Probe(val ok: Boolean, val detail: String)
+
+    fun probeConfig(): Probe =
+        if (isConfigured) Probe(true, "project URL and anon key are in this build")
+        else Probe(false, "this build has no Supabase URL/key")
+
+    /** Reaches PostgREST at all (the root answers with the OpenAPI document). */
+    fun probeServer(): Probe {
+        val (code, _) = request("GET", "/")
+        return if (code in 200..299) Probe(true, "server answered HTTP $code")
+        else Probe(false, lastError ?: "HTTP $code")
+    }
+
+    /** A real table read, with whatever session the app currently holds. */
+    fun probeRead(): Probe {
+        val rows = getArray("/stock?select=blood_group,units&limit=1")
+            ?: return Probe(false, lastError ?: "no response")
+        return Probe(true, "read ${rows.length()} stock row(s)")
+    }
+
+    /** The two SECURITY DEFINER helpers the update screens rely on. */
+    fun probeHelperFunctions(): Probe {
+        val (code, _) = request(
+            "POST", "/rpc/request_contact",
+            JSONObject().apply { put("p_request_id", -1L) }
+        )
+        return if (code in 200..299) Probe(true, "request_contact answered HTTP $code")
+        else Probe(false, lastError ?: "HTTP $code")
+    }
+
     private fun getArray(path: String): JSONArray? {
         val (code, body) = request("GET", path)
         if (code !in 200..299 || body.isNullOrBlank()) return null

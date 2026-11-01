@@ -161,7 +161,7 @@ class RegisterActivity : AppCompatActivity() {
                     Session.setProfilePendingSync(this, false)
                     runOnUiThread {
                         Toast.makeText(this, "Account created. Welcome, $name", Toast.LENGTH_SHORT).show()
-                        startActivity(Intent(this, MainActivity::class.java))
+                        startActivity(Intent(this, UserHomeActivity::class.java))
                         finish()
                     }
                 } else {
@@ -197,7 +197,7 @@ class RegisterActivity : AppCompatActivity() {
                                 "Retry from your profile screen.",
                             Toast.LENGTH_LONG
                         ).show()
-                        startActivity(Intent(this, MainActivity::class.java))
+                        startActivity(Intent(this, UserHomeActivity::class.java))
                         finish()
                     }
                 }

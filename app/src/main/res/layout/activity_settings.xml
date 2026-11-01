@@ -35,5 +35,20 @@
             android:text="Urgent blood request alerts are separate from tips and are not affected by this switch."
             android:textSize="13sp" android:textColor="@color/text_secondary"
             android:layout_marginTop="18dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Connection" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/text_accent" android:layout_marginTop="26dp" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Is this build configured, is the server reachable, is your session valid, and do the database helpers answer? The first failing check is usually the whole story."
+            android:textSize="13sp" android:textColor="@color/text_secondary"
+            android:layout_marginTop="4dp" />
+
+        <Button android:id="@+id/btnConnectionCheck"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Run the connection check"
+            android:layout_marginTop="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
     </LinearLayout>
 </ScrollView>

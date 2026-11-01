@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Connection check" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/text_accent" />
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Five checks, in order. The first one that fails is the reason the app looks empty or says it cannot reach the server."
+            android:textSize="13sp" android:textColor="@color/text_secondary"
+            android:layout_marginTop="4dp" />
+
+        <Button android:id="@+id/btnRunChecks"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Run the checks" android:layout_marginTop="12dp" />
+
+        <TextView android:id="@+id/tvChecks"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="14sp" android:textColor="@color/text_secondary"
+            android:lineSpacingExtra="6dp" android:layout_marginTop="16dp"
+            android:textIsSelectable="true" />
+    </LinearLayout>
+</ScrollView>

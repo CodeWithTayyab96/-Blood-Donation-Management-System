@@ -9,7 +9,9 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.UserAccount
+import androidx.appcompat.app.AlertDialog
 import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.Jwt
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseAuth
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -28,8 +30,9 @@ import com.tayyab.blooddonation.util.SupabaseSync
  * with a matching password hash, the offline fallback login is
  * allowed and the toast says "Signed in offline".
  *
- * (b) An input WITHOUT "@" keeps the exact v1.3 local-only login
- * unchanged — this preserves the demo login manager / manager123.
+ * (b) An input WITHOUT "@" is refused. Every account is a Supabase Auth
+ * account now, and the manager role is read from the token's `app_metadata`,
+ * not from a row on this phone.
  */
 class LoginActivity : AppCompatActivity() {
 
@@ -68,26 +71,14 @@ class LoginActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             if (!input.contains("@")) {
-                // (b) Local-only login: the seeded demo manager, or an account
-                // that has already signed in online once.
-                val user = db.getUser(input)
-                if (user == null) {
-                    Toast.makeText(this, "Wrong username or password", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                when (Session.checkPassword(user.passwordHash, password)) {
-                    Session.PasswordCheck.OK -> {
-                        Session.save(this, user.username, user.role, user.donorId)
-                        Toast.makeText(this, "Welcome, ${user.username}", Toast.LENGTH_SHORT).show()
-                        goToMain()
-                    }
-                    Session.PasswordCheck.LEGACY_FORMAT -> {
-                        Toast.makeText(this, LEGACY_PASSWORD_MESSAGE, Toast.LENGTH_LONG).show()
-                    }
-                    Session.PasswordCheck.WRONG -> {
-                        Toast.makeText(this, "Wrong username or password", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                // No local-only account exists any more: the manager role comes
+                // from the JWT, so a username without an email cannot be
+                // authenticated against anything.
+                Toast.makeText(
+                    this,
+                    "Sign in with your email address (name@example.com).",
+                    Toast.LENGTH_LONG
+                ).show()
                 return@setOnClickListener
             }
             // (a) Supabase Auth login (email). Network on a background thread.
@@ -124,6 +115,24 @@ class LoginActivity : AppCompatActivity() {
                             )
                             Session.saveAuth(
                                 this, email, Session.ROLE_DONOR, donor.id,
+                                email, auth.userId, auth.accessToken, auth.refreshToken
+                            )
+                            runOnUiThread {
+                                Toast.makeText(this, "Welcome, $email", Toast.LENGTH_SHORT).show()
+                                goToMain()
+                            }
+                        } else if (Jwt.role(auth.accessToken) == Session.ROLE_MANAGER) {
+                            // A manager has no donor profile by design. Keep a
+                            // local row so an offline start still knows the
+                            // account; the role itself comes from the token.
+                            db.addUser(
+                                UserAccount(
+                                    email, Session.hashPassword(password),
+                                    Session.ROLE_MANAGER, null
+                                )
+                            )
+                            Session.saveAuth(
+                                this, email, Session.ROLE_MANAGER, null,
                                 email, auth.userId, auth.accessToken, auth.refreshToken
                             )
                             runOnUiThread {
@@ -180,9 +189,7 @@ class LoginActivity : AppCompatActivity() {
                             networkFailed -> "Sign-in needs an internet connection"
                             else -> authError ?: "Sign-in failed"
                         }
-                        runOnUiThread {
-                            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                        }
+                        runOnUiThread { offerResendIfUnconfirmed(email, message) }
                     }
                 }
             }
@@ -194,7 +201,43 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun goToMain() {
-        startActivity(Intent(this, MainActivity::class.java))
+        val next = if (Session.isManager) {
+            MainActivity::class.java
+        } else {
+            UserHomeActivity::class.java
+        }
+        startActivity(Intent(this, next))
         finish()
+    }
+
+    /**
+     * The one auth failure worth an action button: the account exists but its
+     * address was never confirmed. Offering "resend" here saves the user from
+     * hunting for a link that may have expired.
+     */
+    private fun offerResendIfUnconfirmed(email: String, message: String) {
+        if (!message.contains("not confirmed", ignoreCase = true)) {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Email not confirmed")
+            .setMessage("$message\n\nSend a new confirmation email to $email?")
+            .setPositiveButton("Resend email") { _, _ ->
+                Background.run {
+                    val ok = SupabaseAuth.resendConfirmation(email)
+                    val error = SupabaseAuth.lastError
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            if (ok) "Confirmation email sent — check your inbox."
+                            else (error ?: "Could not send the email."),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
     }
 }

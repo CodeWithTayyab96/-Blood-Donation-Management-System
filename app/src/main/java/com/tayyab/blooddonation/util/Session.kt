@@ -256,6 +256,7 @@ object Session {
         _authUserId = null
         _accessToken = null
         _refreshToken = null
+        _jwtRole = null
     }
 
     /**
@@ -289,6 +290,7 @@ object Session {
         _authUserId = authUserId
         _accessToken = accessToken
         _refreshToken = refreshToken
+        _jwtRole = Jwt.role(accessToken)
     }
 
     /**
@@ -300,6 +302,7 @@ object Session {
     fun updateTokens(accessToken: String, refreshToken: String) {
         _accessToken = accessToken
         _refreshToken = refreshToken
+        _jwtRole = Jwt.role(accessToken)
         val prefs = _prefs ?: _appContext?.let { store(it) } ?: return
         prefs.edit()
             .putString(KEY_ACCESS, accessToken)
@@ -311,6 +314,7 @@ object Session {
     fun clearTokens() {
         _accessToken = null
         _refreshToken = null
+        _jwtRole = null
         val prefs = _prefs ?: _appContext?.let { store(it) } ?: return
         prefs.edit()
             .remove(KEY_ACCESS)
@@ -339,6 +343,7 @@ object Session {
         _authUserId = null
         _accessToken = null
         _refreshToken = null
+        _jwtRole = null
         _profilePendingSync = false
         if (!access.isNullOrBlank() && SupabaseAuth.isConfigured) {
             Background.run { SupabaseAuth.signOut(access) }
@@ -346,7 +351,13 @@ object Session {
     }
 
     val isLoggedIn: Boolean get() = _username != null
-    val isManager: Boolean get() = _role == ROLE_MANAGER
+
+    /**
+     * True only when the signed-in session's JWT says MANAGER. The local
+     * `users.role` column is NOT consulted: it is device state that an older
+     * build wrote, and the server decides what the account may do anyway.
+     */
+    val isManager: Boolean get() = _jwtRole == ROLE_MANAGER
 
     // Backed by the last Context that called load() / save() / saveAuth();
     // activities call load() first. _appContext is the application
@@ -360,6 +371,16 @@ object Session {
     private var _authUserId: String? = null
     private var _accessToken: String? = null
     private var _refreshToken: String? = null
+
+    /**
+     * The role from the access token's `app_metadata`, and the ONLY thing
+     * [isManager] trusts. It is recomputed whenever the token changes, so a
+     * refreshed token with a new claim is picked up without a re-login.
+     * An offline (token-less) session has no claim and is therefore treated as
+     * an ordinary user — which is correct, because every manager action needs
+     * the server anyway.
+     */
+    private var _jwtRole: String? = null
     private var _profilePendingSync: Boolean = false
 
     fun load(context: Context) {
@@ -372,11 +393,12 @@ object Session {
         _authUserId = p.getString(KEY_AUTH_ID, null)
         _accessToken = p.getString(KEY_ACCESS, null)
         _refreshToken = p.getString(KEY_REFRESH, null)
+        _jwtRole = Jwt.role(_accessToken)
         _profilePendingSync = p.getBoolean(KEY_PROFILE_PENDING, false)
     }
 
     val username: String? get() = _username
-    val role: String? get() = _role
+    val role: String? get() = _jwtRole ?: _role
     val donorId: Long? get() = _donorId
     val email: String? get() = _email
     val authUserId: String? get() = _authUserId

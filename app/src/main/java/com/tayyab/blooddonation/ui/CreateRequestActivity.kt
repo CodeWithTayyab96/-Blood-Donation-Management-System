@@ -14,6 +14,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
@@ -151,26 +152,39 @@ class CreateRequestActivity : AppCompatActivity() {
     private fun textOf(id: Int): String =
         findViewById<EditText>(id).text.toString().trim()
 
-    /** Online first so the request keeps its server id locally; unreachable
-     *  Supabase = saved locally only, and the user is told exactly that. */
+    /**
+     * Posting a request is online-only.
+     *
+     * A request that only exists on this phone is invisible to every donor, so
+     * saving it locally would be a lie the user only discovers when nobody
+     * answers. If the server refuses, the screen stays open with the reason and
+     * nothing is written.
+     */
     private fun save(db: DbHelper, req: BloodRequest) {
         if (!SupabaseSync.isOnline) {
-            db.addRequest(req)
-            Toast.makeText(this, "Request saved on this phone (offline).", Toast.LENGTH_SHORT).show()
-            finish()
+            Toast.makeText(
+                this,
+                "Posting a request needs an internet connection.",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
         Background.run {
             val remoteId = SupabaseSync.addRequestRemote(req)
-            if (remoteId != null) db.insertRequestWithId(req.copy(id = remoteId))
-            else db.addRequest(req)
+            val error = SupabaseClient.lastError
             runOnUiThread {
-                Toast.makeText(
-                    this,
-                    if (remoteId != null) "Request posted" else
-                        "Request saved on this phone (not synced to Supabase).",
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (remoteId == null) {
+                    Toast.makeText(
+                        this,
+                        "The server did not accept the request" +
+                            (error?.let { ": $it" } ?: "."),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@runOnUiThread
+                }
+                db.insertRequestWithId(req.copy(id = remoteId))
+                Toast.makeText(this, "Request posted", Toast.LENGTH_SHORT).show()
                 finish()
             }
         }

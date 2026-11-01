@@ -48,6 +48,10 @@
         <!-- Phase 4 AI helper. Anything may open it; only the fact fields
              described in its layout ever leave the phone. -->
         <activity android:name=".ui.AskDonateActivity" android:exported="false" />
+        <!-- The ordinary user's home. Launched by LoginActivity when the JWT
+             role is not MANAGER; a manager is redirected to MainActivity. -->
+        <activity android:name=".ui.UserHomeActivity" android:exported="false" />
+        <activity android:name=".ui.ConnectionCheckActivity" android:exported="false" />
         <activity android:name=".ui.RequestDetailActivity" android:exported="false" />
         <activity android:name=".ui.AddRequestActivity" android:exported="false" />
         <activity android:name=".ui.CreateRequestActivity" android:exported="false" />

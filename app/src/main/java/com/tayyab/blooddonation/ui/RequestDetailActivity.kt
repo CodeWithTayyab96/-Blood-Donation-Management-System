@@ -22,6 +22,7 @@ import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
+import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 
@@ -327,26 +328,35 @@ class RequestDetailActivity : AppCompatActivity() {
             createdAt = LocalDate.now().toString()
         )
 
-        if (SupabaseSync.isOnline) {
-            Background.run {
-                val remoteId = SupabaseSync.addOfferRemote(offer)
-                if (remoteId != null) db.upsertOffer(offer.copy(id = remoteId))
-                else db.insertOffer(offer)
-                runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
+        // An offer is online-only: one that only exists on this phone is never
+        // seen by the requester, and the donor would sit waiting for an answer
+        // that cannot come. Nothing is written if the server refuses.
+        if (!SupabaseSync.isOnline) {
+            Toast.makeText(
+                this,
+                "Offering to donate needs an internet connection.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        Background.run {
+            val remoteId = SupabaseSync.addOfferRemote(offer)
+            val error = SupabaseClient.lastError
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (remoteId == null) {
                     Toast.makeText(
                         this,
-                        if (remoteId != null) "Offer sent" else
-                            "Offer saved on this phone (not synced to Supabase).",
-                        Toast.LENGTH_SHORT
+                        "The server did not accept the offer" +
+                            (error?.let { ": $it" } ?: "."),
+                        Toast.LENGTH_LONG
                     ).show()
-                    renderFromLocal()
+                    return@runOnUiThread
                 }
+                db.upsertOffer(offer.copy(id = remoteId))
+                Toast.makeText(this, "Offer sent", Toast.LENGTH_SHORT).show()
+                renderFromLocal()
             }
-        } else {
-            db.insertOffer(offer)
-            Toast.makeText(this, "Offer saved on this phone (offline).", Toast.LENGTH_SHORT).show()
-            renderFromLocal()
         }
     }
 

@@ -89,7 +89,7 @@ object SupabaseAuth {
                 val stream = if (code in 200..299) connection.inputStream else connection.errorStream
                 val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                 if (code !in 200..299) {
-                    lastError = errorMessage(text) ?: "Supabase Auth -> HTTP $code"
+                    lastError = errorMessage(code, text) ?: "Supabase Auth -> HTTP $code"
                 }
                 code to text
             } finally {
@@ -104,16 +104,57 @@ object SupabaseAuth {
         }
     }
 
-    /** GoTrue error bodies carry "msg" (and sometimes "error_description"). */
-    private fun errorMessage(body: String?): String? {
-        if (body.isNullOrBlank()) return null
-        return try {
+    /**
+     * Turns a GoTrue error body into a sentence the user can act on.
+     *
+     * "Invalid login credentials" and "Email not confirmed" are the server's
+     * words, not an explanation; and an unrecognised failure used to be
+     * reported as nothing at all. Unknown cases keep the server's own message
+     * and add the status code, so a screenshot is enough to diagnose it.
+     */
+    private fun errorMessage(code: Int, body: String?): String? {
+        val raw = if (body.isNullOrBlank()) null else try {
             val obj = JSONObject(body)
             obj.optString("msg", "").takeIf { it.isNotBlank() }
                 ?: obj.optString("error_description", "").takeIf { it.isNotBlank() }
+                ?: obj.optString("error", "").takeIf { it.isNotBlank() }
         } catch (_: Exception) {
             null
         }
+        val lower = raw?.lowercase() ?: ""
+        return when {
+            lower.contains("invalid login credentials") || lower.contains("invalid_credentials") ->
+                "Wrong email or password."
+            lower.contains("email not confirmed") || lower.contains("email_not_confirmed") ->
+                "Email not confirmed. Check your inbox and tap the link, then sign in again."
+            lower.contains("rate limit") || lower.contains("too many") || code == 429 ->
+                "Too many attempts. Wait a minute and try again."
+            lower.contains("already registered") || lower.contains("user_already_exists") ->
+                "That email is already registered. Sign in instead."
+            lower.contains("weak password") || lower.contains("weak_password") ->
+                "That password is too weak — use at least 6 characters."
+            lower.contains("signups not allowed") ->
+                "Sign-ups are turned off on this project."
+            raw != null -> "Server rejected the request (HTTP $code): $raw"
+            else -> "Server rejected the request (HTTP $code)."
+        }
+    }
+
+    /**
+     * Asks Supabase to send the sign-up confirmation email again.
+     * GoTrue answers 200 even when it decides not to send (to avoid leaking
+     * which addresses exist), so a true result means "accepted", not
+     * "delivered".
+     */
+    fun resendConfirmation(email: String): Boolean {
+        lastError = null
+        val (code, body) = post("/resend", JSONObject().apply {
+            put("type", "signup")
+            put("email", email)
+        })
+        if (code in 200..299) return true
+        lastError = errorMessage(code, body) ?: lastError
+        return false
     }
 
     /**

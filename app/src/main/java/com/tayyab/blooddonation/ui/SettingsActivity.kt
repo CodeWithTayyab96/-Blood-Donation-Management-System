@@ -36,6 +36,10 @@ class SettingsActivity : AppCompatActivity() {
             updateState()
         }
 
+        findViewById<Button>(R.id.btnConnectionCheck).setOnClickListener {
+            startActivity(android.content.Intent(this, ConnectionCheckActivity::class.java))
+        }
+
         findViewById<Button>(R.id.btnNotificationSettings).setOnClickListener {
             openSystemNotificationSettings()
         }
