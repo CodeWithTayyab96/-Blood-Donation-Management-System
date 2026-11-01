@@ -3,6 +3,36 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.13 — 2026-11-01
+
+versionCode 14. Check 2 says "reachable" in plain words, and Edge Functions can
+be deployed from GitHub Actions without a local Supabase CLI.
+
+### Connection check reads calmly
+
+- "2. Server" now shows **reachable** when the server answers, with the status
+  code in smaller parenthetical text — e.g. `reachable (HTTP 401)`. A 401 is
+  proof the server answered, so it no longer sits in the headline looking like
+  a failure.
+- Only a request that never completes is a failure, and it says why (offline,
+  DNS, timeout).
+- `SupabaseProbeTest` pins both: any HTTP code is reachable, the headline is
+  always "reachable", and the code stays in the small note.
+
+### Deploying functions without a laptop CLI
+
+- A new manual workflow, **Deploy Edge Functions**, deploys `delete-account`
+  and `ai-coach` with JWT verification ON, and `push-notify` with
+  `--no-verify-jwt` only when you tick the box.
+- It reads the project back and refuses to pass unless `verify_jwt` is right,
+  then calls every function without a token and requires a refusal (401, or
+  401/403 for `push-notify`). A 404 fails the run.
+- It authenticates with the repository secret `SUPABASE_ACCESS_TOKEN`.
+  Function secrets (`OPENROUTER_API_KEY`, `AI_MODEL`,
+  `FCM_SERVICE_ACCOUNT_JSON`, `PUSH_WEBHOOK_SECRET`) stay in the Supabase
+  dashboard under Edge Functions → Secrets — never in the repo or the SQL
+  editor. RUNBOOK.md section E explains the token, the secret and the run.
+
 ## 1.12 — 2026-11-01
 
 versionCode 13. The connection check no longer reports a healthy server as

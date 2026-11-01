@@ -1,6 +1,9 @@
 package com.tayyab.blooddonation.ui
 
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.RelativeSizeSpan
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -47,12 +50,16 @@ class ConnectionCheckActivity : AppCompatActivity() {
             // proved, and the first failure is the interesting one.
             val lines = listOf(
                 line("1. Configuration", SupabaseClient.probeConfig()),
-                line("2. Server reachable", SupabaseClient.probeServer()),
+                line("2. Server", SupabaseClient.probeServer()),
                 line("3. Session", sessionProbe()),
                 line("4. A read works", SupabaseClient.probeRead()),
                 line("5. Helper functions", SupabaseClient.probeHelperFunctions())
             )
-            val text = lines.joinToString("\n")
+            val text = SpannableStringBuilder()
+            lines.forEachIndexed { index, check ->
+                if (index > 0) text.append('\n')
+                text.append(check)
+            }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 out.text = text
@@ -61,8 +68,29 @@ class ConnectionCheckActivity : AppCompatActivity() {
         }
     }
 
-    private fun line(label: String, probe: SupabaseClient.Probe): String =
-        (if (probe.ok) "✓ " else "✗ ") + label + " — " + probe.detail
+    /**
+     * One check line. The status code (check 2) is appended in a smaller size:
+     * a 401 there means the server answered, not that anything failed.
+     */
+    private fun line(label: String, probe: SupabaseClient.Probe): CharSequence {
+        val text = SpannableStringBuilder()
+            .append(if (probe.ok) "✓ " else "✗ ")
+            .append(label)
+            .append(" — ")
+            .append(probe.detail)
+        val note = probe.note
+        if (!note.isNullOrBlank()) {
+            val start = text.length
+            text.append("  (").append(note).append(")")
+            text.setSpan(
+                RelativeSizeSpan(0.78f),
+                start,
+                text.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        return text
+    }
 
     private fun sessionProbe(): SupabaseClient.Probe {
         val token = Session.accessToken

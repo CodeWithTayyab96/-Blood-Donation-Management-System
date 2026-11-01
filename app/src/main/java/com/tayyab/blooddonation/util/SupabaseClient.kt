@@ -207,7 +207,16 @@ object SupabaseClient {
     // ------------------------------------------------------- connection check
 
     /** One line of the Settings -> Connection check screen. */
-    data class Probe(val ok: Boolean, val detail: String)
+    data class Probe(
+        val ok: Boolean,
+        val detail: String,
+        /**
+         * Optional small print, shown in a smaller size after the detail.
+         * Used by check 2 to keep "HTTP 401" out of the headline: a status
+         * code proves the server answered, it is not a failure.
+         */
+        val note: String? = null
+    )
 
     fun probeConfig(): Probe =
         if (isConfigured) Probe(true, "project URL and anon key are in this build")
@@ -229,10 +238,15 @@ object SupabaseClient {
      * Pure mapping from an HTTP status to the check-2 result. Kept separate
      * from the network call so it can be unit-tested: -1 means the request
      * never completed, any positive code is an answer from the server.
+     *
+     * The headline is the plain word "reachable"; the status code travels in
+     * [Probe.note] as small print. A 401 here is a *successful* reachability
+     * check (the endpoint asked for different credentials), so it must never
+     * read like an error on screen.
      */
     fun probeReachable(code: Int): Probe =
-        if (code > 0) Probe(true, "server answered HTTP $code")
-        else Probe(false, lastError ?: "no HTTP answer (code $code)")
+        if (code > 0) Probe(true, "reachable", "HTTP $code")
+        else Probe(false, lastError ?: "no answer from the server")
 
     /** GET /auth/v1/health with the anon key only. Returns the status or -1. */
     private fun probeHealth(): Int {
