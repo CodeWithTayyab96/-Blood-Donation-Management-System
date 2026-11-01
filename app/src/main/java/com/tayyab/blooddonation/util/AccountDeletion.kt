@@ -1,7 +1,6 @@
 package com.tayyab.blooddonation.util
 
 import com.tayyab.blooddonation.BuildConfig
-import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -38,6 +37,11 @@ object AccountDeletion {
 
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 30_000
+    private const val MAX_DETAIL_LENGTH = 120
+
+    private val FLAG_PARTIAL = Regex("\"dataDeleted\"\\s*:\\s*true")
+    private val FIELD_ERROR = Regex("\"error\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"")
+    private val FIELD_DETAIL = Regex("\"detail\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"")
 
     fun delete(): Result {
         val token = Session.accessToken
@@ -86,27 +90,35 @@ object AccountDeletion {
     }
 
     /** True when the function reports that step 1 succeeded but step 2 did not. */
-    private fun isPartial(body: String?): Boolean {
-        if (body.isNullOrBlank()) return false
-        return try {
-            JSONObject(body).optBoolean("dataDeleted", false)
-        } catch (_: Exception) {
-            false
-        }
+    private fun isPartial(body: String?): Boolean =
+        body != null && FLAG_PARTIAL.containsMatchIn(body)
+
+    /**
+     * Pulls the server's `"error"` (and, when short, its `"detail"`) out of the
+     * response by hand.
+     *
+     * Deliberately not `org.json`: JSON handling here has to be unit-testable,
+     * and the JVM test classpath has no real JSON library — the Android one is
+     * stubbed out and answers every call with a default, which would quietly
+     * turn every failure into "no message". The responses are flat, so a
+     * regex is honest and cannot lie the way a stub can.
+     */
+    private fun readError(body: String): String? {
+        val error = FIELD_ERROR.find(body)?.groupValues?.get(1)?.unescape()
+            ?.takeIf { it.isNotBlank() }
+        val detail = FIELD_DETAIL.find(body)?.groupValues?.get(1)?.unescape()
+            ?.takeIf { it.isNotBlank() }
+        // `detail` is the database's own wording. It earns its place only when
+        // it is short enough to read and does not look like a stack trace.
+        if (error == null) return null
+        return if (detail != null && detail.length <= MAX_DETAIL_LENGTH) "$error ($detail)" else error
     }
 
-    private fun readError(body: String): String? {
-        return try {
-            val obj = JSONObject(body)
-            val detail = obj.optString("detail", "").takeIf { it.isNotBlank() }
-            val error = obj.optString("error", "").takeIf { it.isNotBlank() }
-            // `detail` is the database's own wording; it is useful to the user
-            // only when it does not leak internals, so it is kept short.
-            error?.let { if (detail != null && detail.length < 120) "$it ($detail)" else it }
-        } catch (_: Exception) {
-            null
-        }
-    }
+    private fun String.unescape(): String = this
+        .replace("\\n", " ")
+        .replace("\\\"", "\"")
+        .replace("\\\\", "\\")
+        .trim()
 
     private fun call(token: String): Pair<Int, String?> {
         return try {

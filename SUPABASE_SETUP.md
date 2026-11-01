@@ -157,6 +157,33 @@ unaffected, and nothing in the app reads or writes `users`.
   access token expired (the app refreshes once and retries) or the
   user is not signed in — not a missing anon policy.
 
+## Accounts: password recovery and deletion (v1.10)
+
+Both screens work without any setup on the server — they just fail with a
+readable message. To make them work:
+
+- **Emails.** Supabase's built-in SMTP sends to organisation members only and
+  about 2 messages an hour, so configure **Authentication → SMTP Settings**
+  with a real server (a Gmail app password is enough to test with), then raise
+  the 30/hour limit under **Authentication → Rate Limits**.
+- **The Reset password template must show `{{ .Token }}`** (Authentication →
+  Emails). The app asks the user to type a 6-digit code, so an email with only
+  a link cannot be used. Confirm signup keeps `{{ .ConfirmationURL }}`.
+- **Delete my account** additionally needs
+  `supabase_delete_account.sql` in the SQL editor and then:
+
+  ```bash
+  supabase functions deploy delete-account      # JWT verification stays ON
+  ```
+
+  The function deletes the account named in the caller's verified token, never
+  one taken from the request body, and refuses managers. Donation history is
+  kept and the donor row is anonymised instead of deleted, because
+  `donations.donor_id` is `on delete cascade`.
+
+Full step-by-step, with the rate limits and the phone checklist: **RUNBOOK.md
+Stage D**.
+
 ## Files
 
 - `app/src/main/java/com/tayyab/blooddonation/util/SupabaseAuth.kt`

@@ -246,6 +246,24 @@ installed, and the install is handed to `PackageInstaller` with
 for this app, and on Android 8–11 the system may still show its own
 confirmation screen.
 
+## Accounts
+
+**Forgot password?** on the sign-in screen runs Supabase's code flow: the app
+asks for a 6-digit code by email, the user types it with a new password, and
+the code is exchanged for a session — because only a session may change a
+password. It needs the **Reset password** email template to show
+`{{ .Token }}`, and a real SMTP server: Supabase's built-in one sends to
+organisation members only, about 2 messages an hour.
+
+**Settings → Delete my account** states what goes and what stays, and asks you
+to type DELETE. The account itself is removed by a `delete-account` Edge
+Function, because deleting an Auth user needs the service role key and that key
+never leaves the server. It takes the account from the caller's verified token,
+refuses managers, and keeps the donation history — the blood bank's own record —
+by anonymising the donor row instead of deleting it.
+
+Setup steps, rate limits and the phone checklist are in `RUNBOOK.md` Stage D.
+
 ## Project structure
 
 ```
@@ -262,12 +280,18 @@ app/src/main/java/com/tayyab/blooddonation/
 ├── util/SupabaseClient.kt    PostgREST client (HttpURLConnection);
 │                             v1.4: user Bearer token + one 401 refresh
 ├── util/SupabaseSync.kt      Online/offline pull + push logic
+├── util/Jwt.kt               Reads app_metadata.role from the access token
+├── util/AccountDeletion.kt   "Delete my account": calls the Edge Function
+│                             and reads deleted / partial / refused
 └── ui/                       Activities and RecyclerView adapters
     ├── LoginActivity.kt      Sign-in: email via Supabase Auth
     │                         (launcher activity)
     ├── UserHomeActivity.kt   Home for everyone who is not a manager
     ├── RegisterActivity.kt   Email registration: Auth account + donor
     │                         profile linked by auth_id
+    ├── ForgotPasswordActivity.kt  Recovery by 6-digit emailed code
+    ├── DeleteAccountActivity.kt   Delete my account (confirmation)
+    ├── SettingsActivity.kt   Notifications, connection check, delete
     └── ProfileActivity.kt    Own profile + next eligible date +
                               "Sync profile" retry for unsynced profiles
 ```
