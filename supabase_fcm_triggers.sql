@@ -61,11 +61,13 @@ $$;
 create or replace function public.on_offer_inserted()
 returns trigger language plpgsql as $$
 begin
+  -- requester_id lives on `requests`, not on `offers` (NEW has no such
+  -- column) — without the lookup, EVERY offer insert would fail here.
   perform public.push_send(jsonb_build_object(
     'type', 'offer',
     'offer_id', NEW.id,
     'request_id', NEW.request_id,
-    'requester_id', NEW.requester_id,
+    'requester_id', (select requester_id from requests where id = NEW.request_id),
     'donor_name', NEW.donor_name,
     'donor_group', NEW.donor_group,
     'donor_city', NEW.donor_city
