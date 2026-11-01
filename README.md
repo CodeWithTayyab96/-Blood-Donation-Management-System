@@ -116,31 +116,37 @@ is "best effort" in every mode, and the app says so honestly:
 - **Sign-out stops pushes** for that device (token row deleted) and stops
   the poll for that user. The token is re-uploaded on the next sign-in.
 
-## AI helper (optional, Phase 4)
+## AI helper (optional)
 
 Two optional helpers on the signed-in user's dashboard, backed by your own
 OpenRouter key through one Edge Function. **Nothing changes until the
-`ai-coach` function is deployed** — without it the dashboard keeps showing
-the local fact of the day and the helper screen shows its fallback text.
-Setup: `AI_SETUP.md` (one SQL file, one Supabase secret, one deploy; no
+`ai-coach` function is deployed** — without it the dashboard keeps showing the
+local fact of the day and the helper screen says *"The AI helper is not set up
+yet"*. Setup: `RUNBOOK.md` Stage C (two SQL files, one secret, one deploy; no
 client secrets and no new app dependency).
 
-- **"Can I donate? (AI helper)"** — general, plain-text answers about
-  donating. Stated on the screen and enforced in the model's instructions:
-  this is information, never individual medical advice, and only a licensed
-  blood bank's screening actually decides.
-- **Personalised daily motivation** — the "Did you know?" card becomes a
-  short personalised encouragement for donors, fetched at most once per
-  calendar day, with the local fact bank as the offline / failure fallback.
-- **Privacy, by construction:** exactly four neutral facts ever leave the
-  phone — first name, donation count, days since the last donation, blood
-  group — and the exact payload is pinned by unit tests. No phone number,
-  city, age, gender, weight, user id or token is ever sent, nothing is
-  stored server-side, and the demo manager session can never reach the
-  provider at all.
-- **Limits:** questions ≤ 500 chars, replies ≤ 600, and 30 AI calls per
-  signed-in user per 24 h (a per-user quota in the database that the user
-  cannot reset).
+- **"Can I donate?"** — general, plain-text answers about donating. Stated on
+  the screen and enforced in the model's instructions: this is information,
+  never individual medical advice, and only a licensed blood bank's screening
+  actually decides.
+- **Daily motivation** — the card shows a short line from the shared daily
+  quote bank, fetched at most once per calendar day, with the local fact bank
+  as the offline / failure fallback.
+- **Privacy, by construction:** **no personal data leaves the phone.** The
+  payload is the request kind and, for a question, the question itself —
+  nothing else. (An earlier version sent a first name, donation count, days
+  since the last donation and blood group; that is gone, and a unit test fails
+  if any of those keys comes back.) Nothing is stored server-side, and a
+  session with no token never reaches the provider at all.
+- **Limits:** questions ≤ 500 chars, replies ≤ 600, **5 questions per user per
+  day**, and a project cap of 40 provider calls a day.
+- **Built for the free tier:** OpenRouter's free models allow roughly 50
+  requests a day for the whole account, so the motivational line is generated
+  **once per day for everyone** — the first request of a day asks for ~30
+  quotes in a single call, validates them (length, no medical claims, no
+  personal data) and stores them; every other user that day is served from the
+  table for free. No scheduled job. The model is `openrouter/free` by default,
+  with a fallback list of other `:free` models.
 
 ## Screenshots
 

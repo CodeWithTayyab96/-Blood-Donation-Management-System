@@ -350,30 +350,50 @@ secrets → the app quietly returns to poll-only.
 
 ---
 
-# Stage C — AI helper (OpenRouter)
+# Stage C — AI helper (OpenRouter, free models)
 
-## C1. `supabase_ai_migration.sql`
+The helper is optional: without it the home card shows its local fact of the
+day and the "Can I donate?" screen says the helper is not set up. Nothing else
+in the app depends on it.
 
-The `ai_coach_usage` rate-limit table. RLS ON with NO policies on purpose —
-a user must not read or reset their own counter; only the Edge Function's
-service role can.
+## C1. Two SQL files
 
-**Verify**
+1. `supabase_ai_migration.sql` — the `ai_coach_usage` per-user counter. RLS ON
+   with **no policies**: a user must not read or reset their own counter.
+2. `supabase_ai_quotebank.sql` — `ai_quotes` (the shared bank) and
+   `ai_provider_calls` (the project-wide daily counter).
+
 ```sql
-select tablename, rowsecurity from pg_tables where tablename = 'ai_coach_usage';
-                                                            -- t
-select count(*) from pg_policies where tablename = 'ai_coach_usage';
-                                                            -- 0  ← expected!
+-- after both files
+select tablename, rowsecurity from pg_tables
+ where tablename in ('ai_coach_usage','ai_quotes','ai_provider_calls');
+                                                    -- t, t, t
+select count(*) from pg_policies
+ where tablename in ('ai_coach_usage','ai_provider_calls');
+                                                    -- 0  ← expected!
+select count(*) from pg_policies where tablename = 'ai_quotes';
+                                                    -- 1  ← the SELECT only
 ```
 
-## C2. Supabase secrets
+**Verify:** `supabase_verify_policies.sql` must still print `ALL POLICIES OK`.
+It now also fails if `ai_quotes` has any non-SELECT policy, or if
+`ai_provider_calls` has any policy at all.
+
+## C2. Secrets
 
 ```bash
-supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
-supabase secrets set AI_MODEL=google/gemini-2.0-flash-001   # optional; that default is fine
+supabase secrets set OPENROUTER_API_KEY=sk-or-v1-YOUR-KEY-HERE
+supabase secrets set AI_MODEL=openrouter/free          # optional; this is the default
 ```
 
-**Verify:** `supabase secrets list` shows both (values never print).
+**Verify:** `supabase secrets list` shows both — values never print.
+
+`AI_MODEL` may be any OpenRouter model id. The **default is `openrouter/free`**,
+which routes to whichever free model is available. If it is unavailable, the
+function tries a list of other `:free` models in order
+(`google/gemma-3-27b-it:free`, `meta-llama/llama-3.3-70b-instruct:free`,
+`deepseek/deepseek-r1:free`, `mistralai/mistral-small-3.1-24b-instruct:free`),
+so one unavailable model does not take the feature down.
 
 ## C3. Deploy ai-coach — JWT verification stays ON
 
@@ -387,35 +407,59 @@ signed-in users, and re-checks their token with `auth.getUser` inside).
 **Verify (a signed-in token is REQUIRED to proceed):**
 ```bash
 curl -i -X POST "https://<project-ref>.supabase.co/functions/v1/ai-coach" \
-  -H "content-type: application/json" \
-  -d '{"kind":"motivation","facts":{"name":"x","donations":1,"blood_group":"B+"}}'
+  -H "content-type: application/json" -d '{"kind":"quote"}'
 # 401 {"error":"a signed-in user is required"}  ← correct
 ```
-403 instead → you accidentally deployed with `--no-verify-jwt`; redeploy
-without the flag.
+403 instead → you deployed with `--no-verify-jwt`; redeploy without the flag.
+503 `the AI helper is not configured` → `OPENROUTER_API_KEY` is missing.
+
+## C4. How the ~50 free requests a day are spent
+
+| What | Cost |
+|---|---|
+| Today's motivational line, **all users** | **1 call per day** (the bank) |
+| One user's "Can I donate?" question | 1 call, **max 5 per user per day** |
+| Project-wide cap | **40 calls/day** (the bank's calls reserved) |
+
+The first request of a day asks the model for ~30 quotes **in a single call**,
+validates them, and stores the ones that pass. Every other user that day is
+served from the table for free. **No pg_cron, no scheduled job** — the bank is
+built by whoever asks first. 40 < 50 leaves headroom.
+
+Each generated quote is checked before it is stored: length, **no medical
+claims** (cure, prevent, treat, weight loss, detox, immunity), and **no personal
+data** (no `@`, no long numbers, no ages, no blood groups). Its text is shown on
+every user's home screen, so it is verified, not trusted.
+
+## C5. No personal data
+
+The request used to carry a first name, donation count, days since the last
+donation and blood group. **It carries none of them now** — only the question
+you typed. `AiCoachPayloadTest` fails if any of those keys comes back.
 
 ## Stage C — STOP AND TEST ON THE PHONE
 
-1. **Daily card** — sign in as a donor with a profile: after a moment the
-   "Did you know?" card becomes a short, personalised sentence. Reopen the
-   app: the same text stays for the rest of the day.
-2. **Helper** — 🩸 Can I donate? — ask something general ("Can I donate with
-   a high BMI?"); a short plain-text answer appears WITH the disclaimer
-   visible above it, and the safety note at the bottom never moves.
-3. **Refuse medical advice** — ask "I take tablets for X, can I donate?"
-   The answer must point to a licensed blood bank, not to you.
-4. **Offline stays offline** — with no network, the helper shows its fallback
-   text ("ask a licensed blood bank") and never an error or an empty screen.
-5. **No candidate data** — nothing typed into the helper appears anywhere
-   (`select * from ai_coach_usage` only ever shows the counter columns, and
-   the answer text is nowhere).
-6. **Fallback stays graceful** — internet off → helper screen shows its
-   "could not reach the helper" text on Ask; the dashboard falls back to the
-   Phase-1 fact bank. Nothing crashes.
+1. **Daily card** — sign in; after a moment the card becomes a short line from
+   the bank. Reopen the app: the same text stays for the rest of the day.
+2. **It really is one call** — in the Supabase dashboard, Edge Functions →
+   ai-coach → Logs, confirm a single provider-backed invocation for the first
+   user of the day, and none for the second user.
+   `select count(*) from ai_provider_calls;` should be 1.
+3. **Helper** — 🩸 Can I donate? — ask something general ("How long between
+   donations?"): a short plain-text answer appears, with the disclaimer.
+4. **Refuse medical advice** — ask "I take tablets for X, can I donate?" The
+   answer must point to a licensed blood bank, not answer for them.
+5. **The limit has a message** — ask six questions: the sixth says you have used
+   all five for today **and that it resets tomorrow**.
+6. **Not set up** — unset the secret and redeploy, or open the helper with the
+   function deleted: it must say **"The AI helper is not set up yet"**, and the
+   home card must keep its local fact of the day — never blank, never an error.
+7. **Offline** — with no network the helper says it could not be reached and
+   still points at the blood bank. Nothing crashes.
 
-**Rollback:** `supabase_ai_migration_rollback.sql` +
-`supabase functions delete ai-coach`; the dashboard card reverts to the
-local fact bank automatically.
+**Rollback:** `supabase_ai_quotebank_rollback.sql` +
+`supabase_ai_migration_rollback.sql` + `supabase functions delete ai-coach`.
+The card reverts to the local fact bank automatically.
 
 ---
 

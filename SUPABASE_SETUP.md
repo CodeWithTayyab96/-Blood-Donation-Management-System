@@ -157,6 +157,29 @@ unaffected, and nothing in the app reads or writes `users`.
   access token expired (the app refreshes once and retries) or the
   user is not signed in — not a missing anon policy.
 
+## AI helper (v1.11)
+
+Optional, and off until you deploy it. When it is off the home card keeps its
+local fact of the day and the helper screen says **"The AI helper is not set up
+yet"** — never a blank or broken screen.
+
+```bash
+# SQL, in this order: supabase_ai_migration.sql then supabase_ai_quotebank.sql
+supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...   # never in the repo
+supabase secrets set AI_MODEL=openrouter/free          # optional; the default
+supabase functions deploy ai-coach                     # JWT verification ON
+```
+
+The free tier's ~50 requests/day are spent as **one call per day for
+everyone**: the first request of a day generates ~30 quotes in a single call,
+validates them (length, no medical claims, no personal data) and stores them;
+every other user is served from the table for free. Questions are **5 per user
+per day**, with a project cap of 40. **No personal data is sent** — the payload
+is just the request kind and, for a question, the question.
+
+Full steps, the free-model fallback list and the phone checklist: **RUNBOOK.md
+Stage C**.
+
 ## Accounts: password recovery and deletion (v1.10)
 
 Both screens work without any setup on the server — they just fail with a
