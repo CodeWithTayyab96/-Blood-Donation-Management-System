@@ -47,9 +47,11 @@ section only covers what Auth adds.
   row (a classroom demo, not per-user row ownership). Do NOT enter
   real donor phone numbers.
 - **Demo logins.** `manager` / `manager123` still works local-only
-  (unchanged v1.3 path). `manager@blood.local` / `manager123`
-  works through Supabase Auth (a matching Auth user exists in the
-  project, and the app seeds the local mirror row). Old local-only
+  (unchanged v1.3 path). `tayyabuq1@gmail.com` works through Supabase
+  Auth: the Auth user exists in the project with `app_metadata.role`
+  = `MANAGER`, and the app seeds the matching local row that gives the
+  Manager UI (see RUNBOOK A5/A6; its password is the one set when the
+  account was created, not `manager123`). Old local-only
   v1.3 accounts do NOT carry over: their username + password hash
   still exist on the phone, but they have no Auth user, so they
   must re-register with an email to sign in through Auth. (A
@@ -168,9 +170,10 @@ unaffected, and nothing in the app reads or writes `users`.
 - `app/src/main/java/com/tayyab/blooddonation/util/Session.kt`
   — v1.4: also stores Auth email, user id, tokens, pending flag.
 - `app/src/main/java/com/tayyab/blooddonation/db/DbHelper.kt`
-  — upsert / explicit-id helpers added; v1.4 adds the
-  manager@blood.local seed, a v3 upgrade branch, and the profile
-  relink helper. All v1.2 methods unchanged.
+  — upsert / explicit-id helpers added; v1.4 adds the seeded
+  manager row, a v3 upgrade branch, and the profile relink helper;
+  v7 re-seeds it under the project's manager email
+  (tayyabuq1@gmail.com). All v1.2 methods unchanged.
 - `supabase_migration.sql` — the schema already applied to the
   project (donors, donations, requests, stock + seeds). No longer
   creates the legacy `users` table.

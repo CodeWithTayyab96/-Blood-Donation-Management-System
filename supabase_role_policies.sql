@@ -29,11 +29,11 @@
 update auth.users
    set raw_app_meta_data =
          coalesce(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role', 'MANAGER')
- where email = 'manager@blood.local';
+ where email = 'tayyabuq1@gmail.com';
 
 -- Verify (expect exactly one row with role = MANAGER):
 --   select email, raw_app_meta_data -> 'role' as role
---     from auth.users where email = 'manager@blood.local';
+--     from auth.users where email = 'tayyabuq1@gmail.com';
 
 -- ---------------------------------------------------------------------------
 -- STEP 2 — helper + policies.

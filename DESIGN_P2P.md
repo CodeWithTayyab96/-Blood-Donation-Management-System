@@ -91,7 +91,7 @@ install the new APK; it is non-destructive.
 **Safe order:**
 1. Backup the Supabase project.
 2. Run `supabase_p2p_migration.sql` (additive tables/columns) — non-breaking.
-3. Set the manager role claim on `manager@blood.local`.
+3. Set the manager role claim on `tayyabuq1@gmail.com`.
 4. Deploy the new APK (clients now send `requester_id` and read offers).
 5. Apply `supabase_p2p_policies.sql` (the enforcing step; older clients then lose online
    request writes until they update — acceptable, they fall back to local).
@@ -113,7 +113,7 @@ install the new APK; it is non-destructive.
 - The hard 3-open-requests cap needs a `BEFORE INSERT` trigger plus a client check (RLS alone
   cannot count cheaply).
 - The seeded `manager`/`manager123` login has **no Auth claim**, so it cannot moderate
-  server-side — only `manager@blood.local` signed in through Auth can.
+  server-side — only `tayyabuq1@gmail.com` signed in through Auth can.
 - Peer donations must **not** touch blood-bank stock (`fulfilled_by='donor'` records on the
   donor's history only).
 
@@ -127,7 +127,7 @@ offline-first SQLite can diverge from the server between syncs; the 3-request ca
 bypassable if the trigger is not applied.
 
 **Manual test — three accounts (on a test Supabase project):**
-- **Manager** `manager@blood.local` / `manager123`: sees every request, offer and report;
+- **Manager** `tayyabuq1@gmail.com`: sees every request, offer and report;
   cancels/removes any request; stock fulfilment sets `fulfilled_by='stock'`.
 - **Requester** `requester@test.com` (register, no donor profile needed): creates an `A+`,
   city X, 1-unit, Urgent request; sees it under "My requests"; cancels own; a 4th open

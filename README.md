@@ -12,7 +12,8 @@ offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
   (email + password). A Manager (full access) and Donors (view
   everything, but only edit their own profile/donations). Demo
   manager logins: `manager` / `manager123` (local-only, as before)
-  and `manager@blood.local` / `manager123` (through Supabase Auth).
+  and `tayyabuq1@gmail.com` (through Supabase Auth — its password is
+  the one set when the account was created; see RUNBOOK A5).
   Donors register from the sign-in screen with an email address,
   which creates their Auth account and donor profile together.
   Registration needs an internet connection — it never creates a
@@ -172,7 +173,7 @@ what changed):
   The plain-username login (`manager` / `manager123`) still works, but it is
   **local-only**: it carries no Supabase session, so every online call goes out
   anonymously and is rejected by the policies above. Nothing on that device
-  syncs, and the dashboard says so. Use `manager@blood.local` to work against
+  syncs, and the dashboard says so. Use `tayyabuq1@gmail.com` to work against
   the shared data.
 - **Where the key comes from.** The app reads the project URL and
   anon key from BuildConfig fields (`SUPABASE_URL`,
@@ -223,7 +224,8 @@ the online and local copies start in step.
 ```
 app/src/main/java/com/tayyab/blooddonation/
 ├── db/DbHelper.kt            SQLite schema + all queries (v3 adds the
-│                             manager@blood.local seed) + v1.3 upsert /
+│                             seeded manager row; v7 moves it to
+│                             tayyabuq1@gmail.com) + v1.3 upsert /
 │                             explicit-id merge helpers + v1.4 profile relink
 ├── model/Models.kt           Donor, Donation, BloodRequest, UserAccount
 ├── util/BloodCompatibility.kt  Compatibility table + eligibility rules

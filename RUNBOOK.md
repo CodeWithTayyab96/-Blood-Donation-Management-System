@@ -107,21 +107,32 @@ select tablename, rowsecurity from pg_tables
  order by tablename;                    -- donors/donations/requests/stock: rowsecurity = t
 ```
 
-## A5. Create the manager account INSIDE the app
+## A5. Create the manager account in Supabase (not through the app)
 
-Install the current main APK, register with email **`manager@blood.local`**
-(any password YOU choose — store it in your password manager). This is an
-ordinary Auth sign-up; claiming it as manager is the next step.
+Dashboard → Authentication → **Users** → *Add user*: email
+**`tayyabuq1@gmail.com`**, a password YOU choose (store it in your password
+manager), and tick **Auto Confirm User**.
 
-**Verify:** the dashboard opens with the admin button visible for that
-account, and the SQL check below returns one row:
+Do **not** create this account with the app's "Register as a Donor" screen.
+Two reasons: that screen always creates a **donor profile** for the account,
+and the phone already carries a seeded local row for this address with role
+MANAGER, so registration refuses it with "Email already registered on this
+phone".
+
+The app matches this address to that seeded local row, and the local row is
+what gives the account the Manager UI. The server-side role is the claim in
+A6. Both must use the same address — if you change one, change the other
+(`DbHelper.seedManager` in the app, and STEP 1 in `supabase_role_policies.sql`).
+
+**Verify:** exactly one row, with `email_confirmed_at` set:
 ```sql
-select id, email from auth.users where email = 'manager@blood.local';
+select id, email, email_confirmed_at from auth.users
+ where email = 'tayyabuq1@gmail.com';
 ```
 
 ## A6. Set the manager role claim — THEN verify — then policies
 
-### A6.1 Sign up is not enough: the role lives in app_metadata
+### A6.1 Creating the account is not enough: the role lives in app_metadata
 
 Run in the SQL editor (you can also use the alternative below):
 
@@ -130,11 +141,11 @@ update auth.users
    set raw_app_meta_data =
          coalesce(raw_app_meta_data, '{}'::jsonb)
          || jsonb_build_object('role', 'MANAGER')
- where email = 'manager@blood.local';
+ where email = 'tayyabuq1@gmail.com';
 ```
 
 **Alternative without SQL:** Dashboard → Authentication → **Users** → click
-`manager@blood.local` → find `raw_app_meta_data` (usually shown as a JSON
+`tayyabuq1@gmail.com` → find `raw_app_meta_data` (usually shown as a JSON
 `app_metadata` field) → edit it to exactly:
 ```json
 { "role": "MANAGER" }
@@ -151,7 +162,7 @@ read-only. So:
 select email,
        raw_app_meta_data ->> 'role' as role
   from auth.users
- where email = 'manager@blood.local';
+ where email = 'tayyabuq1@gmail.com';
 ```
 
 **Pass condition:** exactly one row, and `role` = `MANAGER`.
@@ -467,7 +478,7 @@ record donations, fulfil or cancel anything.
 2. Fix the Account data:
    ```sql
    select raw_app_meta_data ->> 'role' as role, updated_at
-     from auth.users where email = 'manager@blood.local';
+     from auth.users where email = 'tayyabuq1@gmail.com';
    ```
    If NULL or wrong, re-run the A6.1 update until this returns `MANAGER`.
 3. Then **sign out and sign in again on the phone** — the new session picks

@@ -20,9 +20,14 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
 
     companion object {
         private const val DB_NAME = "blood_donation.db"
-        // v3 (v1.4): adds the manager@blood.local seed row for the
-        // Supabase Auth manager login. Existing installs upgrade
-        // without losing data (see onUpgrade).
+        // v3 (v1.4): adds the seeded manager row for the Supabase Auth
+        // manager login. Existing installs upgrade without losing data
+        // (see onUpgrade).
+        // v7: the seeded Auth-manager address moved to the project's real
+        // manager email (tayyabuq1@gmail.com). The local row is what gives
+        // that account the MANAGER role in the UI; the server-side claim
+        // lives in app_metadata. Existing installs gain the new row here
+        // and keep the old one (rows are never deleted).
         // v4: donations.donor_id gains ON DELETE CASCADE. SQLite cannot alter
         // a constraint, so the v3 -> v4 step rebuilds the donations table and
         // copies every row across (additive: no data is dropped).
@@ -35,7 +40,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         // (offers, contact_details, reports). All additive — onUpgrade runs
         // ALTER TABLE ADD COLUMN and CREATE TABLE, so no existing data is
         // dropped and legacy manager rows keep a null requester_id.
-        private const val DB_VERSION = 6
+        private const val DB_VERSION = 7
 
         /**
          * Explicit column lists. `SELECT *` plus positional access silently
@@ -153,20 +158,28 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
     }
 
     /**
-     * Demo manager accounts for the teacher demo. "manager" is the
-     * original local-only login; "manager@blood.local" is the same
-     * manager through Supabase Auth (a matching Auth user exists in
-     * the project), so the manager can also sign in with an email.
-     * Both use the password manager123.
+     * Demo manager accounts. "manager" is the original local-only login;
+     * "tayyabuq1@gmail.com" is the same manager through Supabase Auth (the
+     * matching Auth user is created in the project, and its app_metadata
+     * carries role = MANAGER), so the manager can also sign in with an email
+     * and reach the shared server data. The local-only login uses manager123;
+     * the email account's real password is the one set in Supabase, while the
+     * seeded hash below only serves the offline fallback.
+     *
+     * This local row is what grants the MANAGER role to the UI: the app never
+     * reads the role back from the JWT. So the address here and the address
+     * the claim is set on (supabase_role_policies.sql, STEP 1) must match, or
+     * the account signs in as a donor with manager powers only server-side.
      *
      * Idempotent, and self-healing across the password-scheme change: a
      * missing row is inserted, and an existing row whose hash is still in the
      * old SHA-256 format (or a weaker PBKDF2 setting) is rewritten in place.
      * Nothing is deleted, so an upgrading install keeps all its data and the
-     * demo logins keep working.
+     * demo logins keep working — including the retired manager@blood.local
+     * row, which stays on phones that already had it.
      */
     private fun seedManager(db: SQLiteDatabase) {
-        for (username in listOf("manager", "manager@blood.local")) {
+        for (username in listOf("manager", "tayyabuq1@gmail.com")) {
             val existingHash = db.rawQuery(
                 "SELECT password_hash FROM users WHERE username=?", arrayOf(username)
             ).use { if (it.moveToFirst()) it.getString(0) else null }
@@ -204,7 +217,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             rebuildDonationsWithCascade(db)
         }
         if (oldVersion < 5) {
-            // v2 -> v3 added the manager@blood.local seed, and v4 -> v5 rewrote
+            // v2 -> v3 added the seeded manager row, and v4 -> v5 rewrote
             // both demo hashes in the PBKDF2 format. One call covers both: it
             // inserts a missing row and repairs a stale hash in place, and it
             // runs once per upgrade rather than once per skipped version (each
@@ -231,6 +244,14 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             createOffersTable(db)
             createContactDetailsTable(db)
             createReportsTable(db)
+        }
+        if (oldVersion < 7) {
+            // v7: the Auth-manager address moved to the real manager email.
+            // Additive like the rest: seedManager inserts the row if it is
+            // missing (and repairs a stale hash), and deletes nothing — an
+            // install that still has the retired manager@blood.local row keeps
+            // it, so nobody's demo login disappears.
+            seedManager(db)
         }
     }
 

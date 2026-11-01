@@ -19,8 +19,8 @@ import com.tayyab.blooddonation.util.SupabaseSync
  *
  * (a) An input containing "@" is an email, and goes through Supabase
  * Auth: signIn online, then resolve the account. A local row for the
- * email (returning donors, and the seeded manager@blood.local) gives
- * the role and donor id straight away; otherwise the donor profile is
+ * email (returning donors, and the seeded manager tayyabuq1@gmail.com)
+ * gives the role and donor id straight away; otherwise the donor profile is
  * looked up online by auth_id, and a local row is created from it.
  * If neither exists, the app says "No donor profile linked to this
  * account" and does NOT log in. If the Auth sign-in fails ONLY

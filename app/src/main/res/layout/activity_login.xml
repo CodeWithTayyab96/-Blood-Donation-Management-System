@@ -23,7 +23,7 @@
             android:layout_height="wrap_content" android:text="Register as a Donor"
             android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Demo manager: manager / manager123, or manager@blood.local / manager123 (Supabase Auth)"
+            android:text="Demo manager: manager / manager123 (offline only), or tayyabuq1@gmail.com (Supabase Auth)"
             android:textSize="13sp" android:textColor="@color/text_secondary"
             android:layout_marginTop="20dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
