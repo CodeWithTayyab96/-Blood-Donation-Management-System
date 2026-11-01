@@ -266,10 +266,10 @@ insert into requests (patient_name, hospital, blood_group, units_needed, urgency
 values
   ('CI Patient A', 'H', 'B+', 1, 'Normal', 'ci', 'Pending', '11111111-1111-1111-1111-111111111111', 'X'),
   ('CI Patient B', 'H', 'O+', 1, 'Normal', 'ci', 'Pending', '22222222-2222-2222-2222-222222222222', 'X');
-insert into offers (request_id, donor_id, donor_auth_id, status)
+insert into offers (request_id, donor_id, donor_auth_id, donor_name, status)
 values
-  ((select id from requests where patient_name = 'CI Patient A'), (select id from donors where name = 'CI Donor One'), '33333333-3333-3333-3333-333333333333', 'Offered'),
-  ((select id from requests where patient_name = 'CI Patient B'), (select id from donors where name = 'CI Donor Two'), '44444444-4444-4444-4444-444444444444', 'Offered');
+  ((select id from requests where patient_name = 'CI Patient A'), (select id from donors where name = 'CI Donor One'), '33333333-3333-3333-3333-333333333333', 'CI Donor One', 'Offered'),
+  ((select id from requests where patient_name = 'CI Patient B'), (select id from donors where name = 'CI Donor Two'), '44444444-4444-4444-4444-444444444444', 'CI Donor Two', 'Offered');
 
 -- Donor A attacks donor B's offer (on requester B's request).
 set local role authenticated;
