@@ -1137,15 +1137,18 @@ do $runner$ declare v_count int; begin
   if v_count <> 0 then
     raise exception 'CI-TEST FAIL: a user can read the global provider-call counter';
   end if;
-  begin
-    update public.ai_provider_calls set calls = 0 where day = current_date;
+  -- An UPDATE that RLS hides is SILENT (0 rows, no error), unlike an INSERT
+  -- which is refused. So assert the row count, not an exception.
+  update public.ai_provider_calls set calls = 0 where day = current_date;
+  get diagnostics v_count = row_count;
+  if v_count <> 0 then
     raise exception 'CI-TEST FAIL: a user reset the global provider-call counter';
-  exception
-    when insufficient_privilege then null;   -- expected
-    when others then
-      if sqlerrm like 'CI-TEST FAIL:%' then raise; end if;
-      raise exception 'CI-TEST FAIL: counter update refused with SQLSTATE % (%), not 42501', sqlstate, sqlerrm;
-  end;
+  end if;
+  delete from public.ai_provider_calls where day = current_date;
+  get diagnostics v_count = row_count;
+  if v_count <> 0 then
+    raise exception 'CI-TEST FAIL: a user deleted the global provider-call counter';
+  end if;
 end $runner$;
 rollback;
 
