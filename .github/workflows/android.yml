@@ -248,7 +248,7 @@ jobs:
               }
             }
             started { print }
-          ' CHANGELOG.md > /tmp/notes.md
+          ' CHANGELOG.md | sed '/./,$!d' > /tmp/notes.md
           if [ ! -s /tmp/notes.md ]; then
             printf '**Blood Donation %s**\n\nNo changelog entry for this version.\n' "$VERSION_NAME" > /tmp/notes.md
           fi
