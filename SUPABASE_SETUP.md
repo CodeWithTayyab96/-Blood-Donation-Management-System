@@ -46,12 +46,12 @@ section only covers what Auth adds.
   Demo/sample data only: every signed-in user can read/write every
   row (a classroom demo, not per-user row ownership). Do NOT enter
   real donor phone numbers.
-- **Demo logins.** `manager` / `manager123` still works local-only
-  (unchanged v1.3 path). `tayyabuq1@gmail.com` works through Supabase
-  Auth: the Auth user exists in the project with `app_metadata.role`
-  = `MANAGER`, and the app seeds the matching local row that gives the
-  Manager UI (see RUNBOOK A5/A6; its password is the one set when the
-  account was created, not `manager123`). Old local-only
+- **Manager account.** `tayyabuq1@gmail.com` through Supabase Auth: the
+  Auth user exists in the project with `app_metadata.role` = `MANAGER`,
+  and the app reads that claim from the token — no local row decides the
+  role any more (see RUNBOOK A5/A6; its password is the one set when the
+  account was created). The local-only `manager` / `manager123` demo login
+  is gone: a username without an email is refused. Old local-only
   v1.3 accounts do NOT carry over: their username + password hash
   still exist on the phone, but they have no Auth user, so they
   must re-register with an email to sign in through Auth. (A

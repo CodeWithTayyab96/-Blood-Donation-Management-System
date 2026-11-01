@@ -143,7 +143,29 @@ grants those columns — but it is what CI tests, so run it.
 
 **Verify again — `supabase_verify_policies.sql`. Expected: `ALL POLICIES OK`.**
 
-## A5. Files you do NOT run
+## A5. `supabase_role_hardening.sql` — run it
+
+The one file the user-app work adds. It makes two things true that were only
+true in the app before:
+
+- **donations** can only be inserted by a manager; a donor's own peer donation
+  is written by `complete_peer_donation()`, which runs as the table owner.
+- **`adjust_stock()`** refuses anyone whose token is not MANAGER. The grant
+  stays (managers are the `authenticated` role too), so the guard is inside the
+  function.
+
+Re-runnable. Run it **after** A3 (it needs `is_manager()`) and after
+`fix_stock_rpc.sql` was ever applied (it replaces that function).
+
+**Verify now — `supabase_verify_policies.sql`.** Still exactly one row,
+`ALL POLICIES OK`. Two new PROBLEM rows exist for this file:
+`donations INSERT policy still lets a donor write donations` and
+`adjust_stock() is not manager-guarded`.
+
+**Rollback:** `supabase_role_hardening_rollback.sql` restores the old policy and
+the unguarded function.
+
+## A6. Files you do NOT run
 
 | File | Why not |
 |---|---|
@@ -151,9 +173,10 @@ grants those columns — but it is what CI tests, so run it.
 | `supabase_auth_policies.sql` | **never re-run now.** It is not idempotent, and it re-creates the four permissive `"Authenticated full access"` policies you just removed. |
 | `supabase_role_policies.sql` | safe to re-run, and the thing to re-run if the verifier ever reports a missing policy. |
 | `supabase_p2p_policies.sql` | safe to re-run (A4). |
+| `supabase_role_hardening.sql` | safe to re-run (A5). |
 | `supabase_verify_policies.sql` | read-only; run it as often as you like. |
 
-## A6. If it breaks the app
+## A7. If it breaks the app
 
 An APK older than 1.7 asks for `select=*` and will fail against the new column
 grants. The fix is to install the 1.7 APK. If you cannot, run
@@ -162,7 +185,7 @@ and `requests` and nothing else. The verifier will then report two `PROBLEM`
 rows about the phone columns — that is the state you asked for. Re-run
 `supabase_role_policies.sql` to put the restriction back.
 
-## A7. Sign out and back in on the phone
+## A8. Sign out and back in on the phone
 
 The access token issued before A3 carries no role, so the app treats that
 session as a donor until it refreshes. Log out and back in.
@@ -381,9 +404,8 @@ without the flag.
    visible above it, and the safety note at the bottom never moves.
 3. **Refuse medical advice** — ask "I take tablets for X, can I donate?"
    The answer must point to a licensed blood bank, not to you.
-4. **Local-only stays local** — the demo manager (`manager` / `manager123`)
-   can open the helper and always gets the fallback text: no Auth session,
-   no call, no error.
+4. **Offline stays offline** — with no network, the helper shows its fallback
+   text ("ask a licensed blood bank") and never an error or an empty screen.
 5. **No candidate data** — nothing typed into the helper appears anywhere
    (`select * from ai_coach_usage` only ever shows the counter columns, and
    the answer text is nowhere).

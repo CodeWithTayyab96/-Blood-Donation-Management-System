@@ -11,9 +11,10 @@ offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
 - **Sign-in and roles** — real accounts through Supabase Auth
   (email + password). A Manager (full access) and Donors (view
   everything, but only edit their own profile/donations). Demo
-  manager logins: `manager` / `manager123` (local-only, as before)
-  and `tayyabuq1@gmail.com` (through Supabase Auth — its password is
-  the one set when the account was created; see RUNBOOK A5).
+  manager account: `tayyabuq1@gmail.com` (through Supabase Auth — its
+  password is the one set when the account was created; see RUNBOOK
+  A5). There is no local-only demo login any more, and the manager
+  role comes from the token, not from the phone.
   Donors register from the sign-in screen with an email address,
   which creates their Auth account and donor profile together.
   Registration needs an internet connection — it never creates a
@@ -170,11 +171,10 @@ what changed):
   on a new phone finds the donor profile by `auth_id` and recreates
   the local account. If there is no network but the phone already
   knows the email + password, the app signs in offline and says so.
-  The plain-username login (`manager` / `manager123`) still works, but it is
-  **local-only**: it carries no Supabase session, so every online call goes out
-  anonymously and is rejected by the policies above. Nothing on that device
-  syncs, and the dashboard says so. Use `tayyabuq1@gmail.com` to work against
-  the shared data.
+  A username without an email is refused: every account is a Supabase Auth
+  account, and the manager role is read from the token's `app_metadata`. Use
+  `tayyabuq1@gmail.com` to work against the shared data; everyone else lands
+  on the donor home screen.
 - **Where the key comes from.** The app reads the project URL and
   anon key from BuildConfig fields (`SUPABASE_URL`,
   `SUPABASE_ANON_KEY`), which Gradle fills from project properties of
@@ -263,8 +263,9 @@ app/src/main/java/com/tayyab/blooddonation/
 │                             v1.4: user Bearer token + one 401 refresh
 ├── util/SupabaseSync.kt      Online/offline pull + push logic
 └── ui/                       Activities and RecyclerView adapters
-    ├── LoginActivity.kt      Sign-in: email via Supabase Auth, or
-    │                         plain username local-only (launcher activity)
+    ├── LoginActivity.kt      Sign-in: email via Supabase Auth
+    │                         (launcher activity)
+    ├── UserHomeActivity.kt   Home for everyone who is not a manager
     ├── RegisterActivity.kt   Email registration: Auth account + donor
     │                         profile linked by auth_id
     └── ProfileActivity.kt    Own profile + next eligible date +
