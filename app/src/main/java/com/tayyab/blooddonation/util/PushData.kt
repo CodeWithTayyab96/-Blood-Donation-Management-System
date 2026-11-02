@@ -75,7 +75,12 @@ object PushParser {
                 bloodGroup = group,
                 unitsNeeded = units,
                 urgency = urgency,
-                contact = text(data, "contact"),
+                // The requester's number is never sent in a push payload: it
+                // is hidden at the column level and revealed only after an
+                // offer is accepted (via contact_details). Hardcoded empty so
+                // a stale or forged payload can never leak it into the local
+                // copy or the notification.
+                contact = "",
                 status = "Pending",
                 createdAt = "",
                 requesterId = null,

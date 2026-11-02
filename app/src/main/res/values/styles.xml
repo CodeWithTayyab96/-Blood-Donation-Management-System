@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    App-wide widget styles. The theme (themes.xml) points the Material
+    defaults at these, so every screen gets the same modern treatment
+    without per-layout edits: 14dp rounded buttons, filled and outlined.
+-->
+<resources>
+
+    <style name="Shape.Blood.Rounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">14dp</item>
+    </style>
+
+    <style name="Widget.Blood.Button" parent="Widget.MaterialComponents.Button">
+        <item name="shapeAppearanceOverlay">@style/Shape.Blood.Rounded</item>
+    </style>
+
+    <style name="Widget.Blood.Button.Outlined"
+        parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="shapeAppearanceOverlay">@style/Shape.Blood.Rounded</item>
+    </style>
+
+</resources>

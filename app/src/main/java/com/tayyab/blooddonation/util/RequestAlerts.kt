@@ -99,11 +99,16 @@ object RequestAlerts {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 
+        // The contact number is only ever shown when the request actually
+        // carries one (it is hidden at the column level and revealed only
+        // after an offer is accepted). Never render an empty "Contact:" line.
+        val bigText = if (request.contact.isNotBlank()) "$summary\nContact: ${request.contact}"
+            else summary
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_drop)
             .setContentTitle("${request.urgency} blood request")
             .setContentText(summary)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("$summary\nContact: ${request.contact}"))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

@@ -3,6 +3,42 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.14 — 2026-11-02
+
+versionCode 15. Five verified bug fixes in the donor alert and offer flows,
+plus a visual refresh of the main screens.
+
+### Donor alerts and push actually work now
+
+- The urgent-request poll, the notification permission prompt and the FCM
+  token upload moved from `MainActivity` (manager-only, unreachable for
+  donors) into `UserHomeActivity`, the screen donors actually open. The v1.6
+  poll feature is live for donors for the first time.
+- Donor sign-out now stops the poll and deletes the device's push token row,
+  matching the manager logout.
+- Added the missing `BloodMessagingService` (declared in the manifest but the
+  class did not exist), so FCM pushes are delivered instead of silently
+  dropped, and token rotations re-upload.
+
+### Availability toggle fixed
+
+- `available_to_donate` is now written and read as a real boolean, matching
+  the database column. The switch no longer flips itself off after a sync,
+  and the P2P offer flow's server-side availability check can pass.
+
+### Requester phone number no longer leaks in pushes
+
+- The urgent-request push payload no longer carries the requester's contact
+  number (it went to every compatible donor). The parser hardcodes it empty,
+  and the notification only shows a Contact line when a number truly exists.
+  Contact stays hidden until an offer is accepted, as designed.
+
+### Visual refresh
+
+- Buttons are rounded (14dp) across the whole app via the theme.
+- Login, donor home and manager dashboard share a red gradient header band
+  with rounded bottom corners.
+
 ## 1.13 — 2026-11-01
 
 versionCode 14. Check 2 says "reachable" in plain words, and Edge Functions can

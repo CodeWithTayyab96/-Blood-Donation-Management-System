@@ -1,6 +1,9 @@
 package com.tayyab.blooddonation.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -15,7 +18,10 @@ import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.FcmPush
 import com.tayyab.blooddonation.util.MotivationFacts
+import com.tayyab.blooddonation.util.RequestAlertScheduler
+import com.tayyab.blooddonation.util.RequestAlerts
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
@@ -37,6 +43,10 @@ import java.time.LocalDate
  * offline; a write without a connection says so instead of pretending.
  */
 class UserHomeActivity : AppCompatActivity() {
+
+    private companion object {
+        const val REQUEST_NOTIFICATIONS = 1001
+    }
 
     private lateinit var db: DbHelper
 
@@ -64,6 +74,16 @@ class UserHomeActivity : AppCompatActivity() {
             intent?.getBooleanExtra(UpdateNotifier.EXTRA_SHOW_UPDATE_PROMPT, false) == true
         )
         intent?.removeExtra(UpdateNotifier.EXTRA_SHOW_UPDATE_PROMPT)
+
+        // Donor-only setup. MainActivity is the manager dashboard and returns
+        // early for donors, so the poll, the permission prompt and the FCM
+        // token upload must live here: this is the screen a donor opens.
+        // refreshToken is a no-op when Firebase is not configured.
+        Background.run { FcmPush.refreshToken(applicationContext) }
+        if (Session.donorId != null) {
+            RequestAlertScheduler.schedule(this)
+            askForNotificationPermission()
+        }
 
         findViewById<TextView>(R.id.tvUserHomeWho).text = Session.label()
         findViewById<TextView>(R.id.tvUserFact).text =
@@ -93,6 +113,40 @@ class UserHomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         renderAvailability()
+    }
+
+    /**
+     * One-time prompt for the notification permission (Android 13+), so the
+     * urgent-request poll can actually alert the donor. Asked once behind a
+     * short explanation; if they decline, the flag in [RequestAlerts] stops
+     * the prompt coming back on every launch.
+     */
+    private fun askForNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) return
+        if (RequestAlerts.wasPermissionAsked(this)) return
+
+        AlertDialog.Builder(this)
+            .setTitle("Allow blood request alerts?")
+            .setMessage(
+                "This app can tell you when someone needs blood your group can give. " +
+                    "It checks about every 15 minutes while you are online, and never " +
+                    "notifies you twice for the same request.\n\n" +
+                    "You can turn this off at any time in Android settings."
+            )
+            .setPositiveButton("Allow") { _, _ ->
+                RequestAlerts.markPermissionAsked(this)
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    REQUEST_NOTIFICATIONS
+                )
+            }
+            .setNegativeButton("Not now") { _, _ ->
+                RequestAlerts.markPermissionAsked(this)
+            }
+            .show()
     }
 
     private fun openRequests(mode: String) {
@@ -181,6 +235,12 @@ class UserHomeActivity : AppCompatActivity() {
             .setTitle("Log out?")
             .setMessage("Your data stays on this phone; you can sign in again with your email.")
             .setPositiveButton("Log out") { _, _ ->
+                // Stop the request poll and drop this device's push token row
+                // BEFORE the session is cleared: clearing it loses the sign-in
+                // context the token delete needs (the row is keyed by Auth
+                // user id).
+                RequestAlertScheduler.cancel(this)
+                Background.run { FcmPush.forgetToken(applicationContext) }
                 Session.logout(this)
                 startActivity(Intent(this, LoginActivity::class.java))
                 finish()

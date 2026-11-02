@@ -249,7 +249,10 @@ async function handleUrgentRequest(body: any): Promise<Record<string, unknown>> 
     urgency: String(body.urgency ?? "Urgent"),
     units_needed: String(body.units_needed ?? "1"),
     hospital: String(body.hospital ?? ""),
-    contact: String(body.contact ?? ""),
+    // NOTE: the requester's contact number is deliberately NOT sent here.
+    // It is hidden at the column level in the database and revealed only
+    // after an offer is accepted (via contact_details). A broadcast payload
+    // to every compatible donor must never carry it.
     city: String(body.city ?? ""),
   }, stats);
   return { recipients: recipients.length, ...stats };

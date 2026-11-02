@@ -33,7 +33,10 @@ class PushDataTest {
         assertEquals("Critical", request.urgency)
         assertEquals(2, request.unitsNeeded)
         assertEquals("City Hospital", request.hospital)
-        assertEquals("+92 300 1234567", request.contact)
+        // The requester's number is never taken from a push payload: it is
+        // hidden at the column level and revealed only after an offer is
+        // accepted. Even a payload that carries one must parse to "".
+        assertEquals("", request.contact)
         assertEquals("Faisalabad", request.city)
         // The patient's name is never sent or shown.
         assertEquals("", request.patientName)

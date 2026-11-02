@@ -358,7 +358,7 @@ object SupabaseClient {
             weightKg = obj.optDouble("weight", 0.0),
             lastDonationDate = last,
             authId = if (obj.isNull("auth_id")) null else obj.optString("auth_id", ""),
-            availableToDonate = obj.optInt("available_to_donate", 0) != 0
+            availableToDonate = obj.optBoolean("available_to_donate", false)
         )
     }
 
@@ -476,7 +476,7 @@ object SupabaseClient {
             if (donor.lastDonationDate != null) put("last_donation_date", donor.lastDonationDate)
             else put("last_donation_date", JSONObject.NULL)
             if (authId != null) put("auth_id", authId)
-            put("available_to_donate", if (donor.availableToDonate) 1 else 0)
+            put("available_to_donate", donor.availableToDonate)
         }
         return insertRow("donors", body)
     }
@@ -490,7 +490,7 @@ object SupabaseClient {
      *  help is refused by RLS unless this is true. */
     fun updateDonorAvailability(id: Long, available: Boolean): Boolean {
         val body = JSONObject().apply {
-            put("available_to_donate", if (available) 1 else 0)
+            put("available_to_donate", available)
         }
         return patchRows("donors", "id=eq.$id", body)
     }
