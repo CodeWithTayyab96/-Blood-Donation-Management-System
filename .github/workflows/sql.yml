@@ -69,22 +69,22 @@ jobs:
 
       # Documented order (SUPABASE_SETUP.md): the base files first, because
       # the P2P policy file requires is_manager() and the donors policies
-      # from supabase_role_policies.sql; then the phase files.
+      # from sql/applied/supabase_role_policies.sql; then the phase files.
       - name: Forward pass 1 (documented order)
         run: |
           for f in \
-            supabase_migration.sql \
-            supabase_auth_migration.sql \
-            fix_stock_rpc.sql \
-            supabase_auth_policies.sql \
-            supabase_role_policies.sql \
-            supabase_p2p_migration.sql \
-            supabase_p2p_policies.sql \
-            supabase_role_hardening.sql \
-            supabase_fcm_migration.sql \
-            supabase_fcm_policies.sql \
-            supabase_ai_migration.sql \
-            supabase_ai_quotebank.sql \
+            sql/applied/supabase_migration.sql \
+            sql/applied/supabase_auth_migration.sql \
+            sql/applied/fix_stock_rpc.sql \
+            sql/applied/supabase_auth_policies.sql \
+            sql/applied/supabase_role_policies.sql \
+            sql/applied/supabase_p2p_migration.sql \
+            sql/applied/supabase_p2p_policies.sql \
+            sql/applied/supabase_role_hardening.sql \
+            sql/applied/supabase_fcm_migration.sql \
+            sql/applied/supabase_fcm_policies.sql \
+            sql/applied/supabase_ai_migration.sql \
+            sql/applied/supabase_ai_quotebank.sql \
             supabase_delete_account.sql ; do
             echo "=== $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"
@@ -109,7 +109,7 @@ jobs:
       #   1. supabase_verify_policies.sql agrees the security state is the
       #      intended one (it prints ALL POLICIES OK, or one PROBLEM row per
       #      mismatch and this step fails).
-      #   2. Applying supabase_role_policies.sql and supabase_p2p_policies.sql
+      #   2. Applying sql/applied/supabase_role_policies.sql and sql/applied/supabase_p2p_policies.sql
       #      in the opposite order leaves the SAME policy list. Re-running them
       #      the other way round is exactly that test, and it also proves both
       #      files are re-runnable.
@@ -136,8 +136,8 @@ jobs:
           check
 
           echo "=== order B: p2p policies, then role policies ==="
-          psql -v ON_ERROR_STOP=1 -q -f supabase_p2p_policies.sql
-          psql -v ON_ERROR_STOP=1 -q -f supabase_role_policies.sql
+          psql -v ON_ERROR_STOP=1 -q -f sql/applied/supabase_p2p_policies.sql
+          psql -v ON_ERROR_STOP=1 -q -f sql/applied/supabase_role_policies.sql
           snap > /tmp/policies_b.txt
           if ! diff -u /tmp/policies_a.txt /tmp/policies_b.txt; then
             echo "::error::The final policy list depends on the order the two files ran in."
@@ -150,13 +150,13 @@ jobs:
         run: |
           for f in \
             supabase_delete_account_rollback.sql \
-            supabase_ai_quotebank_rollback.sql \
-            supabase_ai_migration_rollback.sql \
+            sql/applied/supabase_ai_quotebank_rollback.sql \
+            sql/applied/supabase_ai_migration_rollback.sql \
             supabase_fcm_triggers_rollback.sql \
-            supabase_fcm_policies_rollback.sql \
-            supabase_fcm_migration_rollback.sql \
-            supabase_role_hardening_rollback.sql \
-            supabase_p2p_migration_rollback.sql ; do
+            sql/applied/supabase_fcm_policies_rollback.sql \
+            sql/applied/supabase_fcm_migration_rollback.sql \
+            sql/applied/supabase_role_hardening_rollback.sql \
+            sql/applied/supabase_p2p_migration_rollback.sql ; do
             echo "=== $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
@@ -167,18 +167,18 @@ jobs:
           # create role is not idempotent). That mirrors reality: a rollback
           # of the feature files never removes the platform's own pieces.
           for f in \
-            supabase_migration.sql \
-            supabase_auth_migration.sql \
-            fix_stock_rpc.sql \
-            supabase_auth_policies.sql \
-            supabase_role_policies.sql \
-            supabase_p2p_migration.sql \
-            supabase_p2p_policies.sql \
-            supabase_role_hardening.sql \
-            supabase_fcm_migration.sql \
-            supabase_fcm_policies.sql \
-            supabase_ai_migration.sql \
-            supabase_ai_quotebank.sql \
+            sql/applied/supabase_migration.sql \
+            sql/applied/supabase_auth_migration.sql \
+            sql/applied/fix_stock_rpc.sql \
+            sql/applied/supabase_auth_policies.sql \
+            sql/applied/supabase_role_policies.sql \
+            sql/applied/supabase_p2p_migration.sql \
+            sql/applied/supabase_p2p_policies.sql \
+            sql/applied/supabase_role_hardening.sql \
+            sql/applied/supabase_fcm_migration.sql \
+            sql/applied/supabase_fcm_policies.sql \
+            sql/applied/supabase_ai_migration.sql \
+            sql/applied/supabase_ai_quotebank.sql \
             supabase_delete_account.sql ; do
             echo "=== $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"

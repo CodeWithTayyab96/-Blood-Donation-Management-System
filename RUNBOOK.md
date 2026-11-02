@@ -1,5 +1,14 @@
 # RUNBOOK — setting up this project on Supabase, end to end
 
+> **Where the SQL files live (2026-11-02 cleanup).** Files already applied
+> to the live project were moved to `sql/applied/`; the five files still
+> live at the repo root are the ones not yet run:
+> `supabase_verify_policies.sql` (the verifier, run any time),
+> `supabase_fcm_triggers.sql` (Stage B6),
+> `supabase_delete_account.sql` (Stage D4). An offline copy of everything
+> archived sits outside the repo. CI (`SQL checks`) uses the new paths, so
+> nothing below changed in meaning — only the folder.
+
 Four stages, strictly in order. Each stage ends with a **STOP AND TEST ON
 THE PHONE** checklist — do not start the next stage until every box on the
 previous one is checked. The app keeps working between stages: whatever a
