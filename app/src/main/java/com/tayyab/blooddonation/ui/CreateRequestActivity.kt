@@ -16,7 +16,6 @@ import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
-import com.tayyab.blooddonation.ui.UISync
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 

@@ -19,7 +19,6 @@ import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
-import com.tayyab.blooddonation.ui.UISync
 
 /**
  * P2P: one screen, two views.

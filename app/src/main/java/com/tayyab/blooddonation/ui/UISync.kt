@@ -93,14 +93,18 @@ object UISync {
 
     /** Full-screen dimmed overlay with a centered ProgressBar + message, shown
      *  until [predicate] returns true (polled every [pollMs] on the main thread),
-     *  then removed. The overlay blocks touches but the Activity's code still
-     *  runs, so this is for short waits (cold start, one-shot actions), not for
+     *  then removed. It covers the whole window and consumes touches so the UI
+     *  beneath is blocked while it is up, but the Activity's own code still runs
+     *  — so this is for short waits (cold start, one-shot actions), never for
      *  indefinite polling.
      *
-     *  Set [acceptFinishing] to true when the condition you are waiting for
-     *  (e.g. background data pull) might continue after the Activity is no
-     *  longer visible; otherwise the overlay is removed as soon as the Activity
-     *  finishes (preventing it from lingering over the next screen). */
+     *  The overlay is removed as soon as [predicate] becomes true. With
+     *  [acceptFinishing] left off (the default) it is also removed as soon as
+     *  the owning Activity finishes or is destroyed, so it never lingers over
+     *  the next screen. Set [acceptFinishing] to true only when the condition
+     *  being waited on is guaranteed to keep making progress after the Activity
+     *  is no longer visible and the extra wait is intentional; even then the
+     *  overlay is pulled down once the Activity is destroyed. */
     fun pauseUntil(
         activity: Activity,
         predicate: () -> Boolean,
@@ -108,6 +112,8 @@ object UISync {
         pollMs: Long = 30,
         acceptFinishing: Boolean = false
     ) {
+        if (predicate()) return // already satisfied — show nothing
+
         val container = android.widget.FrameLayout(activity).apply {
             id = android.view.View.generateViewId()
             layoutParams = android.widget.FrameLayout.LayoutParams(
@@ -115,6 +121,7 @@ object UISync {
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT
             )
             setBackgroundColor(android.graphics.Color.argb(0xCC, 0, 0, 0))
+            isClickable = true
         }
         val progress = ProgressBar(activity).apply {
             id = android.view.View.generateViewId()
@@ -144,14 +151,24 @@ object UISync {
         wrapper.addView(container)
 
         val handler = Handler(Looper.getMainLooper())
+        fun detach(r: Runnable) {
+            handler.removeCallbacks(r)
+            if (container.parent == wrapper) {
+                wrapper.removeView(container)
+            }
+        }
         val runnable = object : Runnable {
             override fun run() {
-                if (!acceptFinishing && (activity.isFinishing || activity.isDestroyed)) {
-                    container.visibility = View.GONE
+                if (activity.isDestroyed) {
+                    detach(this)
+                    return
+                }
+                if (!acceptFinishing && activity.isFinishing) {
+                    detach(this)
                     return
                 }
                 if (predicate()) {
-                    container.visibility = View.GONE
+                    detach(this)
                     return
                 }
                 handler.postDelayed(this, pollMs)

@@ -8,7 +8,6 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.SupabaseSync
-import com.tayyab.blooddonation.ui.UISync
 
 class StockActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

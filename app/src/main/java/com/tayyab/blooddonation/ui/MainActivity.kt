@@ -34,7 +34,6 @@ import com.tayyab.blooddonation.util.UpdateWorker
 import com.tayyab.blooddonation.util.MotivationFacts
 import com.tayyab.blooddonation.util.DonationStats
 import com.tayyab.blooddonation.util.FcmPush
-import com.tayyab.blooddonation.ui.UISync
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 

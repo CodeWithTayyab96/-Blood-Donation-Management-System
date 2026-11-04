@@ -21,7 +21,6 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
-import com.tayyab.blooddonation.ui.UISync
 
 class DonorListActivity : AppCompatActivity() {
 

@@ -14,7 +14,6 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.Jwt
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
-import com.tayyab.blooddonation.ui.UISync
 
 /**
  * Settings -> Connection check.
