@@ -14,12 +14,12 @@
 
         <TextView
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="🩸 Can I donate?" android:textSize="22sp" android:textStyle="bold" />
+            android:text="🩸 Can I donate? (AI helper)" android:textSize="22sp" android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="10dp" android:textSize="13sp"
-            android:text="⚠️ General information only — NOT medical advice. Every blood bank has its own screening rules, and only their health check can actually decide. Never send personal details such as your phone number or patient names here." />
+            android:text="@string/safety_ask_donate_top" />
 
         <EditText
             android:id="@+id/etQuestion"
@@ -59,7 +59,12 @@
         <TextView
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="18dp" android:textSize="12sp"
-            android:text="Donation must take place at a licensed blood bank or hospital. Your own history in this app is not sent: only your first name, donation count, days since your last donation and blood group are sent as context, and nothing is stored." />
+            android:text="@string/safety_ask_donate_bottom" />
+
+        <TextView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:textSize="12sp"
+            android:text="@string/safety_ask_donate_note" />
 
     </LinearLayout>
 </ScrollView>

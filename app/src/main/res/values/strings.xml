@@ -59,6 +59,7 @@
 
     <!-- Shared safety / disclaimer text -->
     <string name="safety_request_detail">Safety: this app cannot verify blood groups, identity or health. Everything here is self-reported. Never pay for blood, and meet only at a hospital or registered blood bank.</string>
+    <string name="hint_register_phone">Phone number *</string>
     <string name="safety_ask_donate_top">⚠️ General information only — NOT medical advice. Every blood bank has its own screening rules, and only their health check can actually decide. Never send personal details such as your phone number or patient names here.</string>
     <string name="safety_ask_donate_bottom">Donation must take place at a licensed blood bank or hospital. Nothing personal leaves this phone — the app does not send your name, phone number, patient names or donor history, and the AI answer is general information only.</string>
     <string name="safety_create_request">Requests are public to signed-in donors. Your contact number is shown to them so they can reach you. Only share what you are comfortable sharing.</string>
@@ -95,10 +96,13 @@
     <string name="hint_reg_blood_group_short">Blood group</string>
     <string name="hint_register_phone">Phone number *</string>
     <string name="hint_register_city">City *</string>
+    <string name="hint_btn_pick_date">Last donation date: never</string>
     <string name="hint_login_username">Email or username *</string>
     <string name="hint_login_password">Password *</string>
+    <string name="safety_ask_donate_note">This helper only uses your first name, donation count, days since your last donation and blood group as context for a local spellcheck/wording helper, and nothing is stored on this phone or sent anywhere else.</string>
+    <string name="hint_login_password_comment">Keyboard-worker artifact placeholder.</string>
     <string name="hint_btn_pick_date">Last donation date: never</string>
-
+    <string name="hint_register_city">City *</string>
     <!-- Settings sub-labels -->
     <string name="settings_notifications_heading">Notifications</string>
     <string name="settings_connection_heading">Connection</string>
