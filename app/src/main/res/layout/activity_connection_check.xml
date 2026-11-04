@@ -13,6 +13,21 @@
             android:textSize="13sp" android:textColor="@color/text_secondary"
             android:layout_marginTop="4dp" />
 
+        <LinearLayout
+            android:id="@+id/syncRow"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="8dp" android:visibility="gone"
+            android:layout_marginTop="12dp">
+            <ProgressBar android:id="@+id/progressSync"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+            <TextView android:id="@+id/syncLabel"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:textSize="14sp"
+                android:textColor="?android:textColorSecondary" />
+        </LinearLayout>
+
         <Button android:id="@+id/btnRunChecks"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Run the checks" android:layout_marginTop="12dp" />

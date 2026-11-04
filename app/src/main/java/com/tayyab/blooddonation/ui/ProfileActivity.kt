@@ -17,6 +17,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 
 class ProfileActivity : AppCompatActivity() {
 
@@ -34,6 +35,11 @@ class ProfileActivity : AppCompatActivity() {
         renderFromLocal()
         setupSyncRetry()
         if (SupabaseSync.isOnline) {
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Updating profile…"
             Background.run {
                 val donorId = Session.donorId
                 if (donorId != null) {
@@ -41,7 +47,13 @@ class ProfileActivity : AppCompatActivity() {
                 } else {
                     SupabaseSync.pullAll(db)
                 }
-                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        renderFromLocal()
+                        spinner.visibility = android.view.View.GONE
+                        label.visibility = android.view.View.GONE
+                    }
+                }
             }
         }
     }
@@ -64,6 +76,11 @@ class ProfileActivity : AppCompatActivity() {
         if (!show) return
         btn.setOnClickListener {
             btn.isEnabled = false
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Syncing profile…"
             Background.run {
                 val donorId = Session.donorId
                 val authId = Session.authUserId
@@ -75,6 +92,8 @@ class ProfileActivity : AppCompatActivity() {
                 }
                 runOnUiThread {
                     btn.isEnabled = true
+                    spinner.visibility = android.view.View.GONE
+                    label.visibility = android.view.View.GONE
                     if (remoteId != null && donor != null) {
                         val newId = db.relinkDonorProfile(donor.id, donor.copy(id = remoteId))
                         val access = Session.accessToken
@@ -142,6 +161,11 @@ class ProfileActivity : AppCompatActivity() {
             ).show()
             return
         }
+        val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+        val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+        spinner.visibility = android.view.View.VISIBLE
+        label.visibility = android.view.View.VISIBLE
+        label.text = "Updating availability…"
         Background.run {
             val ok = SupabaseSync.setAvailabilityRemote(donor.id, available)
             // Switching on also makes sure the donor's phone exists in
@@ -154,6 +178,8 @@ class ProfileActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                spinner.visibility = android.view.View.GONE
+                label.visibility = android.view.View.GONE
                 if (!ok) {
                     Toast.makeText(
                         this,

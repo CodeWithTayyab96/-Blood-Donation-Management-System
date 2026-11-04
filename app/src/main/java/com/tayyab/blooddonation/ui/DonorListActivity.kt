@@ -21,6 +21,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 
 class DonorListActivity : AppCompatActivity() {
 
@@ -77,9 +78,20 @@ class DonorListActivity : AppCompatActivity() {
         // rule as the dashboard: unreachable Supabase = local list stays).
         renderFromLocal()
         if (SupabaseSync.isOnline) {
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Updating donors…"
             Background.run {
                 SupabaseSync.pullDonors(db)
-                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        renderFromLocal()
+                        spinner.visibility = android.view.View.GONE
+                        label.visibility = android.view.View.GONE
+                    }
+                }
             }
         }
     }

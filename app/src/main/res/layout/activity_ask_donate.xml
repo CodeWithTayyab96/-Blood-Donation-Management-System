@@ -30,6 +30,21 @@
             android:inputType="textMultiLine|textCapSentences"
             android:lines="4" android:maxLength="500" android:maxLines="6" />
 
+        <!-- Small spinner beside the Ask button while the AI answer is fetched. -->
+        <LinearLayout
+            android:id="@+id/syncRow"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="8dp" android:visibility="gone">
+            <ProgressBar android:id="@+id/progressSync"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+            <TextView android:id="@+id/syncLabel"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:textSize="14sp"
+                android:textColor="?android:textColorSecondary" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/btnAskVerify"
             android:layout_width="match_parent" android:layout_height="wrap_content"

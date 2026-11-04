@@ -26,5 +26,19 @@
             android:hint="Needed by (optional, yyyy-mm-dd)" android:inputType="date" />
         <Button android:id="@+id/btnSaveRequest" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Post Request" android:layout_marginTop="16dp" />
+
+        <!-- In-flight sync indicator: shown while the request is posted to Supabase. -->
+        <LinearLayout android:id="@+id/syncRow"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:padding="8dp" android:visibility="gone">
+            <ProgressBar android:id="@+id/progressSync"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+            <TextView android:id="@+id/syncLabel"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:textSize="14sp"
+                android:textColor="?android:textColorSecondary" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

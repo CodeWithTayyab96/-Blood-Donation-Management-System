@@ -3,6 +3,7 @@ package com.tayyab.blooddonation.ui
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -15,6 +16,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 
 class DonorDetailActivity : AppCompatActivity() {
 
@@ -48,6 +50,11 @@ class DonorDetailActivity : AppCompatActivity() {
                 // Online first (donation row + donor date + stock), then
                 // the same change locally. If the online step fails, the
                 // local record still stands and the user is told so.
+                val spinner = findViewById<ProgressBar>(R.id.progressSync)
+                val label = findViewById<TextView>(R.id.syncLabel)
+                spinner.visibility = View.VISIBLE
+                label.visibility = View.VISIBLE
+                label.text = "Recording donation…"
                 Background.run {
                     val outcome = SupabaseSync.recordDonationRemote(donor, 1)
                     val recorded = outcome as? SupabaseSync.DonationOutcome.Recorded
@@ -60,6 +67,8 @@ class DonorDetailActivity : AppCompatActivity() {
                     }
                     runOnUiThread {
                         if (isFinishing || isDestroyed) return@runOnUiThread
+                        spinner.visibility = View.GONE
+                        label.visibility = View.GONE
                         val message = when (outcome) {
                             is SupabaseSync.DonationOutcome.Recorded ->
                                 if (outcome.stockSynced) {
@@ -100,10 +109,20 @@ class DonorDetailActivity : AppCompatActivity() {
                 .setMessage("Remove this donor permanently?")
                 .setPositiveButton("Delete") { _, _ ->
                     if (SupabaseSync.isOnline) {
+                        val spinner = findViewById<ProgressBar>(R.id.progressSync)
+                        val label = findViewById<TextView>(R.id.syncLabel)
+                        spinner.visibility = View.VISIBLE
+                        label.visibility = View.VISIBLE
+                        label.text = "Deleting donor…"
                         Background.run {
                             SupabaseSync.deleteDonorRemote(donorId)
                             db.deleteDonor(donorId)
-                            runOnUiThread { finish() }
+                            runOnUiThread {
+                                if (isFinishing || isDestroyed) return@runOnUiThread
+                                spinner.visibility = View.GONE
+                                label.visibility = View.GONE
+                                finish()
+                            }
                         }
                     } else {
                         db.deleteDonor(donorId)
@@ -123,9 +142,20 @@ class DonorDetailActivity : AppCompatActivity() {
     private fun refresh() {
         renderFromLocal()
         if (SupabaseSync.isOnline) {
+            val spinner = findViewById<ProgressBar>(R.id.progressSync)
+            val label = findViewById<TextView>(R.id.syncLabel)
+            spinner.visibility = View.VISIBLE
+            label.visibility = View.VISIBLE
+            label.text = "Updating donor…"
             Background.run {
                 SupabaseSync.pullDonorDetail(db, donorId)
-                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        renderFromLocal()
+                        spinner.visibility = View.GONE
+                        label.visibility = View.GONE
+                    }
+                }
             }
         }
     }

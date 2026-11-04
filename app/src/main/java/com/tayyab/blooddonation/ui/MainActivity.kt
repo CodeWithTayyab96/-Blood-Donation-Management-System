@@ -34,6 +34,7 @@ import com.tayyab.blooddonation.util.UpdateWorker
 import com.tayyab.blooddonation.util.MotivationFacts
 import com.tayyab.blooddonation.util.DonationStats
 import com.tayyab.blooddonation.util.FcmPush
+import com.tayyab.blooddonation.ui.UISync
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
@@ -162,7 +163,18 @@ class MainActivity : AppCompatActivity() {
             // because clearing it loses the sign-in context the delete needs
             // (the row is keyed by the Auth user id being signed out).
             RequestAlertScheduler.cancel(this)
-            Background.run { FcmPush.forgetToken(applicationContext) }
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Signing out…"
+            Background.run {
+                FcmPush.forgetToken(applicationContext)
+                runOnUiThread {
+                    spinner.visibility = android.view.View.GONE
+                    label.visibility = android.view.View.GONE
+                }
+            }
             Session.logout(this)
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -261,6 +273,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkForUpdate() {
+        val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+        val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+        spinner.visibility = android.view.View.VISIBLE
+        label.visibility = android.view.View.VISIBLE
+        label.text = "Checking for updates…"
         Toast.makeText(this, "Checking for updates...", Toast.LENGTH_SHORT).show()
         Background.run {
             when (val result = AppUpdater.checkForUpdate()) {
@@ -282,6 +299,10 @@ class MainActivity : AppCompatActivity() {
                     ).show()
                 }
             }
+            runOnUiThread {
+                spinner.visibility = android.view.View.GONE
+                label.visibility = android.view.View.GONE
+            }
         }
     }
 
@@ -300,9 +321,20 @@ class MainActivity : AppCompatActivity() {
         // dashboard never waits on the network and never crashes.
         renderFromLocal()
         if (SupabaseSync.isOnline) {
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Updating dashboard…"
             Background.run {
                 SupabaseSync.pullAll(db)
-                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        renderFromLocal()
+                        spinner.visibility = android.view.View.GONE
+                        label.visibility = android.view.View.GONE
+                    }
+                }
             }
         }
     }

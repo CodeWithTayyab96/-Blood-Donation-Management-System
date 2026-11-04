@@ -19,6 +19,7 @@ import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 
 /**
  * P2P: one screen, two views.
@@ -127,10 +128,17 @@ class RequestListActivity : AppCompatActivity() {
         db.setRequestStatus(req.id, "Cancelled")
         renderFromLocal()
         if (SupabaseSync.isOnline) {
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Cancelling request…"
             Background.run {
                 val ok = SupabaseSync.cancelRequestRemote(req.id)
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
+                    spinner.visibility = android.view.View.GONE
+                    label.visibility = android.view.View.GONE
                     Toast.makeText(
                         this,
                         if (ok) "Request cancelled"
@@ -140,6 +148,8 @@ class RequestListActivity : AppCompatActivity() {
                 }
             }
         } else {
+            spinner.visibility = android.view.View.GONE
+            label.visibility = android.view.View.GONE
             Toast.makeText(this, "Request cancelled on this phone.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -148,9 +158,20 @@ class RequestListActivity : AppCompatActivity() {
         super.onResume()
         renderFromLocal()
         if (SupabaseSync.isOnline) {
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Updating requests…"
             Background.run {
                 SupabaseSync.pullRequests(db)
-                runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        renderFromLocal()
+                        spinner.visibility = android.view.View.GONE
+                        label.visibility = android.view.View.GONE
+                    }
+                }
             }
         }
     }

@@ -63,6 +63,11 @@ object SupabaseSync {
     }
 
     /** Downloads all requests and merges them into SQLite. False on failure. */
+    // FRAGILE: this depends on the pulled request having an empty `contact`, because
+    // `SupabaseClient.REQUEST_COLUMNS` does not select the contact column (it is not
+    // readable by `authenticated`). If a future change adds `contact` to that list,
+    // the `keep` rule below would silently stop clearing cached numbers a caller may
+    // not be allowed to see — re-check this logic whenever `REQUEST_COLUMNS` changes.
     fun pullRequests(db: DbHelper): Boolean {
         val requests = SupabaseClient.getRequests() ?: return false
         for (r in requests) {
@@ -233,6 +238,13 @@ object SupabaseSync {
      * Records a donation online: donation row, donor's last-donation date, and
      * stock +units.
      *
+     * This is the **manager** path: only a manager may move stock, so only a
+     * manager-recorded donation calls `adjust_stock` and only a manager may
+     * record a donation into the blood bank's stock at all. A donor's own peer
+     * donation is recorded through [completePeerDonationRemote] (`complete_peer_donation`),
+     * which writes the donation row and the donor's last-donation date but
+     * deliberately leaves stock alone — a peer donation never entered the bank.
+     *
      * Returns null only when the donation row itself did not reach Supabase, in
      * which case the caller records it locally under a fresh id. When the row
      * did land, the id is always returned — even if the stock update failed —
@@ -256,6 +268,17 @@ object SupabaseSync {
         data class Rejected(val failure: DonationFailure) : DonationOutcome()
     }
 
+    /**
+     * Manager-only donor recording: inserts the donation row, updates the donor's
+     * last-donation date, and increments stock. The stock increment is a separate
+     * server call and can fail on its own, which is why the outcome reports it
+     * explicitly rather than swallowing it as a plain success.
+     *
+     * Hardening note: `adjustStock` stays manager-only by intent — a donor-recorded
+     * (peer) donation must not touch stock, and the caller (`DonationOutcome` / the
+     * manager recording path) is the only place that calls it for a stock change. The
+     * peer path is `completePeerDonationRemote`, which never increments stock.
+     */
     fun recordDonationRemote(
         donor: Donor,
         units: Int,

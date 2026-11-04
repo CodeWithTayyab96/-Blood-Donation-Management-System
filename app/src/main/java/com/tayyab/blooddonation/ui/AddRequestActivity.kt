@@ -14,6 +14,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 import java.time.LocalDate
 
 class AddRequestActivity : AppCompatActivity() {
@@ -76,6 +77,13 @@ class AddRequestActivity : AppCompatActivity() {
             if (SupabaseSync.isOnline) {
                 // Online first so the request keeps its server id locally;
                 // unreachable Supabase = saved locally only.
+                val saveButton = findViewById<android.widget.Button>(R.id.btnSaveRequest)
+                val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+                val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+                saveButton.isEnabled = false
+                spinner.visibility = android.view.View.VISIBLE
+                label.visibility = android.view.View.VISIBLE
+                label.text = "Saving request…"
                 Background.run {
                     val remoteId = SupabaseSync.addRequestRemote(req)
                     if (remoteId != null) {
@@ -84,6 +92,9 @@ class AddRequestActivity : AppCompatActivity() {
                         db.addRequest(req)
                     }
                     runOnUiThread {
+                        saveButton.isEnabled = true
+                        spinner.visibility = android.view.View.GONE
+                        label.visibility = android.view.View.GONE
                         Toast.makeText(
                             this,
                             if (remoteId != null) "Request created for $patient"

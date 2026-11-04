@@ -12,6 +12,7 @@ import com.tayyab.blooddonation.util.AiCoach
 import com.tayyab.blooddonation.util.AiRules
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.ui.UISync
 
 /**
  * "Can I donate?" helper. One honest disclaimer, a length-limited question box,
@@ -40,15 +41,16 @@ class AskDonateActivity : AppCompatActivity() {
 
     private fun ask() {
         val button = findViewById<Button>(R.id.btnAskVerify)
+        val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+        val label = findViewById<android.widget.TextView>(R.id.syncLabel)
         val raw = findViewById<EditText>(R.id.etQuestion).text.toString()
         val question = AiRules.sanitizeQuestion(raw)
         if (question.isEmpty()) {
             Toast.makeText(this, "Type a question first", Toast.LENGTH_SHORT).show()
             return
         }
-        button.isEnabled = false
 
-        Background.run {
+        UISync.withSync(this, spinner, label, "Asking…") {
             // Only the sanitised question is sent — no name, no blood group,
             // no donation history. The helper answers general questions; a
             // licensed blood bank decides anything individual.

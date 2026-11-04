@@ -8,6 +8,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 
 class StockActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,11 +22,18 @@ class StockActivity : AppCompatActivity() {
         // Supabase = local stock stays, same rule as everywhere else).
         rv.adapter = StockAdapter(db.stockLevels().toList())
         if (SupabaseSync.isOnline) {
+            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+            spinner.visibility = android.view.View.VISIBLE
+            label.visibility = android.view.View.VISIBLE
+            label.text = "Updating stock…"
             Background.run {
                 SupabaseSync.pullStock(db)
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
                     rv.adapter = StockAdapter(db.stockLevels().toList())
+                    spinner.visibility = android.view.View.GONE
+                    label.visibility = android.view.View.GONE
                 }
             }
         }

@@ -15,6 +15,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 import java.time.LocalDate
 import java.util.Calendar
 
@@ -96,6 +97,13 @@ class AddDonorActivity : AppCompatActivity() {
             if (SupabaseSync.isOnline) {
                 // Online first so the donor keeps its server id locally
                 // too; if Supabase is unreachable, save locally only.
+                val saveButton = findViewById<android.widget.Button>(R.id.btnSaveDonor)
+                val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+                val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+                saveButton.isEnabled = false
+                spinner.visibility = android.view.View.VISIBLE
+                label.visibility = android.view.View.VISIBLE
+                label.text = "Saving donor…"
                 Background.run {
                     val remoteId = SupabaseSync.addDonorRemote(donor)
                     if (remoteId != null) {
@@ -104,6 +112,9 @@ class AddDonorActivity : AppCompatActivity() {
                         db.addDonor(donor)
                     }
                     runOnUiThread {
+                        saveButton.isEnabled = true
+                        spinner.visibility = android.view.View.GONE
+                        label.visibility = android.view.View.GONE
                         Toast.makeText(
                             this,
                             if (remoteId != null) "Donor registered: ${donor.name}"

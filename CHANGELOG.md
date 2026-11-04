@@ -511,3 +511,53 @@ SQLite as the offline fallback.
 ## 1.2
 
 Local SQLite only.
+
+## 1.15 — 2026-11-04
+
+versionCode 16. Shared in-screen loading indicator across every screen that
+does real network work, plus small fixes from the code review.
+
+### A consistent "in-flight" indicator
+
+- Added a shared `UISync` helper the app uses instead of one-off spinners: a
+  small `ProgressBar` + label that appears while a background pull or write is
+  running, and disappears when it ends (even on failure), plus a short-lived
+  full-screen dimmed overlay (`pauseUntil`) for brief waits such as cold starts
+  and one-shot actions. Normal syncs stay non-blocking — Toasts stay the primary
+  feedback.
+- The indicator now appears on: the manager dashboard, donor list, request list,
+  stock, profile, connection check, donor detail, request detail, create request,
+  add donor, add request, and the "Can I donate?" AI helper.
+- Write paths that post to Supabase now show what they are doing ("Posting
+  request…", "Saving donor…", "Saving request…", "Asking…") instead of
+  looking idle, and the Save / Ask button is disabled while the call is in flight.
+- `UISync.withSync` runs work on the shared background executor and hides the
+  indicator in a `finally`; callers still post UI updates through
+  `activity.runOnUiThread { ... }`.
+- `UISync.pauseUntil` gained an `acceptFinishing` flag (off by default) so the
+  overlay is removed if the owning Activity leaves the screen, rather than
+  sticking around over the next screen.
+
+### Review fixes
+
+- `SupabaseClient.getRequest`, `getDonor` and `getDonorByAuthId`: only overwrite
+  the phone/contact fields when the RPC actually returns a value. A missing value
+  no longer overwrites a cached number with an empty string.
+- `supabase_p2p_policies.sql` (in `sql/applied/`): removed `delete` from the
+  `grant ... on offers to authenticated` line. Offers have no delete policy by
+  design — the comment now says so explicitly, so the grant is not mistaken for
+  one.
+- Added clarifying comments in `SupabaseSync`: `recordDonationRemote` documents
+  that it is the **manager** path and that `completePeerDonationRemote` is the
+  peer path (peer donations never touch stock); `pullRequests` is marked
+  FRAGILE because it depends on the pulled row having an empty contact (the
+  `REQUEST_COLUMNS` list omits it).
+
+### Loading UI philosophy
+
+- Show the cached screen first; run network work on a background thread; report
+  the result with a Toast. Add the small `UISync` indicator when a background
+  pull or write is running and the user might otherwise think the app had frozen.
+- Use `pauseUntil` only for short, unavoidable waits where *nothing* can be shown
+  yet (cold start, one-shot waits), never for a normal sync.
+- Do not block the whole screen for normal data pulls or writes.

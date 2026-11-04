@@ -23,6 +23,7 @@ import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 import java.time.LocalDate
 
 /**
@@ -66,7 +67,7 @@ class RequestDetailActivity : AppCompatActivity() {
                 // Online stock is the source of truth when reachable:
                 // a short online stock means "not enough", full stop.
                 // An online error falls back to the old local behaviour.
-                Background.run {
+                sync("Fulfilling request…") {
                     when (val result = SupabaseSync.fulfilRequestRemote(req)) {
                         is SupabaseSync.FulfilResult.Success -> {
                             db.fulfillRequest(req)
@@ -152,7 +153,7 @@ class RequestDetailActivity : AppCompatActivity() {
     private fun refresh() {
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            Background.run {
+            sync("Updating request…") {
                 SupabaseSync.pullRequestDetail(db, requestId)
                 runOnUiThread { if (!isFinishing && !isDestroyed) renderFromLocal() }
             }
@@ -338,7 +339,7 @@ class RequestDetailActivity : AppCompatActivity() {
             ).show()
             return
         }
-        Background.run {
+        sync("Sending offer…") {
             val remoteId = SupabaseSync.addOfferRemote(offer)
             val error = SupabaseClient.lastError
             runOnUiThread {
@@ -432,7 +433,7 @@ class RequestDetailActivity : AppCompatActivity() {
         db.setRequestStatus(req.id, "Matched")
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            Background.run {
+            sync("Accepting offer…") {
                 SupabaseSync.updateOfferStatusRemote(offer.id, "Accepted")
                 pushRequestStatusOnline(req.id, "Matched")
             }
@@ -443,7 +444,9 @@ class RequestDetailActivity : AppCompatActivity() {
         db.setOfferStatus(offer.id, "Declined")
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            Background.run { SupabaseSync.updateOfferStatusRemote(offer.id, "Declined") }
+            sync("Declining offer…") {
+                SupabaseSync.updateOfferStatusRemote(offer.id, "Declined")
+            }
         }
     }
 
@@ -469,7 +472,7 @@ class RequestDetailActivity : AppCompatActivity() {
             tv.text = "$label: not available offline"
             return
         }
-        Background.run {
+        sync("Loading contact…") {
             val phone = SupabaseSync.getContactDetailsRemote(userId)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
@@ -514,7 +517,7 @@ class RequestDetailActivity : AppCompatActivity() {
         val both = P2pRules.bothConfirmed(donorAt, requesterAt)
 
         if (SupabaseSync.isOnline) {
-            Background.run {
+            sync("Completing donation…") {
                 SupabaseSync.updateOfferConfirmedRemote(offer.id, donorAt, requesterAt)
                 val done = if (both) SupabaseSync.completePeerDonationRemote(offer.id) else false
                 if (done || both) completeLocally(req, offer)
@@ -574,7 +577,7 @@ class RequestDetailActivity : AppCompatActivity() {
             )
         )
         if (SupabaseSync.isOnline) {
-            Background.run {
+            sync("Sending report…") {
                 val ok = SupabaseSync.insertReportRemote(requestId, reporter, reason) != null
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
@@ -589,6 +592,13 @@ class RequestDetailActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this, "Report saved on this phone (offline).", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // ----------------------------------------------------------------- network helper
+
+    /** Run a network action on [Background] with the in-flight sync indicator, hidden in a `finally`. */
+    private fun sync(label: String, work: suspend () -> Unit) {
+        UISync.withSync(this, findViewById(R.id.progressSync), findViewById(R.id.syncLabel), label, work)
     }
 
     // ----------------------------------------------------------------- helpers

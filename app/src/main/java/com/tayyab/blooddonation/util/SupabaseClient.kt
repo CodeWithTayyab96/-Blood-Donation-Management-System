@@ -415,7 +415,13 @@ object SupabaseClient {
         // The phone is not a readable column; ask for it separately. The
         // database answers for a manager and for the donor themselves, and
         // stays silent for everyone else.
-        return donor.copy(phone = donorPhone(id) ?: "")
+        //
+        // Only overwrite the phone when the RPC actually returns a value.
+        // donorPhone returns null for a caller who may not see it, and a
+        // null here must not overwrite a previously cached number with an
+        // empty string (that would hide a number the user already knew).
+        val phone = donorPhone(id)
+        return if (phone != null) donor.copy(phone = phone) else donor
     }
 
     /**
@@ -426,7 +432,11 @@ object SupabaseClient {
     fun getDonorByAuthId(authId: String): Donor? {
         val obj = firstObject("/donors?auth_id=eq.$authId&select=$DONOR_COLUMNS") ?: return null
         val donor = donorFromJson(obj)
-        return donor.copy(phone = donorPhone(donor.id) ?: "")
+        // Same rule as getDonor: only fill the phone when the RPC returns
+        // one. A null means this caller may not see it, and must not
+        // clobber a number the profile already had.
+        val phone = donorPhone(donor.id)
+        return if (phone != null) donor.copy(phone = phone) else donor
     }
 
     /**
@@ -575,8 +585,12 @@ object SupabaseClient {
         // Same rule as the donor phone: the column is not readable, so the
         // number is asked for separately and only the requester or a manager
         // gets an answer.
-        return req.copy(contact = requestContact(id) ?: "")
-        return requestFromJson(obj)
+        //
+        // Only overwrite the contact when the RPC returns a value. requestContact
+        // returns null for a caller who may not see it, and a null here must not
+        // overwrite a previously cached contact with an empty string.
+        val contact = requestContact(id)
+        return if (contact != null) req.copy(contact = contact) else req
     }
 
     /** Inserts a request online (created_at defaults to now on the server);

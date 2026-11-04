@@ -4,7 +4,9 @@ import android.os.Bundle
 import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.style.RelativeSizeSpan
+import android.view.View
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
@@ -12,6 +14,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.Jwt
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
+import com.tayyab.blooddonation.ui.UISync
 
 /**
  * Settings -> Connection check.
@@ -42,8 +45,13 @@ class ConnectionCheckActivity : AppCompatActivity() {
     private fun runChecks() {
         val out = findViewById<TextView>(R.id.tvChecks)
         val button = findViewById<Button>(R.id.btnRunChecks)
+        val spinner = findViewById<ProgressBar>(R.id.progressSync)
+        val label = findViewById<TextView>(R.id.syncLabel)
         out.text = "Checking…"
         button.isEnabled = false
+        spinner.visibility = View.VISIBLE
+        label.visibility = View.VISIBLE
+        label.text = "Running checks…"
 
         Background.run {
             // Sequential on purpose: each check uses what the previous one
@@ -64,6 +72,8 @@ class ConnectionCheckActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 out.text = text
                 button.isEnabled = true
+                spinner.visibility = View.GONE
+                label.visibility = View.GONE
             }
         }
     }

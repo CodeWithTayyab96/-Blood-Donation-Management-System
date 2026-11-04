@@ -16,6 +16,7 @@ import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
+import com.tayyab.blooddonation.ui.UISync
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -169,11 +170,21 @@ class CreateRequestActivity : AppCompatActivity() {
             ).show()
             return
         }
+        val saveButton = findViewById<android.widget.Button>(R.id.btnSaveRequest)
+        val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+        val label = findViewById<android.widget.TextView>(R.id.syncLabel)
+        saveButton.isEnabled = false
+        spinner.visibility = android.view.View.VISIBLE
+        label.visibility = android.view.View.VISIBLE
+        label.text = "Posting request…"
         Background.run {
             val remoteId = SupabaseSync.addRequestRemote(req)
             val error = SupabaseClient.lastError
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                saveButton.isEnabled = true
+                spinner.visibility = android.view.View.GONE
+                label.visibility = android.view.View.GONE
                 if (remoteId == null) {
                     Toast.makeText(
                         this,
