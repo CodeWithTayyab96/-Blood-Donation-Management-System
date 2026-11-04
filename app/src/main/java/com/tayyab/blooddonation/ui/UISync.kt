@@ -67,22 +67,28 @@ object UISync {
      *  hiding it when it ends (even on failure). `activity` is only used to
      *  post the show/hide calls to the main thread; the work block runs on a
      *  background thread and may call `activity.runOnUiThread { ... }` to
-     *  update the UI. */
+     *  update the UI.
+     *
+     *  The work block is a plain `() -> Unit` (not suspend): it runs on the
+     *  shared [Background] executor, which is non-suspending. Callers that need
+     *  to call a suspend function should wrap it in their own coroutine — but
+     *  every current caller calls only blocking network helpers (SupabaseSync,
+     *  AiCoach) plus `runOnUiThread`, so no suspend is needed. */
     fun withSync(
         activity: Activity,
         progress: ProgressBar,
         syncLabel: TextView,
         labelText: String,
-        work: suspend () -> Unit = {}
+        work: () -> Unit = {}
     ) {
         showSync(activity, progress, syncLabel, labelText)
-        Background.run({
+        Background.run {
             try {
                 work()
             } finally {
                 hideSync(activity, progress, syncLabel)
             }
-        })
+        }
     }
 
     /** Full-screen dimmed overlay with a centered ProgressBar + message, shown
