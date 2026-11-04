@@ -343,15 +343,17 @@ class RequestDetailActivity : AppCompatActivity() {
 
         // An offer is online-only: one that only exists on this phone is never
         // seen by the requester, and the donor would sit waiting for an answer
-        // that cannot come. Nothing is written if the server refuses.        val btnOffer = findViewById<Button>(R.id.btnOffer)
+        // that cannot come. Nothing is written if the server refuses.
+        if (!SupabaseSync.isOnline) {
+            Toast.makeText(this, "Offering to donate needs an internet connection.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        val btnOffer = findViewById<Button>(R.id.btnOffer)
+        if (isFinishing || isDestroyed) return
         btnOffer.isEnabled = false
         try {
-            if (!SupabaseSync.isOnline) {
-                Toast.makeText(this, "Offering to donate needs an internet connection.",
-                    Toast.LENGTH_LONG
-                ).show()
-                return
-            }
             sync("Sending offer…") {
                 val remoteId = SupabaseSync.addOfferRemote(offer)
                 val error = SupabaseClient.lastError
@@ -386,6 +388,7 @@ class RequestDetailActivity : AppCompatActivity() {
         val container = findViewById<LinearLayout>(R.id.offersContainer)
         header.visibility = View.VISIBLE
         container.visibility = View.VISIBLE
+        container.removeAllViews()
         val offers = db.getOffersForRequest(req.id)
         if (offers.isEmpty()) {
             val tv = TextView(this)
@@ -439,6 +442,7 @@ class RequestDetailActivity : AppCompatActivity() {
     private fun acceptOffer(req: BloodRequest, offer: Offer) {
         val btnAccept = findViewById<Button>(R.id.btnAccept)
         val btnDecline = findViewById<Button>(R.id.btnDecline)
+        if (isFinishing || isDestroyed) return
         btnAccept.isEnabled = false
         btnDecline.isEnabled = false
         try {
@@ -466,6 +470,7 @@ class RequestDetailActivity : AppCompatActivity() {
 
     private fun declineOffer(offer: Offer) {
         val btnDecline = findViewById<Button>(R.id.btnDecline)
+        if (isFinishing || isDestroyed) return
         btnDecline.isEnabled = false
         try {
             db.setOfferStatus(offer.id, "Declined")
@@ -542,6 +547,7 @@ class RequestDetailActivity : AppCompatActivity() {
         asDonor: Boolean
     ) {
         val btnComplete = findViewById<Button>(R.id.btnComplete)
+        if (isFinishing || isDestroyed) return
         btnComplete.isEnabled = false
         try {
             val today = LocalDate.now().toString()

@@ -49,16 +49,23 @@ class AskDonateActivity : AppCompatActivity() {
             Toast.makeText(this, "Type a question first", Toast.LENGTH_SHORT).show()
             return
         }
-
-        UISync.withSync(this, spinner, label, "Asking…") {
-            // Only the sanitised question is sent — no name, no blood group,
-            // no donation history. The helper answers general questions; a
-            // licensed blood bank decides anything individual.
-            val answer = AiCoach.answer(question)
-            runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+        if (!isFinishing && !isDestroyed) {
+            button.isEnabled = false
+        }
+        try {
+            UISync.withSync(this, spinner, label, "Asking…") {
+                // Only the sanitised question is sent — no name, no blood group,
+                // no donation history. The helper answers general questions; a
+                // licensed blood bank decides anything individual.
+                val answer = AiCoach.answer(question)
+                UISync.safePost(this) {
+                    button.isEnabled = true
+                    show(answer)
+                }
+            }
+        } finally {
+            if (!isFinishing && !isDestroyed) {
                 button.isEnabled = true
-                show(answer)
             }
         }
     }
