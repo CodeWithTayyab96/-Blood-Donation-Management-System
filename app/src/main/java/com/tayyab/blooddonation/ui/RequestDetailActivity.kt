@@ -597,8 +597,8 @@ class RequestDetailActivity : AppCompatActivity() {
     // ----------------------------------------------------------------- network helper
 
     /** Run a network action on [Background] with the in-flight sync indicator, hidden in a `finally`. */
-    private fun sync(label: String, work: suspend () -> Unit) {
-        UISync.withSync(this, findViewById(R.id.progressSync), findViewById(R.id.syncLabel), label, work)
+    private fun sync(label: String, work: () -> Unit) {
+        UISync.withSync(this, findViewById<ProgressBar>(R.id.progressSync), findViewById<TextView>(R.id.syncLabel), label, work)
     }
 
     // ----------------------------------------------------------------- helpers
