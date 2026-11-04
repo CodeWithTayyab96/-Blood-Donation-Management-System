@@ -15,7 +15,7 @@
                 android:textColor="@color/white" />
 
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Sign in to continue"
+                android:text="@string/label_sign_in_subtitle"
                 android:textSize="14sp" android:textColor="@color/blood_red_light"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
@@ -23,26 +23,26 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:padding="24dp">
         <EditText android:id="@+id/etUsername" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="Email or username *"
+            android:layout_height="wrap_content" android:hint="@string/hint_login_username"
             android:inputType="text" android:autofillHints="username" />
         <EditText android:id="@+id/etPassword" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="Password *"
+            android:layout_height="wrap_content" android:hint="@string/hint_login_password"
             android:inputType="textPassword" android:autofillHints="password" />
         <Button android:id="@+id/btnLogin" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="Sign In"
+            android:layout_height="wrap_content" android:text="@string/label_sign_in"
             android:layout_marginTop="16dp" />
         <Button android:id="@+id/btnForgotPassword" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="Forgot password?"
+            android:layout_height="wrap_content" android:text="@string/label_forgot_password"
             android:layout_marginTop="4dp" style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnRegister" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="Register as a Donor"
+            android:layout_height="wrap_content" android:text="@string/label_register_donor"
             android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Sign in with the email address and password of your account. There is no offline demo login any more."
+            android:text="@string/hint_login_subtitle"
             android:textSize="13sp" android:textColor="@color/text_secondary"
             android:layout_marginTop="20dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Managers can manage all donors, stock and requests. Donors can view everything but only edit their own profile and donations."
+            android:text="@string/hint_login_secondary"
             android:textSize="13sp" android:textColor="@color/text_secondary"
             android:layout_marginTop="6dp" />
         </LinearLayout>

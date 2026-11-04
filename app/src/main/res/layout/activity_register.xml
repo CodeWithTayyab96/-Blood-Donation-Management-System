@@ -4,32 +4,32 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Create your donor account" android:textSize="20sp"
+            android:text="@string/hint_register_heading" android:textSize="20sp"
             android:textStyle="bold" android:textColor="@color/text_accent"
             android:layout_marginBottom="12dp" />
         <EditText android:id="@+id/etEmail" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="Email *" android:inputType="textEmailAddress"
+            android:layout_height="wrap_content" android:hint="@string/hint_register_email" android:inputType="textEmailAddress"
             android:autofillHints="emailAddress" />
         <EditText android:id="@+id/etPassword" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="Password *" android:inputType="textPassword" />
+            android:layout_height="wrap_content" android:hint="@string/hint_register_password" android:inputType="textPassword" />
         <EditText android:id="@+id/etName" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="Full name *" android:inputType="textPersonName" />
+            android:layout_height="wrap_content" android:hint="@string/hint_register_name" android:inputType="textPersonName" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
             <EditText android:id="@+id/etAge" android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:hint="Age *" android:inputType="number" />
+                android:layout_weight="1" android:hint="@string/hint_register_age" android:inputType="number" />
             <EditText android:id="@+id/etWeight" android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:hint="Weight (kg) *" android:inputType="numberDecimal" />
+                android:layout_weight="1" android:hint="@string/hint_register_weight" android:inputType="numberDecimal" />
         </LinearLayout>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Gender" android:layout_marginTop="10dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/hint_register_gender_short" android:layout_marginTop="10dp" />
         <Spinner android:id="@+id/spGender" android:layout_width="match_parent" android:layout_height="wrap_content" />
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blood group" android:layout_marginTop="10dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/hint_reg_blood_group_short" android:layout_marginTop="10dp" />
         <Spinner android:id="@+id/spBloodGroup" android:layout_width="match_parent" android:layout_height="wrap_content" />
         <EditText android:id="@+id/etPhone" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="Phone number *" android:inputType="phone" />
+            android:layout_height="wrap_content" android:hint="@string/hint_register_phone" android:inputType="phone" />
         <EditText android:id="@+id/etCity" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="City *" android:inputType="textPostalAddress" />
+            android:layout_height="wrap_content" android:hint="@string/hint_register_city" android:inputType="textPostalAddress" />
         <Button android:id="@+id/btnCreateAccount" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="Create Account"
-            android:layout_marginTop="16dp" />
+            android:layout_height="wrap_content"            android:text="@string/label_register_donor" android:layout_marginTop="16dp" />
     </LinearLayout>
 </ScrollView>
+

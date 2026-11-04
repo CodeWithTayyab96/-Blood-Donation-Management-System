@@ -1,16 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    The ordinary user's home. Deliberately a different shape from the manager
-    dashboard: a solid coloured header band, one card per thing the user came to
-    do, and no statistics — a donor does not need the blood bank's inventory.
--->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
+    android:layout_width="match_parent" android:layout_height="match_parent">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical" android:padding="18dp">
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:background="@drawable/bg_header_gradient"
@@ -33,11 +25,12 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp" app:cardCornerRadius="12dp">
+                android:layout_marginBottom="12dp" app:cardCornerRadius="12dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical" android:padding="14dp">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="💡 Today" android:textSize="15sp" android:textStyle="bold"
+                        android:text="@string/fact_today" android:textSize="15sp" android:textStyle="bold"
                         android:textColor="@color/text_accent" />
                     <TextView android:id="@+id/tvUserFact"
                         android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -49,13 +42,14 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardAvailability"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp" app:cardCornerRadius="12dp">
+                android:layout_marginBottom="12dp" app:cardCornerRadius="12dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical" android:padding="14dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:gravity="center_vertical">
                         <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                            android:layout_weight="1" android:text="I want to donate"
+                            android:layout_weight="1" android:text="@string/i_want_to_donate"
                             android:textSize="16sp" android:textStyle="bold"
                             android:textColor="@color/text_accent" />
                         <androidx.appcompat.widget.SwitchCompat
@@ -71,37 +65,39 @@
 
             <Button android:id="@+id/btnNeedBlood"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="I need blood — post a request"
+                android:text="@string/label_need_blood"
                 android:layout_marginBottom="8dp" />
 
             <Button android:id="@+id/btnMyRequests"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="My requests" android:layout_marginBottom="8dp"
+                android:text="@string/label_my_requests" android:layout_marginBottom="8dp"
                 style="?attr/materialButtonOutlinedStyle" />
 
             <Button android:id="@+id/btnBrowseRequests"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Browse requests and offers" android:layout_marginBottom="8dp"
+                android:text="@string/label_browse_requests" android:layout_marginBottom="8dp"
                 style="?attr/materialButtonOutlinedStyle" />
 
             <Button android:id="@+id/btnAskAi"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Can I donate? (AI helper)" android:layout_marginBottom="8dp"
+                android:text="@string/label_ai_helper_home"
+                android:layout_marginBottom="8dp"
                 style="?attr/materialButtonOutlinedStyle" />
 
             <Button android:id="@+id/btnUserProfile"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="My profile" android:layout_marginBottom="8dp"
+                android:text="@string/label_my_profile" android:layout_marginBottom="8dp"
                 style="?attr/materialButtonOutlinedStyle" />
 
             <Button android:id="@+id/btnUserSettings"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Settings" android:layout_marginBottom="8dp"
+                android:text="@string/label_user_settings" android:layout_marginBottom="8dp"
                 style="?attr/materialButtonOutlinedStyle" />
 
             <Button android:id="@+id/btnUserLogout"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Log out" android:textColor="@color/status_bad"
+                android:text="@string/label_user_logout"
+                android:textColor="@color/status_bad"
                 style="?attr/materialButtonOutlinedStyle" />
         </LinearLayout>
     </LinearLayout>

@@ -3,6 +3,7 @@
     android:layout_width="match_parent" android:layout_height="match_parent">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
+
         <TextView android:id="@+id/tvDetailName" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:textSize="24sp" android:textStyle="bold" android:textColor="@color/text_accent" />
         <TextView android:id="@+id/tvDetailInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -10,17 +11,16 @@
         <TextView android:id="@+id/tvDetailEligibility" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnRecordDonation" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="🩸 Record Donation (1 unit)" android:layout_marginTop="14dp" />
+            android:text="@string/label_record_donation" android:layout_marginTop="14dp" />
         <Button android:id="@+id/btnDeleteDonor" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Delete Donor" android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
+            android:text="@string/label_delete_donor" android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Donation history" android:textSize="16sp" android:textStyle="bold"
+            android:text="@string/hint_donation_history" android:textSize="16sp" android:textStyle="bold"
             android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />
-        <!-- See activity_profile.xml: no nested scrolling inside a ScrollView. -->
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvHistory"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:nestedScrollingEnabled="false" />
         <TextView android:id="@+id/tvNoHistory" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="No donations recorded yet." android:textColor="@color/text_secondary" />
+            android:text="@string/hint_no_history" android:textColor="@color/text_secondary" />
     </LinearLayout>
 </ScrollView>

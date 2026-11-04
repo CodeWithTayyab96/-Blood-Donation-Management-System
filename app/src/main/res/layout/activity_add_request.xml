@@ -16,7 +16,7 @@
         <EditText android:id="@+id/etContact" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:hint="Contact number *" android:inputType="phone" />
         <Button android:id="@+id/btnSaveRequest" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Save Request" android:layout_marginTop="16dp" />
+            android:text="@string/label_save_request" android:layout_marginTop="16dp" />
 
         <!-- In-flight sync indicator: shown while the request is saved to Supabase. -->
         <LinearLayout android:id="@+id/syncRow"
