@@ -63,6 +63,18 @@ object UISync {
         }
     }
 
+    /** Run [block] on the UI thread, but only while the Activity is still
+     *  alive. Safe to call from a background thread; the block is silently
+     *  dropped when the Activity is finishing or destroyed, so a late
+     *  callback can never touch a dead screen. */
+    fun safePost(activity: Activity, block: () -> Unit) {
+        activity.runOnUiThread {
+            if (!activity.isFinishing && !activity.isDestroyed) {
+                block()
+            }
+        }
+    }
+
     /** Run [work] on [Background], showing the sync indicator while it runs and
      *  hiding it when it ends (even on failure). `activity` is only used to
      *  post the show/hide calls to the main thread; the work block runs on a
@@ -123,10 +135,9 @@ object UISync {
             setBackgroundColor(android.graphics.Color.argb(0xCC, 0, 0, 0))
             isClickable = true
         }
-        val progress = ProgressBar(activity).apply {
+        val progress = ProgressBar(activity, null, android.R.attr.progressBarStyleLarge).apply {
             id = android.view.View.generateViewId()
             isIndeterminate = true
-            style = android.R.attr.progressBarStyleLarge
             layoutParams = android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
