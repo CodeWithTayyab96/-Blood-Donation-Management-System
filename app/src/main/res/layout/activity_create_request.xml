@@ -5,7 +5,7 @@
         android:orientation="vertical" android:padding="18dp">
 
         <TextView android:id="@+id/tvCreateSafety" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/hint_create_safety"
+            android:text="@string/safety_create_request"
             android:textSize="13sp" android:paddingBottom="12dp" />
 
         <EditText android:id="@+id/etPatient" android:layout_width="match_parent" android:layout_height="wrap_content"

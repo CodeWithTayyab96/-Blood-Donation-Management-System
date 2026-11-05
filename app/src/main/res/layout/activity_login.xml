@@ -38,11 +38,11 @@
             android:layout_height="wrap_content" android:text="@string/label_register_donor"
             android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/hint_login_subtitle"
+            android:text="@string/safety_login_subtitle"
             android:textSize="13sp" android:textColor="@color/text_secondary"
             android:layout_marginTop="20dp" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/hint_login_secondary"
+            android:text="@string/safety_login_secondary"
             android:textSize="13sp" android:textColor="@color/text_secondary"
             android:layout_marginTop="6dp" />
         </LinearLayout>
