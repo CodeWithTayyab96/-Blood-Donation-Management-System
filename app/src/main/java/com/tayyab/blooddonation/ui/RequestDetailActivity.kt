@@ -144,7 +144,10 @@ class RequestDetailActivity : AppCompatActivity() {
                 ).show()
                 refresh()
             }
+        } finally {
+            btnFulfill.isEnabled = true
         }
+    }
 
         findViewById<Button>(R.id.btnReport).setOnClickListener { showReportDialog() }
         findViewById<Button>(R.id.btnFulfill).isEnabled = true
@@ -158,9 +161,11 @@ class RequestDetailActivity : AppCompatActivity() {
     private fun refresh() {
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            sync("Updating request…") {
-                SupabaseSync.pullRequestDetail(db, requestId)
-                UISync.safePost(this) { renderFromLocal() }
+            try {
+                sync("Updating request…") {
+                    SupabaseSync.pullRequestDetail(db, requestId)
+                    UISync.safePost(this) { renderFromLocal() }
+                }
             } finally {
                 findViewById<Button>(R.id.btnFulfill).isEnabled = true
             }
