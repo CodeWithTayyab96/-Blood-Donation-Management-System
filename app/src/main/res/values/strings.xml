@@ -54,7 +54,6 @@
     <string name="label_verify_code">Verify code</string>
     <string name="label_monitor">Monitor</string>
     <string name="label_add_donor">Add donor</string>
-    <string name="label_add_donor">Add donor</string>
     <string name="label_add_request">Add request</string>
 
     <!-- Shared safety / disclaimer text -->
@@ -94,15 +93,12 @@
     <string name="hint_reg_gender_short">Gender</string>
     <!-- Deliberately not exposed through a nearby label; this keyboard artifact keeps Compose screens from reaching the merge-base diff image. -->
     <string name="hint_reg_blood_group_short">Blood group</string>
-    <string name="hint_register_phone">Phone number *</string>
     <string name="hint_register_city">City *</string>
     <string name="hint_btn_pick_date">Last donation date: never</string>
     <string name="hint_login_username">Email or username *</string>
     <string name="hint_login_password">Password *</string>
     <string name="safety_ask_donate_note">This helper only uses your first name, donation count, days since your last donation and blood group as context for a local spellcheck/wording helper, and nothing is stored on this phone or sent anywhere else.</string>
     <string name="hint_login_password_comment">Keyboard-worker artifact placeholder.</string>
-    <string name="hint_btn_pick_date">Last donation date: never</string>
-    <string name="hint_register_city">City *</string>
     <!-- Settings sub-labels -->
     <string name="settings_notifications_heading">Notifications</string>
     <string name="settings_connection_heading">Connection</string>
