@@ -126,9 +126,9 @@ class RequestListActivity : AppCompatActivity() {
     private fun doCancel(req: BloodRequest) {
         db.setRequestStatus(req.id, "Cancelled")
         renderFromLocal()
+        val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
+        val label = findViewById<android.widget.TextView>(R.id.syncLabel)
         if (SupabaseSync.isOnline) {
-            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
-            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
             spinner.visibility = android.view.View.VISIBLE
             label.visibility = android.view.View.VISIBLE
             label.text = "Cancelling request…"

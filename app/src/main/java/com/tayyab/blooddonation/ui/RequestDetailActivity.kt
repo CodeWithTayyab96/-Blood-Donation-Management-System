@@ -419,10 +419,10 @@ class RequestDetailActivity : AppCompatActivity() {
                 row.orientation = LinearLayout.HORIZONTAL
                 val accept = Button(this)
                 accept.text = getString(R.string.label_accept)
-                accept.setOnClickListener { acceptOffer(req, o) }
                 val decline = Button(this)
                 decline.text = getString(R.string.label_decline)
-                decline.setOnClickListener { declineOffer(o) }
+                accept.setOnClickListener { acceptOffer(req, o, accept, decline) }
+                decline.setOnClickListener { declineOffer(o, decline) }
                 row.addView(accept)
                 row.addView(decline)
                 container.addView(row)
@@ -445,9 +445,7 @@ class RequestDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun acceptOffer(req: BloodRequest, offer: Offer) {
-        val btnAccept = findViewById<Button>(R.id.btnAccept)
-        val btnDecline = findViewById<Button>(R.id.btnDecline)
+    private fun acceptOffer(req: BloodRequest, offer: Offer, btnAccept: Button, btnDecline: Button) {
         if (isFinishing || isDestroyed) return
         btnAccept.isEnabled = false
         btnDecline.isEnabled = false
@@ -474,8 +472,7 @@ class RequestDetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun declineOffer(offer: Offer) {
-        val btnDecline = findViewById<Button>(R.id.btnDecline)
+    private fun declineOffer(offer: Offer, btnDecline: Button) {
         if (isFinishing || isDestroyed) return
         btnDecline.isEnabled = false
         try {

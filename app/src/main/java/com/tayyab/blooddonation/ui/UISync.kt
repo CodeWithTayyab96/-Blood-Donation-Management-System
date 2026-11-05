@@ -40,14 +40,14 @@ object UISync {
 
     /** Show the small in-screen sync indicator. Call on the UI thread or via
      *  the activity's runOnUiThread; safe when the activity is finishing. */
-    fun showSync(activity: Activity, progress: ProgressBar, label: TextView, text: String) {
+    fun showSync(activity: Activity, progress: ProgressBar, label: TextView, labelText: String) {
         activity.runOnUiThread {
             if (!activity.isFinishing && !activity.isDestroyed) {
                 progress.isIndeterminate = true
                 progress.visibility = View.VISIBLE
                 label.apply {
                     visibility = View.VISIBLE
-                    text = text
+                    text = labelText
                 }
             }
         }
@@ -141,7 +141,7 @@ object UISync {
             layoutParams = android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.Gravity.CENTER
+                android.view.Gravity.CENTER
             )
         }
         val messageView = TextView(activity).apply {
@@ -152,13 +152,13 @@ object UISync {
             layoutParams = android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.Gravity.CENTER
+                android.view.Gravity.CENTER
             )
         }
         container.addView(progress)
         container.addView(messageView)
 
-        val wrapper = activity.findViewById(android.R.id.content)
+        val wrapper = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
         wrapper.addView(container)
 
         val handler = Handler(Looper.getMainLooper())
