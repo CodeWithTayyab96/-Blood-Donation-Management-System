@@ -98,13 +98,17 @@ jobs:
 
       # No --no-verify-jwt here, on purpose: these two only ever serve
       # signed-in users, and the default is JWT verification ON.
+      # --yes is required: newer Supabase CLI versions prompt for
+      # confirmation before deploying, and in Actions there is no
+      # terminal to answer it, so without --yes the run fails with
+      # "Confirmation required ... Nothing was changed." (run #2, 2026-11-06).
       - name: Deploy delete-account and ai-coach (JWT verification ON)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           set -euo pipefail
-          supabase functions deploy delete-account --project-ref "$PROJECT_REF"
-          supabase functions deploy ai-coach --project-ref "$PROJECT_REF"
+          supabase functions deploy delete-account --project-ref "$PROJECT_REF" --yes
+          supabase functions deploy ai-coach --project-ref "$PROJECT_REF" --yes
 
       # Only when explicitly requested. The callers are SQL triggers, not
       # users, so this one MUST be deployed without JWT verification; its
@@ -115,7 +119,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           set -euo pipefail
-          supabase functions deploy push-notify --project-ref "$PROJECT_REF" --no-verify-jwt
+          supabase functions deploy push-notify --project-ref "$PROJECT_REF" --no-verify-jwt --yes
 
       # The CLI flag is not proof. Read the project back and assert the
       # setting that actually protects the function.
