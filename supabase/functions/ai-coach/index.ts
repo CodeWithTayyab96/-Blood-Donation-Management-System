@@ -53,18 +53,24 @@ const MIN_QUOTE_CHARS = 20;
 const MAX_QUOTE_CHARS = 140;
 
 // ---- models --------------------------------------------------------------
-// `openrouter/free` routes to whichever free model is available, which is the
-// most reliable single choice; the :free list is tried in order after it so a
-// model that is rate-limited or unavailable does not take the whole feature
-// down. Every entry is a free variant — a paid one must never be reached by
-// accident.
-const DEFAULT_MODEL = "openrouter/free";
+// The :free list is tried in order, so a model that is rate-limited or
+// unavailable does not take the whole feature down. Every entry is a free
+// variant — a paid one must never be reached by accident.
+//
+// NOTE (2026-11-06): OpenRouter retired the old free slugs. gemma-3-27b-it,
+// llama-3.3-70b, deepseek-r1 and mistral-small-3.1 all 404 as free now, and
+// `openrouter/free` answers 400 "not a valid model ID". The list below is the
+// live free list from https://openrouter.ai/api/v1/models on 2026-11-06.
+// Free models turn over without warning, so if the helper starts 502ing
+// again, re-check that list first.
+const DEFAULT_MODEL = "google/gemma-4-26b-a4b-it:free";
 const FALLBACK_MODELS = [
-  "openrouter/free",
-  "google/gemma-3-27b-it:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "deepseek/deepseek-r1:free",
-  "mistralai/mistral-small-3.1-24b-instruct:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3.5-lightning:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "recursive/flint-v1.0:free",
+  "xingchen-agi/xing4.0-29b-a4b:free",
 ];
 
 const supabase = createClient(
