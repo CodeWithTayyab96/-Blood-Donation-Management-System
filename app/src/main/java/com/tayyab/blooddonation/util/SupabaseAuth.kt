@@ -177,7 +177,10 @@ object SupabaseAuth {
                 lastError = if (userId.isNotBlank()) {
                     "Email confirmation is required — check your inbox before signing in"
                 } else {
-                    "Supabase Auth returned no session"
+                    // Plain words: the person holding the phone does not
+                    // know what Supabase is. (signUp replaces this with
+                    // "already registered" — see there.)
+                    "Sign-in didn't return an account. Please try again."
                 }
                 null
             } else {
@@ -198,7 +201,18 @@ object SupabaseAuth {
         }
         val (code, response) = post("/signup", body)
         if (code !in 200..299) return null
-        return sessionFrom(response)
+        val result = sessionFrom(response)
+        if (result == null) {
+            // GoTrue answers 200 with no session when the email is already
+            // registered: it never says so outright, so the account cannot
+            // be probed. With "Confirm email" OFF a new sign-up always
+            // returns a session straight away, so no session here can only
+            // mean the email is taken. Say that in plain words instead of
+            // quoting Supabase — the person holding the phone does not know
+            // what Supabase is.
+            lastError = "This email is already registered. Please sign in instead."
+        }
+        return result
     }
 
     /** Signs in with email + password. Null on failure (see [lastError]). */

@@ -561,3 +561,15 @@ does real network work, plus small fixes from the code review.
 - Use `pauseUntil` only for short, unavoidable waits where *nothing* can be shown
   yet (cold start, one-shot waits), never for a normal sync.
 - Do not block the whole screen for normal data pulls or writes.
+
+## 1.16 — 2026-11-06
+
+versionCode 17. Email confirmation is off, and signing up with an email that
+is already registered now says so in plain words.
+
+- Email verification is skipped for now (Supabase "Confirm email" off): a new
+  account signs in straight away, no confirmation link needed.
+- Registering with an email that already exists used to show a confusing
+  "Supabase Auth returned no session" message. It now says "This email is
+  already registered. Please sign in instead." — no Supabase jargon, because
+  the person holding the phone does not know what Supabase is.
