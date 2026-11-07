@@ -146,6 +146,13 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_urdu">اردو</string>
 
+    <!-- v1.23: theme -->
+    <string name="settings_theme_heading">Theme</string>
+    <string name="settings_theme_summary">Choose how the app looks. System follows your phone's setting.</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_system">System</string>
+
     <!-- Phase 1: donation reminder -->
     <string name="settings_reminder_heading">Donation reminder</string>
     <string name="settings_reminder_summary">One reminder on the day you can donate again, 90 days after a recorded donation. Turn notifications on in Android settings to receive it.</string>

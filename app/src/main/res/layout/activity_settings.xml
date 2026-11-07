@@ -7,6 +7,40 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
 
+        <!-- Theme -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/settings_theme_heading" android:textSize="18sp"
+                    android:textStyle="bold" android:textColor="@color/text_accent" />
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/settings_theme_summary" android:textSize="13sp"
+                    android:textColor="@color/text_secondary" android:layout_marginTop="4dp" />
+
+                <!-- The choice applies at once: AppCompatDelegate recreates the activities. -->
+                <RadioGroup android:id="@+id/rgTheme"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="8dp">
+                    <RadioButton android:id="@+id/rbThemeLight"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="@string/settings_theme_light"
+                        android:textSize="16sp" android:textColor="@color/on_surface" />
+                    <RadioButton android:id="@+id/rbThemeDark"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="@string/settings_theme_dark"
+                        android:textSize="16sp" android:textColor="@color/on_surface" />
+                    <RadioButton android:id="@+id/rbThemeSystem"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="@string/settings_theme_system"
+                        android:textSize="16sp" android:textColor="@color/on_surface" />
+                </RadioGroup>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Language -->
         <com.google.android.material.card.MaterialCardView
             style="@style/Widget.Blood.Card"

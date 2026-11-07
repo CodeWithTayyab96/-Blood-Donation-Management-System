@@ -137,6 +137,13 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_urdu">اردو</string>
 
+    <!-- v1.23: theme -->
+    <string name="settings_theme_heading">تھیم</string>
+    <string name="settings_theme_summary">ایپ کی شکل منتخب کریں۔ سسٹم آپ کے فون کی ترتیب پر عمل کرے گا۔</string>
+    <string name="settings_theme_light">روشن</string>
+    <string name="settings_theme_dark">تاریک</string>
+    <string name="settings_theme_system">سسٹم</string>
+
     <!-- Phase 1: donation reminder -->
     <string name="settings_reminder_heading">عطیہ کی یاد دہانی</string>
     <string name="settings_reminder_summary">جب آپ دوبارہ خون دینے کے اہل ہوں، آخری عطیہ کے 90 دن بعد ایک یاد دہانی۔ اسے وصول کرنے کے لیے اینڈرائیڈ ترتیبات میں نوٹیفکیشنز آن کریں۔</string>

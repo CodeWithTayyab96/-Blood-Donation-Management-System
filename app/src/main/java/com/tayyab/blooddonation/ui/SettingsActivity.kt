@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.util.LanguagePrefs
+import com.tayyab.blooddonation.util.ThemePrefs
 import com.tayyab.blooddonation.util.TipSchedule
 import com.tayyab.blooddonation.util.TipScheduler
 
@@ -27,6 +28,29 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
         title = "Settings"
+
+        // Theme (Light / Dark / System). Same pattern as the language picker
+        // below: set the checked state first, attach the listener afterwards,
+        // and only apply when the choice actually changed. Applying recreates
+        // the activities, so the new theme shows at once.
+        val rgTheme = findViewById<RadioGroup>(R.id.rgTheme)
+        rgTheme.check(
+            when (ThemePrefs.savedMode(this)) {
+                ThemePrefs.DARK -> R.id.rbThemeDark
+                ThemePrefs.SYSTEM -> R.id.rbThemeSystem
+                else -> R.id.rbThemeLight
+            }
+        )
+        rgTheme.setOnCheckedChangeListener { _, checkedId ->
+            val mode = when (checkedId) {
+                R.id.rbThemeDark -> ThemePrefs.DARK
+                R.id.rbThemeSystem -> ThemePrefs.SYSTEM
+                else -> ThemePrefs.LIGHT
+            }
+            if (mode != ThemePrefs.savedMode(this)) {
+                ThemePrefs.apply(this, mode)
+            }
+        }
 
         val swTips = findViewById<SwitchCompat>(R.id.swTips)
         // Set the listener after the initial value, or restoring the state fires

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Night-only theme overrides (v1.23). Everything else comes from
+  values/themes.xml: the background, surface and bar colours there point at
+  @color names, which resolve to the dark values in values-night/colors.xml
+  on their own. The one thing that must change is the navigation bar: it is
+  dark at night, so its icons must be light.
+-->
+<resources>
+    <style name="Theme.BloodDonation" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

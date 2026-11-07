@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Warm Clinical Sanguine, dark variant (v1.23). Same crimson brand, deep warm
+  surfaces instead of the off-white canvas, and brighter status colours so
+  they stay readable on dark backgrounds. Only the colours with literal hex
+  values in values/colors.xml need a night copy: the aliases there (blood_red,
+  text_accent, status_ok, status_warn, status_bad, grey_text, green_ok,
+  orange_warn) point at these names and resolve to the night values on their own.
+-->
+<resources>
+    <!-- Brand: unchanged, the crimson bar and buttons work on dark too. -->
+    <color name="brand_primary">#9E001F</color>
+    <color name="brand_primary_container">#C8102E</color>
+    <color name="brand_primary_press">#A50D25</color>
+    <color name="brand_primary_dark">#7A0018</color>
+
+    <!-- Surfaces: deep warm browns, not pure black, to keep the warm feel. -->
+    <color name="warm_background">#17100D</color>
+    <color name="warm_surface">#241A15</color>
+    <color name="surface_container">#2E211A</color>
+    <color name="surface_container_low">#201613</color>
+    <color name="surface_container_high">#382820</color>
+
+    <!-- Text: warm off-white on the dark canvas. -->
+    <color name="on_surface">#F2E8E2</color>
+    <color name="on_surface_variant">#C9B8AE</color>
+    <color name="text_secondary">#A89A90</color>
+
+    <!-- Lines and outlines -->
+    <color name="card_border">#3A2C25</color>
+    <color name="outline">#9C8280</color>
+    <color name="outline_variant">#4A3532</color>
+
+    <!-- Rose tint (secondary surfaces, badges, icon tiles) -->
+    <color name="rose_tint">#3A1E1B</color>
+    <color name="rose_tint_press">#4A2622</color>
+    <color name="rose_border">#5A322C</color>
+
+    <!-- Status: brighter text colours, dark tinted backgrounds. -->
+    <color name="status_green">#34D399</color>
+    <color name="status_green_bg">#0E2E23</color>
+    <color name="status_green_border">#1E4D38</color>
+    <color name="status_amber">#FBBF24</color>
+    <color name="status_amber_dark">#F59E0B</color>
+    <color name="status_amber_bg">#33240A</color>
+    <color name="status_amber_border">#5A4212</color>
+    <color name="status_red">#F87171</color>
+    <color name="status_red_bg">#381312</color>
+    <color name="status_red_border">#5B211D</color>
+
+    <!-- Error -->
+    <color name="error">#FF8A80</color>
+    <color name="error_container">#3A1512</color>
+
+    <!-- Secondary (warm grey) -->
+    <color name="secondary_grey">#A89A97</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>
