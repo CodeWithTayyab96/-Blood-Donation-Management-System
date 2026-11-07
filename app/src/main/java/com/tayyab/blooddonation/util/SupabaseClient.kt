@@ -6,6 +6,7 @@ import com.tayyab.blooddonation.model.Donation
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
+import com.tayyab.blooddonation.model.StatusEvent
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -620,6 +621,44 @@ object SupabaseClient {
     fun updateRequestFulfilledBy(id: Long, fulfilledBy: String): Boolean {
         val body = JSONObject().apply { put("fulfilled_by", fulfilledBy) }
         return patchRows("requests", "id=eq.$id", body)
+    }
+
+    // ------------------------------------------------- Phase 2: status history
+
+    /**
+     * Timeline rows for one request. The server writes these from a trigger,
+     * so the same history is visible on every device; RLS limits reads to the
+     * requester and the manager.
+     */
+    fun getStatusHistory(requestId: Long): List<StatusEvent>? {
+        val array = getArray(
+            "/request_status_history?request_id=eq.$requestId" +
+                "&select=id,request_id,status,changed_at,actor&order=changed_at.asc,id.asc"
+        ) ?: return null
+        val out = ArrayList<StatusEvent>()
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            out.add(
+                StatusEvent(
+                    id = obj.optLong("id", 0),
+                    requestId = obj.optLong("request_id", 0),
+                    status = obj.optString("status", ""),
+                    changedAt = if (obj.isNull("changed_at")) "" else obj.optString("changed_at", ""),
+                    actor = if (obj.isNull("actor")) null else obj.optString("actor", "")
+                )
+            )
+        }
+        return out
+    }
+
+    /** Best-effort write from the phone; the server trigger is authoritative. */
+    fun insertStatusHistory(requestId: Long, status: String, actor: String?): Long? {
+        val body = JSONObject().apply {
+            put("request_id", requestId)
+            put("status", status)
+            if (actor != null) put("actor", actor) else put("actor", JSONObject.NULL)
+        }
+        return insertRow("request_status_history", body)
     }
 
     // ------------------------------------------------------------- P2P: offers

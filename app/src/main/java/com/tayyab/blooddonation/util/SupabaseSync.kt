@@ -81,6 +81,13 @@ object SupabaseSync {
         return true
     }
 
+    /** Phase 2: downloads one request's timeline rows. False on failure. */
+    fun pullStatusHistory(db: DbHelper, requestId: Long): Boolean {
+        val events = SupabaseClient.getStatusHistory(requestId) ?: return false
+        for (e in events) db.upsertStatusEvent(e)
+        return true
+    }
+
     /** Downloads stock levels and writes them into SQLite. False on failure. */
     fun pullStock(db: DbHelper): Boolean {
         val stock = SupabaseClient.getStock() ?: return false

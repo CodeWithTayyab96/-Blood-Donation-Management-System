@@ -41,6 +41,9 @@
 
         <Button android:id="@+id/btnRecordDonation" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_record_donation" android:layout_marginTop="14dp" />
+        <Button android:id="@+id/btnCertificate" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_certificate" android:layout_marginTop="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnDeleteDonor" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_delete_donor" android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"

@@ -138,6 +138,10 @@
             android:visibility="gone" />
         <Button android:id="@+id/btnProfile" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="👤  My Profile" android:layout_marginTop="10dp" />
+        <!-- Phase 2: manager-only monthly CSV report. -->
+        <Button android:id="@+id/btnManagerReport" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_manager_reports" android:layout_marginTop="10dp"
+            style="?attr/materialButtonOutlinedStyle" />
         <!-- Phase 4 AI helper: open to every signed-in user. -->
         <Button android:id="@+id/btnAskDonate" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="🩸  Can I donate? (AI helper)" android:layout_marginTop="10dp"

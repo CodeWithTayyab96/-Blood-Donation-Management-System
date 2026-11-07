@@ -144,4 +144,64 @@
     <string name="reminder_notification_title">You can donate again</string>
     <string name="reminder_notification_body">It has been 90 days since your last donation. If you are well, a licensed blood bank or hospital can check whether you can donate today.</string>
     <string name="notification_permission_message">This app can tell you when someone needs blood your group can give, and remind you on the day you can donate again. Urgent requests are checked about every 15 minutes while you are online, and are never announced twice. You can turn this off at any time in Android settings.</string>
+
+    <!-- Phase 2: request status timeline -->
+    <string name="timeline_title">Request timeline</string>
+    <string name="timeline_note">How this request moved through each stage. The latest update is at the bottom.</string>
+    <string name="timeline_empty">No history yet for this request.</string>
+    <string name="timeline_entry">Status: %1$s on %2$s by %3$s</string>
+    <string name="timeline_offline">Could not refresh the timeline — you appear to be offline.</string>
+    <string name="timeline_error">Could not load the timeline. Showing what is saved on this phone.</string>
+    <string name="timeline_status_pending">Pending</string>
+    <string name="timeline_status_matched">Matched</string>
+    <string name="timeline_status_fulfilled">Fulfilled</string>
+    <string name="timeline_status_cancelled">Cancelled</string>
+    <string name="timeline_status_expired">Expired</string>
+    <string name="timeline_status_other">Updated</string>
+    <string name="timeline_actor_requester">Requester</string>
+    <string name="timeline_actor_manager">Manager</string>
+    <string name="timeline_actor_donor">Donor</string>
+    <string name="timeline_actor_server">System</string>
+    <string name="timeline_actor_unknown">Someone</string>
+
+    <!-- Phase 2: donation certificate -->
+    <string name="label_certificate">Donation certificate</string>
+    <string name="certificate_title">Certificate of Donation</string>
+    <string name="certificate_thanks">Thank you for donating blood and helping save lives.</string>
+    <string name="certificate_name_label">Donor</string>
+    <string name="certificate_group_label">Blood group</string>
+    <string name="certificate_date_label">Date</string>
+    <string name="certificate_share_chooser">Share certificate</string>
+    <string name="certificate_no_donation">Record at least one donation to generate a certificate.</string>
+    <string name="certificate_failed">Could not create the certificate file.</string>
+
+    <!-- Phase 2: badges / milestones -->
+    <string name="badge_first">First donation</string>
+    <string name="badge_three">3 donations</string>
+    <string name="badge_five">5 donations</string>
+    <string name="badge_ten">10 donations</string>
+    <string name="badge_lifesaver">Lifesaver</string>
+    <string name="badges_earned">Badges earned:</string>
+    <string name="badges_none">No badges yet — your first donation earns one.</string>
+
+    <!-- Phase 2: geo / quick actions -->
+    <string name="label_navigate">Navigate</string>
+    <string name="label_timeline">Status timeline</string>
+    <string name="msg_no_maps_query">Add a hospital name so the map can find it.</string>
+    <string name="msg_no_maps_app">No app can open maps on this phone.</string>
+
+    <!-- Phase 2: manager reports -->
+    <string name="label_manager_reports">Manager reports</string>
+    <string name="label_export_csv">Export monthly report (CSV)</string>
+    <string name="report_title">Monthly report</string>
+    <string name="report_summary">Donations this month, current stock, and groups running low.</string>
+    <string name="report_col_section">Section</string>
+    <string name="report_col_item">Item</string>
+    <string name="report_col_value">Value</string>
+    <string name="report_section_donations">Donations</string>
+    <string name="report_month_units">Units collected this month</string>
+    <string name="report_section_stock">Stock</string>
+    <string name="report_section_low">Low stock</string>
+    <string name="report_share_chooser">Share report</string>
+    <string name="report_failed">Could not create the report file.</string>
 </resources>

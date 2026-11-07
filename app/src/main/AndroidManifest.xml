@@ -68,6 +68,9 @@
         <activity android:name=".ui.DeleteAccountActivity"
             android:label="Delete my account" android:exported="false" />
         <activity android:name=".ui.RequestDetailActivity" android:exported="false" />
+        <!-- Phase 2: first ViewModel + coroutines screen. -->
+        <activity android:name=".ui.RequestTimelineActivity" android:exported="false" />
+        <activity android:name=".ui.ManagerReportActivity" android:exported="false" />
         <activity android:name=".ui.AddRequestActivity" android:exported="false" />
         <activity android:name=".ui.CreateRequestActivity" android:exported="false" />
         <activity android:name=".ui.ModerationActivity" android:exported="false" />

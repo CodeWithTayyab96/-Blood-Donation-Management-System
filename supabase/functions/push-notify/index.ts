@@ -303,6 +303,27 @@ async function handleAccepted(body: any): Promise<Record<string, unknown>> {
   return { recipients: donors.length, ...stats };
 }
 
+async function handleFulfilled(body: any): Promise<Record<string, unknown>> {
+  const sa = await getServiceAccount();
+  if (!body.requester_id) return { ignored: "incomplete payload" };
+  const recipients = await tokensFor([body.requester_id], 20);
+  const stats = { sent: 0, stale: 0, failed: 0 };
+  await sendEach(
+    sa,
+    recipients,
+    {
+      type: "fulfilled",
+      request_id: String(body.request_id ?? ""),
+      title: "Your request is fulfilled",
+      body:
+        "Donors have fulfilled your blood request. Please confirm collection " +
+        "at a licensed blood bank or hospital.",
+    },
+    stats,
+  );
+  return { recipients: recipients.length, ...stats };
+}
+
 // ---------------------------------------------------------------------------
 // Entry point.
 // ---------------------------------------------------------------------------
@@ -345,6 +366,8 @@ Deno.serve(async (req) => {
         return ok(await handleAccepted(body));
       case "urgent_request":
         return ok(await handleUrgentRequest(body));
+      case "fulfilled":
+        return ok(await handleFulfilled(body));
       default:
         return ok({ ignored: "unknown type" });
     }

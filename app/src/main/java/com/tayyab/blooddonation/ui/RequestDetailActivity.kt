@@ -21,6 +21,7 @@ import com.tayyab.blooddonation.model.Report
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.ContactActions
+import com.tayyab.blooddonation.util.GeoQuery
 import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.ShareText
@@ -153,7 +154,25 @@ class RequestDetailActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnReport).setOnClickListener { showReportDialog() }
         findViewById<Button>(R.id.btnShare).setOnClickListener { shareRequest() }
+        findViewById<Button>(R.id.btnNavigate).setOnClickListener { navigateToHospital() }
+        findViewById<Button>(R.id.btnTimeline).setOnClickListener {
+            startActivity(
+                Intent(this, RequestTimelineActivity::class.java)
+                    .putExtra("requestId", requestId)
+            )
+        }
         findViewById<Button>(R.id.btnFulfill).isEnabled = true
+    }
+
+    /** geo: intent — no Maps SDK, no API key, no location permission. */
+    private fun navigateToHospital() {
+        val req = db.getRequest(requestId) ?: return
+        val uri = GeoQuery.uri(req.hospital, req.city)
+        if (uri == null) {
+            Toast.makeText(this, R.string.msg_no_maps_query, Toast.LENGTH_SHORT).show()
+            return
+        }
+        ContactActions.openMap(this, uri)
     }
 
     /**

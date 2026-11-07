@@ -33,6 +33,13 @@ sealed interface PushData {
         val title: String,
         val body: String
     ) : PushData
+
+    /** The requester's request was Fulfilled (donors/facility completed it). */
+    data class Fulfilled(
+        val requestId: Long,
+        val title: String,
+        val body: String
+    ) : PushData
 }
 
 object PushParser {
@@ -40,6 +47,7 @@ object PushParser {
     private const val TYPE_URGENT = "urgent_request"
     private const val TYPE_OFFER = "offer"
     private const val TYPE_ACCEPTED = "accepted"
+    private const val TYPE_FULFILLED = "fulfilled"
 
     /**
      * Parses fields the server fills for THIS message type; unrelated fields
@@ -51,6 +59,7 @@ object PushParser {
             TYPE_URGENT -> urgent(data)
             TYPE_OFFER -> offer(data, accepted = false)
             TYPE_ACCEPTED -> offer(data, accepted = true)
+            TYPE_FULFILLED -> fulfilled(data)
             else -> null
         }
     }
@@ -103,5 +112,14 @@ object PushParser {
         }
         return if (accepted) PushData.OfferAccepted(requestId, offerId, title, body)
         else PushData.Offer(requestId, offerId, title, body)
+    }
+
+    private fun fulfilled(data: Map<String, String>): PushData? {
+        val requestId = id(data, "request_id") ?: return null
+        val body = text(data, "body").ifEmpty {
+            "Donors have fulfilled your blood request. Please confirm collection."
+        }
+        val title = text(data, "title").ifEmpty { "Your request is fulfilled" }
+        return PushData.Fulfilled(requestId, title, body)
     }
 }

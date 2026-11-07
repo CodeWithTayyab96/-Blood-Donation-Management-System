@@ -145,4 +145,64 @@
     <string name="reminder_notification_title">آپ دوبارہ خون دے سکتے ہیں</string>
     <string name="reminder_notification_body">آپ کے آخری عطیہ کو 90 دن ہو گئے ہیں۔ اگر آپ صحت مند ہیں تو لائسنس یافتہ بلڈ بینک یا ہسپتال جانچ سکتا ہے کہ آج آپ خون دے سکتے ہیں یا نہیں۔</string>
     <string name="notification_permission_message">یہ ایپ آپ کو بتا سکتی ہے کہ کب کسی کو آپ کے گروپ کا خون درکار ہے، اور جس دن آپ دوبارہ خون دے سکتے ہوں اس دن یاد دہانی بھیج سکتی ہے۔ آن لائن ہونے پر فوری درخواستیں تقریباً ہر 15 منٹ بعد چیک کی جاتی ہیں اور ایک درخواست کی اطلاع دوبارہ نہیں دی جاتی۔ آپ اسے اینڈرائیڈ ترتیبات سے کبھی بھی بند کر سکتے ہیں۔</string>
+
+    <!-- Phase 2: request status timeline -->
+    <string name="timeline_title">درخواست کی تاریخ</string>
+    <string name="timeline_note">اس درخواست کے ہر مرحلے سے گزرنے کا ریکارڈ۔ تازہ ترین اپ ڈیٹ نیچے ہے۔</string>
+    <string name="timeline_empty">اس درخواست کی کوئی تاریخ ابھی تک موجود نہیں۔</string>
+    <string name="timeline_entry">حالت: %1$s، تاریخ: %2$s، کنندہ: %3$s</string>
+    <string name="timeline_offline">ٹائم لائن کی تجدید نہیں ہو سکی — لگتا ہے آپ آف لائن ہیں۔</string>
+    <string name="timeline_error">ٹائم لائن لوڈ نہیں ہو سکی۔ جو اس فون پر محفوظ ہے وہ دکھایا جا رہا ہے۔</string>
+    <string name="timeline_status_pending">زیر التوا</string>
+    <string name="timeline_status_matched">میل کھایا گیا</string>
+    <string name="timeline_status_fulfilled">پورا کیا گیا</string>
+    <string name="timeline_status_cancelled">منسوخ</string>
+    <string name="timeline_status_expired">میعاد ختم</string>
+    <string name="timeline_status_other">اپ ڈیٹ شدہ</string>
+    <string name="timeline_actor_requester">درخواست دہندہ</string>
+    <string name="timeline_actor_manager">منیجر</string>
+    <string name="timeline_actor_donor">عطیہ کنندہ</string>
+    <string name="timeline_actor_server">نظام</string>
+    <string name="timeline_actor_unknown">کوئی</string>
+
+    <!-- Phase 2: donation certificate -->
+    <string name="label_certificate">عطیہ کا سرٹیفکیٹ</string>
+    <string name="certificate_title">عطیہ کا سرٹیفکیٹ</string>
+    <string name="certificate_thanks">خون دے کر جان بچانے میں مدد کرنے کا شکریہ۔</string>
+    <string name="certificate_name_label">عطیہ کنندہ</string>
+    <string name="certificate_group_label">بلڈ گروپ</string>
+    <string name="certificate_date_label">تاریخ</string>
+    <string name="certificate_share_chooser">سرٹیفکیٹ شیئر کریں</string>
+    <string name="certificate_no_donation">سرٹیفکیٹ بنانے کے لیے کم از کم ایک عطیہ ریکارڈ کریں۔</string>
+    <string name="certificate_failed">سرٹیفکیٹ فائل نہیں بن سکی۔</string>
+
+    <!-- Phase 2: badges / milestones -->
+    <string name="badge_first">پہلا عطیہ</string>
+    <string name="badge_three">3 عطیے</string>
+    <string name="badge_five">5 عطیے</string>
+    <string name="badge_ten">10 عطیے</string>
+    <string name="badge_lifesaver">جان بچانے والا</string>
+    <string name="badges_earned">حاصل کردہ بیج:</string>
+    <string name="badges_none">ابھی کوئی بیج نہیں — پہلا عطیہ آپ کو ایک بیج دلائے گا۔</string>
+
+    <!-- Phase 2: geo / quick actions -->
+    <string name="label_navigate">راستہ دکھائیں</string>
+    <string name="label_timeline">حالت کی تاریخ</string>
+    <string name="msg_no_maps_query">نقشہ کو تلاش کرنے کے لیے ہسپتال کا نام شامل کریں۔</string>
+    <string name="msg_no_maps_app">اس فون پر نقشہ کھولنے والی کوئی ایپ نہیں۔</string>
+
+    <!-- Phase 2: manager reports -->
+    <string name="label_manager_reports">منیجر رپورٹس</string>
+    <string name="label_export_csv">ماہانہ رپورٹ برآمد کریں (CSV)</string>
+    <string name="report_title">ماہانہ رپورٹ</string>
+    <string name="report_summary">اس مہینے کے عطیے، موجودہ اسٹاک، اور کم ہوتے گروپ۔</string>
+    <string name="report_col_section">حصہ</string>
+    <string name="report_col_item">آئٹم</string>
+    <string name="report_col_value">قدر</string>
+    <string name="report_section_donations">عطیے</string>
+    <string name="report_month_units">اس مہینے اکٹھا کیے گئے یونٹ</string>
+    <string name="report_section_stock">اسٹاک</string>
+    <string name="report_section_low">کم اسٹاک</string>
+    <string name="report_share_chooser">رپورٹ شیئر کریں</string>
+    <string name="report_failed">رپورٹ فائل نہیں بن سکی۔</string>
 </resources>

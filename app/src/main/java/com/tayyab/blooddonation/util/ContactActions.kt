@@ -91,6 +91,20 @@ object ContactActions {
         }
     }
 
+    /**
+     * Opens a `geo:` URI in any installed maps app. No permission, no SDK and
+     * no API key; a phone with no maps app gets a message instead of a crash.
+     */
+    fun openMap(context: Context, geoUri: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(geoUri))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(context, R.string.msg_no_maps_app, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     /** ACTION_SEND chooser; all wording comes from strings.xml via [ShareText]. */
     fun share(context: Context, text: String) {
         val send = Intent(Intent.ACTION_SEND).apply {

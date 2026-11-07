@@ -120,6 +120,15 @@ dependencies {
     // Still the only alerting path when no Firebase values were baked in.
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
+    // Phase 2: the new request-status timeline screen is the first
+    // ViewModel + coroutines screen. viewModelScope cancels an in-flight pull
+    // when the screen is left, and repeatOnLifecycle stops UI collection while
+    // it is in the background. WorkManager / Background.run stay untouched on
+    // the old screens.
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
     // Push notifications (v1.7). Deliberately WITHOUT the google-services
     // plugin: Firebase is initialised explicitly from BuildConfig values, so
     // a build without Firebase credentials still compiles and runs offline.

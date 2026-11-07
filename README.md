@@ -192,6 +192,43 @@ fully offline. There is no SQLite schema change either: `DB_VERSION` stays at 8.
   The job is replaced when a donation is recorded and cancelled on logout and
   on account deletion.
 
+## Phase 2 — medium features (navigate, certificate, badges, timeline, reports)
+
+**SQL files to run in Supabase (Phase 2):**
+`sql/applied/supabase_phase2_migration.sql` — a new `request_status_history`
+table, role-aware RLS (read by the requester of the request or a manager;
+append-only, no UPDATE/DELETE policy), a server trigger that appends one row per
+real status change, and a `Fulfilled → requester` push trigger. Rollback is
+`sql/applied/supabase_phase2_migration_rollback.sql`. Apply it **after**
+`supabase_role_policies.sql` and `supabase_fcm_triggers.sql`. The Supabase Edge
+Function `push-notify` also gained a `fulfilled` handler.
+**Local SQLite:** `DB_VERSION` bumped 8 → 9; `onUpgrade` adds the same table
+additively, so an upgrade never wipes data.
+
+- **Navigate** (geo intent) — opens the map at the request's hospital with
+  `geo:` URI. No Maps SDK, no API key, no location permission; a missing hospital
+  name or absent maps app shows a message instead of crashing.
+- **Donation certificate** — a one-page `PdfDocument` with the donor's name,
+  blood group and last donation date, shared through the already-declared
+  `FileProvider` (no storage permission). A donor with no recorded donation is
+  told to record one first.
+- **Badges / milestones** — `DonationStats` derives `FIRST / 3 / 5 / 10 /
+  LIFESAVER` badges from the donation history; shown on the profile and home
+  screens. The "helped" count is a clearly-labelled estimate (up to 3 patients
+  per donation).
+- **Request status timeline** — the first `ViewModel` + coroutines screen:
+  `request_status_history` is shown oldest-first, pulled from Supabase when
+  online (local copy shown first, so rotation never blanks), with `STARTED`
+  collection via `repeatOnLifecycle`. Every status string is translated.
+- **Manager CSV report** — donations this month, current stock and low-stock
+  groups in one file. Every cell goes through `CsvCells`, which escapes
+  commas/quotes **and** neutralises spreadsheet formula injection (`=`, `+`, `-`,
+  `@` are prefixed with a quote) so a crafted donor or hospital name cannot run a
+  formula when a manager opens the export. Shared via `FileProvider`.
+- **Fulfilled push** — mapping the brief's "donor accepts" to the real flow
+  (the donor *offers*, the requester *accepts*): the existing new-offer push to
+  the requester is kept, and a new `Fulfilled → requester` push is added.
+
 ## Screenshots
 
 _Add screenshots here after running the app._

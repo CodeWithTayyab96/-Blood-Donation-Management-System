@@ -13,8 +13,10 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.util.BadgeUi
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.DonationStats
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 
@@ -205,6 +207,7 @@ class ProfileActivity : AppCompatActivity() {
                 "Managers manage donors, stock and requests from the dashboard."
             findViewById<TextView>(R.id.tvProfileNext).visibility = View.GONE
             findViewById<TextView>(R.id.tvNoHistory).visibility = View.GONE
+            findViewById<TextView>(R.id.tvBadges).visibility = View.GONE
             return
         }
 
@@ -229,6 +232,13 @@ class ProfileActivity : AppCompatActivity() {
         setupAvailabilitySwitch(donor, eligible)
 
         val history = db.donationsForDonor(donorId)
+        // Phase 2: badges are computed from the same local history.
+        val tvBadges = findViewById<TextView>(R.id.tvBadges)
+        tvBadges.visibility = View.VISIBLE
+        tvBadges.text = BadgeUi.text(
+            this,
+            DonationStats.from(history.map { it.date }).earnedBadges
+        )
         val rv = findViewById<RecyclerView>(R.id.rvHistory)
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = DonationAdapter(history)

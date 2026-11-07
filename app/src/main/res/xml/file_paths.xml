@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Only the updater's cache folder is shared, and only with the system installer. -->
+<!--
+    Only files this app created in its own cache are shared, and only through
+    a temporary URI permission. Phase 2 adds the donation certificates and the
+    manager's CSV reports; the updater's folder stays for older installs.
+-->
 <paths>
     <cache-path name="updates" path="updates/" />
+    <cache-path name="certificates" path="certificates/" />
+    <cache-path name="reports" path="reports/" />
 </paths>

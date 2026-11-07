@@ -11,9 +11,11 @@ import com.tayyab.blooddonation.model.Donation
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
+import com.tayyab.blooddonation.model.StatusEvent
 import com.tayyab.blooddonation.model.UserAccount
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.StatusTimeline
 import java.time.LocalDate
 
 class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
@@ -41,7 +43,9 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         // (offers, contact_details, reports). All additive — onUpgrade runs
         // ALTER TABLE ADD COLUMN and CREATE TABLE, so no existing data is
         // dropped and legacy manager rows keep a null requester_id.
-        private const val DB_VERSION = 8
+        // v9 (Phase 2): request_status_history, for the status timeline.
+        // CREATE TABLE only — no existing row is touched or dropped.
+        private const val DB_VERSION = 9
 
         /**
          * Explicit column lists. `SELECT *` plus positional access silently
@@ -110,6 +114,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         createOffersTable(db)
         createContactDetailsTable(db)
         createReportsTable(db)
+        createStatusHistoryTable(db)
         for (g in BloodCompatibility.ALL_GROUPS) {
             db.execSQL("INSERT INTO stock(blood_group, units) VALUES('$g', 0)")
         }
@@ -145,6 +150,18 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 request_id INTEGER NOT NULL, reporter_id TEXT, reason TEXT NOT NULL,
                 created_at TEXT NOT NULL, resolved_at TEXT)"""
+        )
+    }
+
+    /** Phase 2: one row per status transition, for the timeline screen. */
+    private fun createStatusHistoryTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE request_status_history(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                changed_at TEXT NOT NULL,
+                actor TEXT)"""
         )
     }
 
@@ -208,6 +225,11 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             // now comes from the JWT, and this row could only mislead.
             db.delete("users", "username = ?", arrayOf("manager"))
         }
+        if (oldVersion < 9) {
+            // v9 (Phase 2): additive only. Existing requests keep their
+            // current status; the timeline simply starts from the next change.
+            createStatusHistoryTable(db)
+        }
     }
 
     /**
@@ -270,7 +292,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         try {
             for (table in listOf(
                 "donations", "contact_details", "reports", "offers",
-                "requests", "donors", "stock", "users"
+                "request_status_history", "requests", "donors", "stock", "users"
             )) {
                 db.delete(table, null, null)
             }
@@ -407,9 +429,16 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             put("fulfilled_by", r.fulfilledBy)
             put("needed_by", r.neededBy)
         }
+        val previous = getRequest(r.id)?.status
         if (db.update("requests", v, "id=?", arrayOf(r.id.toString())) == 0) {
             v.put("id", r.id)
             db.insert("requests", null, v)
+        }
+        // A pull can bring a status that changed on another phone. Record it
+        // once (recordStatusChange dedups repeats) so the offline timeline
+        // still shows the transition.
+        if (StatusTimeline.isChange(previous, r.status)) {
+            recordStatusChange(r.id, r.status, "server", LocalDate.now().toString())
         }
         return r.id
     }
@@ -705,8 +734,73 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
 
     /** P2P: sets a request's status locally (Matched / Fulfilled / Cancelled / Expired). */
     fun setRequestStatus(id: Long, status: String) {
+        setRequestStatus(id, status, if (Session.isManager) "manager" else "requester")
+    }
+
+    /**
+     * Phase 2: the same status write, but with an explicit actor for the
+     * timeline. [actor] is a CODE ("requester" / "manager" / "server" /
+     * "donor"), never a name or Auth id — the UI translates it, so an Urdu
+     * screen does not show English words from the database.
+     */
+    fun setRequestStatus(id: Long, status: String, actor: String) {
         val v = ContentValues().apply { put("status", status) }
         writableDatabase.update("requests", v, "id=?", arrayOf(id.toString()))
+        recordStatusChange(id, status, actor, LocalDate.now().toString())
+    }
+
+    // ----------------------------------------------- Phase 2: status history
+
+    /**
+     * Appends a timeline row only when the status really changed. A Supabase
+     * pull repeats the same status on every refresh; without this guard the
+     * timeline would grow a new row each time the screen is opened.
+     */
+    fun recordStatusChange(requestId: Long, status: String, actor: String?, at: String) {
+        val previous = lastStatus(requestId)
+        if (StatusTimeline.isChange(previous, status).not()) return
+        val v = ContentValues().apply {
+            put("request_id", requestId); put("status", status)
+            put("changed_at", at); put("actor", actor)
+        }
+        writableDatabase.insert("request_status_history", null, v)
+    }
+
+    private fun lastStatus(requestId: Long): String? =
+        readableDatabase.rawQuery(
+            "SELECT status FROM request_status_history WHERE request_id = ? " +
+                "ORDER BY id DESC LIMIT 1",
+            arrayOf(requestId.toString())
+        ).use { c -> if (c.moveToFirst()) c.getString(0) else null }
+
+    fun statusEvents(requestId: Long): List<StatusEvent> {
+        val out = mutableListOf<StatusEvent>()
+        readableDatabase.rawQuery(
+            "SELECT id, request_id, status, changed_at, actor " +
+                "FROM request_status_history WHERE request_id = ? ORDER BY changed_at ASC, id ASC",
+            arrayOf(requestId.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    StatusEvent(c.getLong(0), c.getLong(1), c.getString(2), c.getString(3), c.getString(4))
+                )
+            }
+        }
+        return out
+    }
+
+    /** Merges a downloaded history row by id (update first; insert when new). */
+    fun upsertStatusEvent(e: StatusEvent) {
+        if (e.id <= 0) return
+        val v = ContentValues().apply {
+            put("request_id", e.requestId); put("status", e.status)
+            put("changed_at", e.changedAt); put("actor", e.actor)
+        }
+        val db = writableDatabase
+        if (db.update("request_status_history", v, "id=?", arrayOf(e.id.toString())) == 0) {
+            v.put("id", e.id)
+            db.insert("request_status_history", null, v)
+        }
     }
 
     /** P2P: records how a request was fulfilled ("stock" or "donor"). */
@@ -939,6 +1033,13 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                 )
                 val upd = ContentValues().apply { put("status", "Fulfilled") }
                 db.update("requests", upd, "id=?", arrayOf(r.id.toString()))
+                // Same transaction as the stock debit, so a fulfilled request
+                // always has a matching timeline row (or neither).
+                val history = ContentValues().apply {
+                    put("request_id", r.id); put("status", "Fulfilled")
+                    put("changed_at", LocalDate.now().toString()); put("actor", "manager")
+                }
+                db.insert("request_status_history", null, history)
                 db.setTransactionSuccessful()
                 fulfilled = true
             }

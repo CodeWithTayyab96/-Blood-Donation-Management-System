@@ -15,6 +15,10 @@
         <TextView android:id="@+id/tvProfileNext" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:textSize="16sp"
             android:layout_marginTop="6dp" />
+        <!-- Phase 2: earned badges, from the local donation history. -->
+        <TextView android:id="@+id/tvBadges" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="14sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="8dp" />
         <!-- P2P: only shown while the donor is actually eligible. -->
         <LinearLayout android:id="@+id/rowAvailability" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:orientation="horizontal"

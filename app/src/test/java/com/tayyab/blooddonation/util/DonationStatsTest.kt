@@ -60,5 +60,55 @@ class DonationStatsTest {
         assertEquals(2, stats.streak)
     }
 
+    @Test
+    fun `badges follow the donation count milestones`() {
+        assertEquals(
+            listOf(DonationStats.Badge.FIRST),
+            DonationStats.fromDates(listOf(LocalDate.of(2026, 1, 1))).earnedBadges
+        )
+        assertEquals(
+            listOf(
+                DonationStats.Badge.FIRST,
+                DonationStats.Badge.THREE,
+                DonationStats.Badge.FIVE,
+                DonationStats.Badge.LIFESAVER
+            ),
+            DonationStats.fromDates(listOfN(5)).earnedBadges
+        )
+    }
+
+    @Test
+    fun `ten donations earns every badge`() {
+        assertEquals(
+            listOf(
+                DonationStats.Badge.FIRST,
+                DonationStats.Badge.THREE,
+                DonationStats.Badge.FIVE,
+                DonationStats.Badge.TEN,
+                DonationStats.Badge.LIFESAVER
+            ),
+            DonationStats.fromDates(listOfN(10)).earnedBadges
+        )
+    }
+
+    @Test
+    fun `a broken streak loses the lifesaver level but keeps count badges`() {
+        val dates = listOf(
+            LocalDate.of(2024, 1, 1),
+            LocalDate.of(2024, 4, 1),
+            LocalDate.of(2024, 7, 1),
+            LocalDate.of(2024, 10, 1),
+            LocalDate.of(2026, 1, 1)
+        )
+        val badges = DonationStats.fromDates(dates).earnedBadges
+        assertTrue(badges.contains(DonationStats.Badge.FIVE))
+        assertFalse(badges.contains(DonationStats.Badge.LIFESAVER))
+    }
+
+    @Test
+    fun `no donations earns no badges`() {
+        assertTrue(DonationStats.fromDates(emptyList()).earnedBadges.isEmpty())
+    }
+
     private fun listOfN(n: Int) = List(n) { LocalDate.of(2026, 1, 1).plusDays(it.toLong() * 30) }
 }

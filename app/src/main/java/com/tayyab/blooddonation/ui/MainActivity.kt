@@ -140,6 +140,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
         }
+        // Phase 2: monthly CSV export is manager-only (the activity checks the
+        // JWT role too, so hiding the button is never the only guard).
+        findViewById<Button>(R.id.btnManagerReport).setOnClickListener {
+            startActivity(Intent(this, ManagerReportActivity::class.java))
+        }
         // Phase 4 AI helper: open to everyone signed in; the Fallback text on
         // its screen shows when the ai-coach function is not yet deployed.
         findViewById<Button>(R.id.btnAskDonate).setOnClickListener {

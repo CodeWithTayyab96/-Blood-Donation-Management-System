@@ -86,6 +86,21 @@ data class ContactDetail(
     val phone: String
 )
 
+/**
+ * Phase 2: one step in a request's status history.
+ *
+ * [actor] is a display label ("Requester", "Manager", "Donor"), never an Auth
+ * id or a phone number — the timeline is readable by the requester and the
+ * manager, and must not leak who else is signed up.
+ */
+data class StatusEvent(
+    val id: Long = 0,
+    val requestId: Long,
+    val status: String,          // Pending / Matched / Fulfilled / Cancelled / Expired
+    val changedAt: String,       // ISO date or full timestamptz
+    val actor: String? = null
+)
+
 /** P2P: a report filed against a request (spam, fake, abuse). */
 data class Report(
     val id: Long = 0,

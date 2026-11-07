@@ -16,9 +16,11 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.util.BadgeUi
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.DonationReminderScheduler
+import com.tayyab.blooddonation.util.DonationStats
 import com.tayyab.blooddonation.util.FcmPush
 import com.tayyab.blooddonation.util.MotivationFacts
 import com.tayyab.blooddonation.util.RequestAlertScheduler
@@ -117,6 +119,20 @@ class UserHomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         renderAvailability()
+        showBadges()
+    }
+
+    /** Phase 2: milestones from the local donation history. */
+    private fun showBadges() {
+        val tv = findViewById<TextView>(R.id.tvBadges)
+        val donorId = Session.donorId
+        if (donorId == null) {
+            tv.visibility = View.GONE
+            return
+        }
+        val stats = DonationStats.from(db.donationsForDonor(donorId).map { it.date })
+        tv.visibility = View.VISIBLE
+        tv.text = BadgeUi.text(this, stats.earnedBadges)
     }
 
     /**

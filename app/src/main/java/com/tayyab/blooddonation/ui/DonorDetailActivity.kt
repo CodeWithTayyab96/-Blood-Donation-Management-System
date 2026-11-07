@@ -14,6 +14,8 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.CertificatePdf
+import com.tayyab.blooddonation.util.CertificateText
 import com.tayyab.blooddonation.util.ContactActions
 import com.tayyab.blooddonation.util.DonationReminderScheduler
 import com.tayyab.blooddonation.util.Session
@@ -114,6 +116,8 @@ class DonorDetailActivity : AppCompatActivity() {
             }
         }
 
+        findViewById<Button>(R.id.btnCertificate).setOnClickListener { generateCertificate() }
+
         findViewById<Button>(R.id.btnDeleteDonor).setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle("Delete donor")
@@ -142,6 +146,38 @@ class DonorDetailActivity : AppCompatActivity() {
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
+        }
+    }
+
+    /**
+     * Phase 2: a PDF certificate for the donor's most recent recorded
+     * donation. File work runs on [Background], not the UI thread; a failure
+     * is logged by the renderer and shown to the user here.
+     */
+    private fun generateCertificate() {
+        val donor = db.getDonor(donorId) ?: return
+        val latest = db.donationsForDonor(donorId).firstOrNull()?.date
+        if (latest == null) {
+            Toast.makeText(this, R.string.certificate_no_donation, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val lines = CertificateText.lines(
+            title = getString(R.string.certificate_title),
+            nameLabel = getString(R.string.certificate_name_label), name = donor.name,
+            groupLabel = getString(R.string.certificate_group_label), group = donor.bloodGroup,
+            dateLabel = getString(R.string.certificate_date_label), date = latest,
+            thanks = getString(R.string.certificate_thanks)
+        )
+        Background.run {
+            val file = CertificatePdf.create(applicationContext, lines)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (file == null) {
+                    Toast.makeText(this, R.string.certificate_failed, Toast.LENGTH_LONG).show()
+                } else {
+                    CertificatePdf.share(this, file)
+                }
+            }
         }
     }
 
@@ -199,6 +235,9 @@ class DonorDetailActivity : AppCompatActivity() {
         )
 
         val history = db.donationsForDonor(donorId)
+        // A certificate needs at least one recorded donation.
+        findViewById<Button>(R.id.btnCertificate).visibility =
+            if (history.isEmpty()) View.GONE else View.VISIBLE
         val rv = findViewById<RecyclerView>(R.id.rvHistory)
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = DonationAdapter(history)

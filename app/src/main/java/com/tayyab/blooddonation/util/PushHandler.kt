@@ -31,6 +31,9 @@ object PushHandler {
             is PushData.OfferAccepted -> PeerAlerts.notify(
                 context, "accepted", payload.requestId, payload.offerId, payload.title, payload.body
             )
+            is PushData.Fulfilled -> PeerAlerts.notify(
+                context, "fulfilled", payload.requestId, payload.requestId, payload.title, payload.body
+            )
         }
     }
 

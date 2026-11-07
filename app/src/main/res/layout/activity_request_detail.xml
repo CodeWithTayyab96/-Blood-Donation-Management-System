@@ -46,6 +46,14 @@
             android:text="@string/label_share" android:layout_marginTop="8dp"
             style="?attr/materialButtonOutlinedStyle" />
 
+        <Button android:id="@+id/btnNavigate" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_navigate" android:layout_marginTop="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
+
+        <Button android:id="@+id/btnTimeline" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_timeline" android:layout_marginTop="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
+
         <Button android:id="@+id/btnFulfill" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_fulfill_stock" android:layout_marginTop="14dp" />
 
