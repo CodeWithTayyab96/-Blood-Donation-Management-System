@@ -3,6 +3,28 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.19 — 2026-11-07
+
+versionCode 20. Polish fixes for the known issues from the Phase 1-3 review:
+
+- Timeline no longer shows the same status change twice: `StatusTimeline.ordered`
+  collapses consecutive repeats of one status, keeping the later (server) row.
+  A status the request genuinely returns to later still shows twice.
+- Camp check-ins and slot bookings are now bound to the caller: the insert
+  policies require the donor row's `auth_id` to be the signed-in user, or the
+  caller to be a manager. Any signed-in user could previously check in or book
+  as any donor.
+- The Fulfilled push no longer says "donors fulfilled" when the manager
+  fulfils from stock: the trigger now sends `fulfilled_by`, and `push-notify`
+  words the stock case separately. (Still dormant live until B3/B4/B6.)
+- The Create Account button stays disabled while a sign-up is in flight, so a
+  double tap cannot fire two sign-ups and trip the Auth rate limit (429).
+- Phase 3 tables hardened: `donor_id` now references `donors(id)` on
+  camp attendance, bookings and verifications; `stock_movements.blood_group`
+  has the 8-group CHECK; all six tables now carry `created_at`. The migration
+  file carries the matching ALTERs, so a live table is upgraded in place.
+- `EmergencyLogicTest` limit fixture now uses real dates.
+
 ## 1.18 — 2026-11-07
 
 versionCode 19. Fixes from the Phase 1-3 review (see review 2026-11-07):

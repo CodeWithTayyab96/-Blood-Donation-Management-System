@@ -304,10 +304,15 @@ async function handleAccepted(body: any): Promise<Record<string, unknown>> {
 }
 
 async function handleFulfilled(body: any): Promise<Record<string, unknown>> {
-  const sa = await getServiceAccount();
+  // v1.19: the incomplete-payload check comes FIRST, so a bad payload is
+  // ignored without needing the service-account secret at all.
   if (!body.requester_id) return { ignored: "incomplete payload" };
+  const sa = await getServiceAccount();
   const recipients = await tokensFor([body.requester_id], 20);
   const stats = { sent: 0, stale: 0, failed: 0 };
+  // v1.19: a request the manager fulfils from stock must not read as
+  // "donors fulfilled" — the trigger now sends fulfilled_by for this.
+  const fromStock = body.fulfilled_by === "stock";
   await sendEach(
     sa,
     recipients,
@@ -315,9 +320,11 @@ async function handleFulfilled(body: any): Promise<Record<string, unknown>> {
       type: "fulfilled",
       request_id: String(body.request_id ?? ""),
       title: "Your request is fulfilled",
-      body:
-        "Donors have fulfilled your blood request. Please confirm collection " +
-        "at a licensed blood bank or hospital.",
+      body: fromStock
+        ? "Your blood request was fulfilled from hospital stock. Please confirm collection " +
+          "at a licensed blood bank or hospital."
+        : "Donors have fulfilled your blood request. Please confirm collection " +
+          "at a licensed blood bank or hospital.",
     },
     stats,
   );

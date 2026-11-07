@@ -19,6 +19,24 @@ object StatusTimeline {
     /** Oldest first; ties broken by id so a re-render never reshuffles rows. */
     fun ordered(events: List<StatusEvent>): List<StatusEvent> =
         events.sortedWith(compareBy<StatusEvent> { it.changedAt }.thenBy { it.id })
+            // A transition recorded locally and then again by the server
+            // trigger is ONE step, not two: completing a request locally
+            // writes a row (actor "requester"), and the online PATCH then
+            // fires the server trigger, which writes a second row for the
+            // same status (actor "server"). Collapse consecutive repeats of
+            // the same status, keeping the later row (the server one). A
+            // status the request genuinely returns to later is not
+            // consecutive, so it still shows twice, as it should.
+            .fold(mutableListOf<StatusEvent>()) { acc, e ->
+                if (acc.isEmpty() ||
+                    !acc.last().status.equals(e.status, ignoreCase = true)
+                ) {
+                    acc.add(e)
+                } else {
+                    acc[acc.lastIndex] = e
+                }
+                acc
+            }
 
     /**
      * True when [status] is a real change from [previous]. A pull that returns

@@ -28,7 +28,13 @@ class EmergencyLogicTest {
 
     @Test
     fun `offline view respects the limit`() {
-        val list = (1..50).map { req("A+", 1, "L", "H", "Urgent", "2026-11-${it.toString().padStart(2, '0')}") }
+        // Real dates: the old fixture built "2026-11-32" .. "2026-11-50",
+        // which are not dates at all (harmless here only because the
+        // comparison is a plain string sort).
+        val base = java.time.LocalDate.of(2026, 9, 1)
+        val list = (1..50).map {
+            req("A+", 1, "L", "H", "Urgent", base.plusDays(it.toLong()).toString())
+        }
         assertEquals(20, EmergencyLogic.cachedForOffline(list).size)
     }
 

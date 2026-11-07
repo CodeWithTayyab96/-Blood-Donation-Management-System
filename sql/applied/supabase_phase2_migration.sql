@@ -123,7 +123,10 @@ begin
   perform public.push_send(jsonb_build_object(
     'type', 'fulfilled',
     'request_id', new.id,
-    'requester_id', new.requester_id
+    'requester_id', new.requester_id,
+    -- v1.19: fulfilled_by ('stock' or 'donor') so the notification can
+    -- say who fulfilled it; without it every Fulfilled read as "donors".
+    'fulfilled_by', new.fulfilled_by
   ));
   return null;
 end;

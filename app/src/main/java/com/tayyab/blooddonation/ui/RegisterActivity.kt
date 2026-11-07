@@ -58,7 +58,8 @@ class RegisterActivity : AppCompatActivity() {
         spGroup.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
             BloodCompatibility.ALL_GROUPS)
 
-        findViewById<Button>(R.id.btnCreateAccount).setOnClickListener {
+        val btnCreate = findViewById<Button>(R.id.btnCreateAccount)
+        btnCreate.setOnClickListener {
             val email = findViewById<EditText>(R.id.etEmail).text.toString().trim()
             val password = findViewById<EditText>(R.id.etPassword).text.toString()
             val name = findViewById<EditText>(R.id.etName).text.toString().trim()
@@ -111,6 +112,10 @@ class RegisterActivity : AppCompatActivity() {
                 bloodGroup = spGroup.selectedItem.toString(), phone = phone,
                 city = city, weightKg = weight, lastDonationDate = null
             )
+            // One tap, one sign-up: the button stays disabled while the
+            // request is in flight, so a double tap cannot fire two
+            // sign-ups and trip the Auth rate limit (429).
+            btnCreate.isEnabled = false
             Background.run {
                 val auth = SupabaseAuth.signUp(email, password)
                 if (auth == null) {
@@ -121,6 +126,7 @@ class RegisterActivity : AppCompatActivity() {
                     }
                     runOnUiThread {
                         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                        btnCreate.isEnabled = true
                     }
                     return@run
                 }
@@ -182,6 +188,7 @@ class RegisterActivity : AppCompatActivity() {
                                 "Could not create the local account. Please sign in and try again.",
                                 Toast.LENGTH_LONG
                             ).show()
+                            btnCreate.isEnabled = true
                         }
                         return@run
                     }
