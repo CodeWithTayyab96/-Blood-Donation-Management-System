@@ -148,7 +148,7 @@
 
     <!-- v1.23: theme -->
     <string name="settings_theme_heading">Theme</string>
-    <string name="settings_theme_summary">Choose how the app looks. System follows your phone's setting.</string>
+    <string name="settings_theme_summary">Choose how the app looks. System follows the phone setting.</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_theme_system">System</string>
