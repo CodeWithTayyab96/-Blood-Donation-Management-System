@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Blood request detail. Warm Clinical Sanguine restyle (2026-11-07).
+     Offer state pill: Kotlin sets the text and its colour per state; the
+     layout gives it a neutral pill shell (bg_pill_grey). -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
 
@@ -10,16 +14,23 @@
             android:padding="8dp" android:visibility="gone">
             <ProgressBar android:id="@+id/progressSync"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true"
+                android:indeterminateTint="@color/brand_primary_container" />
             <TextView android:id="@+id/syncLabel"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginStart="8dp" android:textSize="14sp"
-                android:textColor="?android:textColorSecondary" />
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
         <TextView android:id="@+id/tvReqDetailTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="24sp" android:textStyle="bold" android:textColor="@color/text_accent" />
-        <TextView android:id="@+id/tvReqDetailInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="15sp" android:lineSpacingMultiplier="1.4" android:layout_marginTop="8dp" />
+            android:textSize="24sp" android:textStyle="bold" android:textColor="@color/brand_primary" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+            <TextView android:id="@+id/tvReqDetailInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="15sp" android:textColor="@color/on_surface"
+                android:lineSpacingMultiplier="1.4" android:padding="16dp" />
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView android:id="@+id/tvSafety" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginTop="10dp"
@@ -55,16 +66,21 @@
             style="?attr/materialButtonOutlinedStyle" />
 
         <Button android:id="@+id/btnFulfill" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/label_fulfill_stock" android:layout_marginTop="14dp" />
+            android:text="@string/label_fulfill_stock" android:layout_marginTop="16dp" />
 
         <Button android:id="@+id/btnOffer" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_i_can_donate" android:layout_marginTop="14dp" android:visibility="gone" />
-        <TextView android:id="@+id/tvOfferState" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="10dp" android:visibility="gone" />
+        <TextView android:id="@+id/tvOfferState" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_grey"
+            android:textSize="14sp" android:textStyle="bold"
+            android:paddingTop="8dp" android:paddingBottom="8dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:layout_marginTop="10dp" android:visibility="gone" />
 
         <TextView android:id="@+id/tvOffersHeader" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/hint_offers_header" android:textSize="16sp" android:textStyle="bold"
-            android:layout_marginTop="20dp" android:layout_marginBottom="6dp" android:visibility="gone" />
+            android:text="@string/hint_offers_header" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/on_surface"
+            android:layout_marginTop="24dp" android:layout_marginBottom="8dp" android:visibility="gone" />
         <LinearLayout android:id="@+id/offersContainer" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone" />
 
@@ -72,13 +88,15 @@
             android:text="@string/label_donation_completed" android:layout_marginTop="14dp" android:visibility="gone" />
 
         <Button android:id="@+id/btnReport" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/label_report_request" android:layout_marginTop="10dp" android:visibility="gone" />
+            android:text="@string/label_report_request" android:layout_marginTop="10dp" android:visibility="gone"
+            style="?attr/materialButtonOutlinedStyle" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/hint_compatible_donors" android:textSize="16sp" android:textStyle="bold"
-            android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />
+            android:text="@string/hint_compatible_donors" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/on_surface"
+            android:layout_marginTop="24dp" android:layout_marginBottom="8dp" />
         <TextView android:id="@+id/tvCompatNote" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginBottom="6dp" />
+            android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginBottom="8dp" />
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvCompatDonors"
             android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>

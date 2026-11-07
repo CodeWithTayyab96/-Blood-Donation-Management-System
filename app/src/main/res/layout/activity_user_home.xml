@@ -1,123 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Donor home. Warm Clinical Sanguine: light header, white 20dp cards, crimson actions. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp">
+        android:orientation="vertical" android:padding="16dp">
 
+        <!-- Header: light, crimson drop tile, no gradient, no emoji. -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:background="@drawable/bg_header_gradient"
-            android:paddingStart="20dp" android:paddingEnd="20dp"
-            android:paddingTop="28dp" android:paddingBottom="28dp">
-
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="🩸 Blood Donation"
-                android:textSize="26sp" android:textStyle="bold"
-                android:textColor="@color/white" />
-
-            <TextView android:id="@+id/tvUserHomeWho"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:textSize="13sp" android:textColor="@color/blood_red_light"
-                android:layout_marginTop="4dp" />
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <ImageView android:layout_width="56dp" android:layout_height="56dp"
+                android:background="@drawable/bg_icon_tile_crimson"
+                android:padding="14dp"
+                android:src="@drawable/ic_drop"
+                android:contentDescription="Blood drop" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical"
+                android:layout_marginStart="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/app_name" android:textSize="22sp"
+                    android:textStyle="bold" android:textColor="@color/on_surface" />
+                <TextView android:id="@+id/tvUserHomeWho"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textSize="13sp" android:textColor="@color/text_secondary"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:padding="16dp">
+        <!-- Phase 2: badges, hidden when this account has no donor profile. -->
+        <TextView android:id="@+id/tvBadges" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone" android:layout_marginTop="16dp" android:layout_marginBottom="12dp" />
 
-            <!-- Phase 2: badges, hidden when this account has no donor profile. -->
-            <TextView android:id="@+id/tvBadges" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:textSize="14sp"
-                android:visibility="gone" android:layout_marginBottom="12dp" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:layout_marginBottom="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/fact_today" android:textSize="15sp" android:textStyle="bold"
+                    android:textColor="@color/text_accent" />
+                <TextView android:id="@+id/tvUserFact"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:textSize="14sp" android:textColor="@color/text_secondary"
+                    android:layout_marginTop="6dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp" app:cardCornerRadius="12dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto">
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardAvailability"
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="14dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="@string/fact_today" android:textSize="15sp" android:textStyle="bold"
+                    android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="@string/label_i_want_to_donate"
+                        android:textSize="16sp" android:textStyle="bold"
                         android:textColor="@color/text_accent" />
-                    <TextView android:id="@+id/tvUserFact"
-                        android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:textSize="14sp" android:textColor="@color/text_secondary"
-                        android:layout_marginTop="6dp" />
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/swUserAvailable"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                <TextView android:id="@+id/tvUserEligibility"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:background="@drawable/bg_pill_green"
+                    android:textSize="13sp" android:textStyle="bold"
+                    android:textColor="@color/status_green"
+                    android:paddingTop="6dp" android:paddingBottom="6dp"
+                    android:paddingStart="12dp" android:paddingEnd="12dp"
+                    android:layout_marginTop="6dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardAvailability"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp" app:cardCornerRadius="12dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="14dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:orientation="horizontal" android:gravity="center_vertical">
-                        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                            android:layout_weight="1" android:text="@string/label_i_want_to_donate"
-                            android:textSize="16sp" android:textStyle="bold"
-                            android:textColor="@color/text_accent" />
-                        <androidx.appcompat.widget.SwitchCompat
-                            android:id="@+id/swUserAvailable"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-                    <TextView android:id="@+id/tvUserEligibility"
-                        android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:textSize="13sp" android:textColor="@color/text_secondary"
-                        android:layout_marginTop="6dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+        <Button android:id="@+id/btnNeedBlood"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_need_blood"
+            android:layout_marginBottom="8dp" />
 
-            <Button android:id="@+id/btnNeedBlood"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/label_need_blood"
-                android:layout_marginBottom="8dp" />
+        <!-- Phase 3: blood camps, appointment slots, forecast and offline emergency. -->
+        <Button android:id="@+id/btnCamps" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/nav_camps"
+            android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnSlots" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/nav_slots"
+            android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnForecast" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/nav_forecast"
+            android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnEmergency" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/nav_emergency"
+            android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
 
-            <!-- Phase 3: blood camps, appointment slots, forecast and offline emergency. -->
-            <Button android:id="@+id/btnCamps" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="@string/nav_camps"
-                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
-            <Button android:id="@+id/btnSlots" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="@string/nav_slots"
-                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
-            <Button android:id="@+id/btnForecast" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="@string/nav_forecast"
-                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
-            <Button android:id="@+id/btnEmergency" android:layout_width="match_parent"
-                android:layout_height="wrap_content" android:text="@string/nav_emergency"
-                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnMyRequests"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_my_requests" android:layout_marginBottom="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
 
-            <Button android:id="@+id/btnMyRequests"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/label_my_requests" android:layout_marginBottom="8dp"
-                style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnBrowseRequests"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_browse_requests" android:layout_marginBottom="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
 
-            <Button android:id="@+id/btnBrowseRequests"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/label_browse_requests" android:layout_marginBottom="8dp"
-                style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnAskAi"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_ai_helper_home"
+            android:layout_marginBottom="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
 
-            <Button android:id="@+id/btnAskAi"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/label_ai_helper_home"
-                android:layout_marginBottom="8dp"
-                style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnUserProfile"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_my_profile" android:layout_marginBottom="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
 
-            <Button android:id="@+id/btnUserProfile"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/label_my_profile" android:layout_marginBottom="8dp"
-                style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnUserSettings"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_user_settings" android:layout_marginBottom="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
 
-            <Button android:id="@+id/btnUserSettings"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/label_user_settings" android:layout_marginBottom="8dp"
-                style="?attr/materialButtonOutlinedStyle" />
-
-            <Button android:id="@+id/btnUserLogout"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="@string/label_user_logout"
-                android:textColor="@color/status_bad"
-                style="?attr/materialButtonOutlinedStyle" />
-        </LinearLayout>
+        <Button android:id="@+id/btnUserLogout"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_user_logout"
+            android:textColor="@color/status_bad"
+            style="?attr/materialButtonOutlinedStyle" />
     </LinearLayout>
 </ScrollView>

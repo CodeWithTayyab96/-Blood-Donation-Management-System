@@ -39,8 +39,11 @@ class DonorAdapter(
         h.status.setTextColor(
             ContextCompat.getColor(
                 h.itemView.context,
-                if (eligible) R.color.status_ok else R.color.status_warn
+                if (eligible) R.color.status_green else R.color.status_amber_dark
             )
+        )
+        h.status.setBackgroundResource(
+            if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
         )
         h.itemView.setOnClickListener { onClick(d) }
     }

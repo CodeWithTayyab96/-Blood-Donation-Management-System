@@ -205,6 +205,8 @@ class ProfileActivity : AppCompatActivity() {
                 "Pending requests: ${db.pendingRequestCount()}"
             findViewById<TextView>(R.id.tvProfileEligibility).text =
                 "Managers manage donors, stock and requests from the dashboard."
+            findViewById<TextView>(R.id.tvProfileEligibility)
+                .setBackgroundResource(R.drawable.bg_pill_grey)
             findViewById<TextView>(R.id.tvProfileNext).visibility = View.GONE
             findViewById<TextView>(R.id.tvNoHistory).visibility = View.GONE
             findViewById<TextView>(R.id.tvBadges).visibility = View.GONE
@@ -224,6 +226,9 @@ class ProfileActivity : AppCompatActivity() {
         val tv = findViewById<TextView>(R.id.tvProfileEligibility)
         tv.text = (if (eligible) "✓ " else "✗ ") + reason
         tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+        tv.setBackgroundResource(
+            if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
+        )
         val next = BloodCompatibility.nextEligibleDate(donor)
         findViewById<TextView>(R.id.tvProfileNext).text =
             if (next == null) "Next eligible date: now — you can donate today."

@@ -1,38 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Dashboard. Warm Clinical Sanguine: warm canvas, white 20dp cards, crimson actions. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical" android:padding="16dp">
 
+        <!-- Header: light, crimson drop tile, no gradient, no emoji. -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:background="@drawable/bg_header_gradient"
-            android:paddingStart="20dp" android:paddingEnd="20dp"
-            android:paddingTop="28dp" android:paddingBottom="28dp">
-
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="🩸 Blood Donation"
-                android:textSize="26sp" android:textStyle="bold"
-                android:textColor="@color/white" />
-
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Every donation can save up to three lives."
-                android:textSize="14sp" android:textColor="@color/blood_red_light"
-                android:layout_marginTop="4dp" />
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <ImageView android:layout_width="56dp" android:layout_height="56dp"
+                android:background="@drawable/bg_icon_tile_crimson"
+                android:padding="14dp"
+                android:src="@drawable/ic_drop"
+                android:contentDescription="Blood drop" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical"
+                android:layout_marginStart="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/app_name" android:textSize="22sp"
+                    android:textStyle="bold" android:textColor="@color/on_surface" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Every donation can save up to three lives."
+                    android:textSize="14sp" android:textColor="@color/text_secondary"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
         </LinearLayout>
-
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:padding="16dp">
 
         <!-- Daily motivation card: one fact per day, stable for the day, the
              same on every device. No medical claims (see MotivationFacts). -->
         <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginBottom="14dp" app:cardCornerRadius="12dp">
+            android:layout_marginTop="16dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:padding="14dp">
+                android:orientation="vertical" android:padding="16dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="💡 Did you know?" android:textSize="15sp" android:textStyle="bold"
+                    android:text="Did you know?" android:textSize="15sp" android:textStyle="bold"
                     android:textColor="@color/text_accent" />
                 <TextView android:id="@+id/tvFact" android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:textSize="14sp"
@@ -40,31 +45,45 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Stat cards, 2 x 2 -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal" android:layout_marginTop="12dp">
             <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Blood.Card"
                 android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                android:layout_marginEnd="6dp" app:cardCornerRadius="12dp"
-                xmlns:app="http://schemas.android.com/apk/res-auto">
+                android:layout_marginEnd="6dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="14dp">
+                    android:orientation="vertical" android:padding="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile" android:padding="10dp"
+                        android:src="@drawable/ic_stat_donors" app:tint="@color/brand_primary_container"
+                        android:contentDescription="Donors" />
                     <TextView android:id="@+id/tvStatDonors" android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/text_accent" />
+                        android:layout_height="wrap_content" android:text="0"
+                        android:textAppearance="@style/TextAppearance.Blood.Stat"
+                        android:layout_marginTop="12dp" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Registered Donors" android:textSize="13sp" />
+                        android:text="Registered Donors" android:textSize="13sp"
+                        android:textColor="@color/text_secondary" android:layout_marginTop="2dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
             <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Blood.Card"
                 android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                android:layout_marginStart="6dp" app:cardCornerRadius="12dp">
+                android:layout_marginStart="6dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="14dp">
+                    android:orientation="vertical" android:padding="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile" android:padding="10dp"
+                        android:src="@drawable/ic_stat_stock" app:tint="@color/brand_primary_container"
+                        android:contentDescription="Stock" />
                     <TextView android:id="@+id/tvStatUnits" android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/text_accent" />
+                        android:layout_height="wrap_content" android:text="0"
+                        android:textAppearance="@style/TextAppearance.Blood.Stat"
+                        android:layout_marginTop="12dp" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Units in Stock" android:textSize="13sp" />
+                        android:text="Units in Stock" android:textSize="13sp"
+                        android:textColor="@color/text_secondary" android:layout_marginTop="2dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
@@ -72,40 +91,95 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:layout_marginTop="12dp">
             <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Blood.Card"
                 android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                android:layout_marginEnd="6dp" app:cardCornerRadius="12dp">
+                android:layout_marginEnd="6dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="14dp">
+                    android:orientation="vertical" android:padding="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile_amber" android:padding="10dp"
+                        android:src="@drawable/ic_stat_requests"
+                        android:contentDescription="Pending requests" />
                     <TextView android:id="@+id/tvStatRequests" android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/text_accent" />
+                        android:layout_height="wrap_content" android:text="0"
+                        android:textAppearance="@style/TextAppearance.Blood.Stat"
+                        android:layout_marginTop="12dp" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Pending Requests" android:textSize="13sp" />
+                        android:text="Pending Requests" android:textSize="13sp"
+                        android:textColor="@color/text_secondary" android:layout_marginTop="2dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
             <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Blood.Card"
                 android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                android:layout_marginStart="6dp" app:cardCornerRadius="12dp">
+                android:layout_marginStart="6dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="14dp">
+                    android:orientation="vertical" android:padding="16dp">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp"
+                        android:background="@drawable/bg_icon_tile" android:padding="10dp"
+                        android:src="@drawable/ic_stat_month" app:tint="@color/brand_primary_container"
+                        android:contentDescription="Donated this month" />
                     <TextView android:id="@+id/tvStatMonth" android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:text="0" android:textSize="26sp"
-                        android:textStyle="bold" android:textColor="@color/text_accent" />
+                        android:layout_height="wrap_content" android:text="0"
+                        android:textAppearance="@style/TextAppearance.Blood.Stat"
+                        android:layout_marginTop="12dp" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Units Donated This Month" android:textSize="13sp" />
+                        android:text="Units Donated This Month" android:textSize="13sp"
+                        android:textColor="@color/text_secondary" android:layout_marginTop="2dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
+
+        <!-- Urgent banner: shown only when pending requests exist (set in MainActivity). -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardUrgentBanner"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:visibility="gone"
+            android:clickable="true" android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            app:cardCornerRadius="20dp" app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/brand_primary_container">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical">
+                    <ImageView android:layout_width="44dp" android:layout_height="44dp"
+                        android:background="@drawable/bg_urgent_icon_tile" android:padding="10dp"
+                        android:src="@drawable/ic_stat_requests" app:tint="@color/white"
+                        android:contentDescription="Urgent" />
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical"
+                        android:layout_marginStart="12dp">
+                        <TextView android:id="@+id/tvUrgentBanner" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="17sp" android:textStyle="bold"
+                            android:textColor="@color/white" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Open Blood Requests to review and match donors."
+                            android:textSize="14sp" android:textColor="#E8FFFFFF"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:background="@drawable/bg_pill_white"
+                    android:text="View requests" android:textSize="15sp" android:textStyle="bold"
+                    android:textColor="@color/brand_primary_container" android:gravity="center"
+                    android:paddingTop="12dp" android:paddingBottom="12dp"
+                    android:layout_marginTop="16dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Donor milestones, computed locally from the donation history. Shown
              only when the signed-in person has a donor profile; a manager with
              none never sees it. -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardMilestones" android:layout_width="match_parent"
+            android:id="@+id/cardMilestones"
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content" android:layout_marginTop="14dp"
-            android:visibility="gone" app:cardCornerRadius="12dp">
+            android:visibility="gone">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:padding="14dp">
+                android:orientation="vertical" android:padding="16dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="Your donation milestones" android:textSize="15sp"
                     android:textStyle="bold" android:textColor="@color/text_accent" />
@@ -126,8 +200,14 @@
             android:textColor="@color/status_warn" android:visibility="gone"
             android:layout_marginBottom="4dp" />
 
+        <!-- Quick actions (existing button navigation, restyled) -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Quick Actions"
+            android:textAppearance="@style/TextAppearance.Blood.SectionTitle"
+            android:layout_marginTop="20dp" android:layout_marginBottom="12dp" />
+
         <Button android:id="@+id/btnDonors" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="👥  Manage Donors" android:layout_marginTop="20dp" />
+            android:text="Manage Donors" />
         <!-- Phase 3: blood camps, slots, forecast and offline emergency. -->
         <Button android:id="@+id/btnCamps" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/nav_camps" android:layout_marginTop="10dp" />
@@ -140,27 +220,29 @@
             android:text="@string/nav_emergency" android:layout_marginTop="10dp"
             style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnStock" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="🏥  Blood Stock" android:layout_marginTop="10dp" />
+            android:text="Blood Stock" android:layout_marginTop="10dp"
+            style="@style/Widget.Blood.Button.Secondary" />
         <Button android:id="@+id/btnRequests" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="📋  Blood Requests" android:layout_marginTop="10dp" />
+            android:text="Blood Requests" android:layout_marginTop="10dp"
+            style="@style/Widget.Blood.Button.Secondary" />
         <!-- P2P: managers only. MainActivity leaves this GONE for everyone else. -->
         <Button android:id="@+id/btnModeration" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="🛡  Moderation — reports &amp; offers" android:layout_marginTop="10dp"
+            android:text="Moderation - reports and offers" android:layout_marginTop="10dp"
             android:visibility="gone" />
         <Button android:id="@+id/btnProfile" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="👤  My Profile" android:layout_marginTop="10dp" />
+            android:text="My Profile" android:layout_marginTop="10dp" />
         <!-- Phase 2: manager-only monthly CSV report. -->
         <Button android:id="@+id/btnManagerReport" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_manager_reports" android:layout_marginTop="10dp"
             style="?attr/materialButtonOutlinedStyle" />
         <!-- Phase 4 AI helper: open to every signed-in user. -->
         <Button android:id="@+id/btnAskDonate" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="🩸  Can I donate? (AI helper)" android:layout_marginTop="10dp"
+            android:text="Can I donate? (AI helper)" android:layout_marginTop="10dp"
             style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="⚙  Settings" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
+            android:text="Settings" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnUpdate" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="⬇  Check for Updates" android:layout_marginTop="10dp" />
+            android:text="Check for Updates" android:layout_marginTop="10dp" />
         <!-- Debug builds only. MainActivity leaves this GONE in release builds. -->
         <Button android:id="@+id/btnCheckRequests" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="Check requests now (debug only)"
@@ -168,18 +250,32 @@
         <Button android:id="@+id/btnLogout" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Log Out" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
 
-        <!--
-            The page no longer paints its own background: the theme's surface is
-            used, so it follows light/dark mode. Colours here come from the
-            day/night pairs in values/colors.xml and values-night/colors.xml.
-        -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Stock by blood group" android:textSize="16sp" android:textStyle="bold"
-            android:textColor="@color/text_secondary"
-            android:layout_marginTop="22dp" android:layout_marginBottom="6dp" />
-        <TextView android:id="@+id/tvStockSummary" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:textSize="15sp"
-            android:textColor="@color/text_secondary" android:lineSpacingMultiplier="1.3" />
+        <!-- Stock by blood group (live summary text, bound in MainActivity) -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="20dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Stock by blood group"
+                        android:textAppearance="@style/TextAppearance.Blood.SectionTitle" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:background="@drawable/bg_pill_rose"
+                        android:text="Live Inventory" android:textSize="11sp" android:textStyle="bold"
+                        android:textColor="@color/brand_primary_container"
+                        android:paddingTop="6dp" android:paddingBottom="6dp"
+                        android:paddingStart="12dp" android:paddingEnd="12dp" />
+                </LinearLayout>
+                <TextView android:id="@+id/tvStockSummary" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textSize="15sp"
+                    android:textColor="@color/on_surface" android:lineSpacingMultiplier="1.3"
+                    android:layout_marginTop="12dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- In-flight sync indicator: shown while the dashboard pulls donors, requests and stock. -->
         <LinearLayout android:id="@+id/syncRow"
@@ -193,7 +289,6 @@
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginStart="8dp" android:textSize="14sp"
                 android:textColor="?android:textColorSecondary" />
-        </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

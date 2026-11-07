@@ -213,6 +213,9 @@ class UserHomeActivity : AppCompatActivity() {
         val (eligible, reason) = BloodCompatibility.eligibility(donor)
         info.text = if (eligible) "✓ $reason" else "✗ $reason"
         info.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+        info.setBackgroundResource(
+            if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
+        )
     }
 
     private fun setAvailability(donor: Donor, available: Boolean, sw: SwitchCompat) {

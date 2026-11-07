@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Donor detail. Warm Clinical Sanguine restyle (2026-11-07).
+     Eligibility / verification pills: Kotlin sets the text and its colour per
+     state; the layout gives them a neutral pill shell (bg_pill_grey). -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
 
@@ -10,22 +14,37 @@
             android:padding="8dp" android:visibility="gone">
             <ProgressBar android:id="@+id/progressSync"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true"
+                android:indeterminateTint="@color/brand_primary_container" />
             <TextView android:id="@+id/syncLabel"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginStart="8dp" android:textSize="14sp"
-                android:textColor="?android:textColorSecondary" />
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
         <TextView android:id="@+id/tvDetailName" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textSize="24sp" android:textStyle="bold" android:textColor="@color/text_accent" />
-        <TextView android:id="@+id/tvDetailInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="15sp" android:lineSpacingMultiplier="1.4" android:layout_marginTop="8dp" />
-        <TextView android:id="@+id/tvDetailEligibility" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="10dp" />
+            android:textSize="24sp" android:textStyle="bold" android:textColor="@color/brand_primary" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+            <TextView android:id="@+id/tvDetailInfo" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="15sp" android:textColor="@color/on_surface"
+                android:lineSpacingMultiplier="1.4" android:padding="16dp" />
+        </com.google.android.material.card.MaterialCardView>
+        <TextView android:id="@+id/tvDetailEligibility" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_grey"
+            android:textSize="14sp" android:textStyle="bold"
+            android:paddingTop="8dp" android:paddingBottom="8dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:layout_marginTop="12dp" />
 
         <!-- Phase 3: donor verification status, set by a manager. -->
-        <TextView android:id="@+id/tvVerified" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="8dp"
+        <TextView android:id="@+id/tvVerified" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_grey"
+            android:textSize="14sp" android:textStyle="bold"
+            android:paddingTop="8dp" android:paddingBottom="8dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:layout_marginTop="8dp"
             android:visibility="gone" />
         <Button android:id="@+id/btnVerify" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/nav_verify" android:layout_marginTop="8dp"
@@ -48,15 +67,17 @@
         </LinearLayout>
 
         <Button android:id="@+id/btnRecordDonation" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/label_record_donation" android:layout_marginTop="14dp" />
+            android:text="@string/label_record_donation" android:layout_marginTop="16dp" />
         <Button android:id="@+id/btnCertificate" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_certificate" android:layout_marginTop="8dp"
             style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnDeleteDonor" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/label_delete_donor" android:layout_marginTop="8dp" style="?attr/materialButtonOutlinedStyle" />
+            android:text="@string/label_delete_donor" android:layout_marginTop="8dp"
+            style="@style/Widget.Blood.Button.Danger" />
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/hint_donation_history" android:textSize="16sp" android:textStyle="bold"
-            android:layout_marginTop="20dp" android:layout_marginBottom="6dp" />
+            android:text="@string/hint_donation_history" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/on_surface"
+            android:layout_marginTop="24dp" android:layout_marginBottom="8dp" />
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvHistory"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:nestedScrollingEnabled="false" />

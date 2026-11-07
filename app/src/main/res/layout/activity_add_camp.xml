@@ -1,21 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Add camp form. Warm Clinical Sanguine restyle: titled header, labelled rounded fields, primary save. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp">
+        android:orientation="vertical" android:padding="16dp">
 
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Add Blood Camp" android:textAppearance="@style/TextAppearance.Blood.Title"
+            android:textColor="@color/text_accent" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Fill in the camp details below"
+            android:textAppearance="@style/TextAppearance.Blood.Secondary"
+            android:layout_marginTop="2dp" android:layout_marginBottom="16dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Camp name" android:textAppearance="@style/TextAppearance.Blood.Label"
+            android:layout_marginBottom="6dp" />
         <EditText android:id="@+id/etCampName" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:hint="@string/camp_name_hint"
-            android:inputType="textCapWords" android:layout_marginBottom="10dp" />
+            android:inputType="textCapWords" android:layout_marginBottom="12dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Location" android:textAppearance="@style/TextAppearance.Blood.Label"
+            android:layout_marginBottom="6dp" />
         <EditText android:id="@+id/etCampLocation" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:hint="@string/camp_location_hint"
-            android:inputType="textCapWords" android:layout_marginBottom="10dp" />
+            android:inputType="textCapWords" android:layout_marginBottom="12dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="City" android:textAppearance="@style/TextAppearance.Blood.Label"
+            android:layout_marginBottom="6dp" />
         <EditText android:id="@+id/etCampCity" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:hint="@string/camp_city_hint"
-            android:inputType="textCapWords" android:layout_marginBottom="10dp" />
+            android:inputType="textCapWords" android:layout_marginBottom="12dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Date" android:textAppearance="@style/TextAppearance.Blood.Label"
+            android:layout_marginBottom="6dp" />
         <EditText android:id="@+id/etCampDate" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:hint="@string/camp_date_hint"
-            android:inputType="date" android:layout_marginBottom="10dp" />
+            android:inputType="date" android:layout_marginBottom="12dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Organizer" android:textAppearance="@style/TextAppearance.Blood.Label"
+            android:layout_marginBottom="6dp" />
         <EditText android:id="@+id/etCampOrganizer" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:hint="@string/camp_organizer_hint"
             android:inputType="textCapWords" android:layout_marginBottom="16dp" />

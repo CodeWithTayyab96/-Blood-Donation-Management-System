@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Moderation: reports and offers. Warm Clinical Sanguine restyle: titled header, section
+     titles, empty states in muted secondary text, containers kept for Kotlin-filled rows. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp">
+        android:orientation="vertical" android:padding="16dp">
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Reports" android:textSize="18sp" android:textStyle="bold" />
+            android:text="Moderation" android:textAppearance="@style/TextAppearance.Blood.Title"
+            android:textColor="@color/text_accent" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Review reported requests and donation offers"
+            android:textAppearance="@style/TextAppearance.Blood.Secondary"
+            android:layout_marginTop="2dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Reports" android:textAppearance="@style/TextAppearance.Blood.SectionTitle"
+            android:layout_marginTop="20dp" />
         <TextView android:id="@+id/tvNoReports" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="No reports."
             android:textColor="@color/text_secondary" android:paddingTop="6dp" />
         <LinearLayout android:id="@+id/reportsContainer" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:orientation="vertical" />
 
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="@color/card_border" android:layout_marginTop="20dp" />
+
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Offers" android:textSize="18sp" android:textStyle="bold"
-            android:layout_marginTop="22dp" />
+            android:text="Offers" android:textAppearance="@style/TextAppearance.Blood.SectionTitle"
+            android:layout_marginTop="20dp" />
         <TextView android:id="@+id/tvNoOffers" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="No offers."
             android:textColor="@color/text_secondary" android:paddingTop="6dp" />

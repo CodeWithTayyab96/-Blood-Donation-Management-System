@@ -1,46 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Camp detail. Warm Clinical Sanguine restyle: crimson title, details and attendance in white cards. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp">
+        android:orientation="vertical" android:padding="16dp">
 
         <TextView android:id="@+id/tvCampName" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="24sp" android:textStyle="bold"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.Blood.Title"
             android:textColor="@color/text_accent" />
 
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/camp_date_label" android:textSize="13sp"
-            android:textColor="@color/text_secondary" android:layout_marginTop="14dp" />
-        <TextView android:id="@+id/tvCampDate" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="16sp" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp">
 
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/camp_location_label" android:textSize="13sp"
-            android:textColor="@color/text_secondary" android:layout_marginTop="10dp" />
-        <TextView android:id="@+id/tvCampLocation" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/camp_date_label"
+                    android:textAppearance="@style/TextAppearance.Blood.Label" />
+                <TextView android:id="@+id/tvCampDate" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="16sp"
+                    android:textColor="@color/on_surface" android:layout_marginTop="2dp" />
 
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/camp_city_label" android:textSize="13sp"
-            android:textColor="@color/text_secondary" android:layout_marginTop="10dp" />
-        <TextView android:id="@+id/tvCampCity" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/camp_location_label"
+                    android:textAppearance="@style/TextAppearance.Blood.Label"
+                    android:layout_marginTop="14dp" />
+                <TextView android:id="@+id/tvCampLocation" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="16sp"
+                    android:textColor="@color/on_surface" android:layout_marginTop="2dp" />
 
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/camp_organizer_label" android:textSize="13sp"
-            android:textColor="@color/text_secondary" android:layout_marginTop="10dp" />
-        <TextView android:id="@+id/tvCampOrganizer" android:layout_width="wrap_content"
-            android:layout_height="wrap_content" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/camp_city_label"
+                    android:textAppearance="@style/TextAppearance.Blood.Label"
+                    android:layout_marginTop="14dp" />
+                <TextView android:id="@+id/tvCampCity" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="16sp"
+                    android:textColor="@color/on_surface" android:layout_marginTop="2dp" />
 
-        <View android:layout_width="match_parent" android:layout_height="1dp"
-            android:background="?android:attr/listDivider" android:layout_marginTop="16dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/camp_organizer_label"
+                    android:textAppearance="@style/TextAppearance.Blood.Label"
+                    android:layout_marginTop="14dp" />
+                <TextView android:id="@+id/tvCampOrganizer" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="16sp"
+                    android:textColor="@color/on_surface" android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        <TextView android:id="@+id/tvAttendance" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:textSize="16sp" android:textStyle="bold"
-            android:layout_marginTop="14dp" />
-        <TextView android:id="@+id/tvAttendees" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:textSize="14sp"
-            android:layout_marginTop="6dp" android:textColor="@color/text_secondary" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp">
+                <TextView android:id="@+id/tvAttendance" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textSize="16sp" android:textStyle="bold"
+                    android:textColor="@color/on_surface" />
+                <TextView android:id="@+id/tvAttendees" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textSize="14sp"
+                    android:layout_marginTop="6dp" android:textColor="@color/text_secondary" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <Button android:id="@+id/btnCheckIn" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="@string/camp_attend"

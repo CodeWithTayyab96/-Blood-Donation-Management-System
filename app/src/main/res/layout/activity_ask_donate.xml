@@ -4,9 +4,11 @@
     disclaimer up top, one question box, one answer. The AI answer is general
     information only — the safety notes at the bottom stay visible no matter
     what the model produces.
+    Warm Clinical Sanguine restyle (2026-11-07).
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
 
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -14,11 +16,13 @@
 
         <TextView
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="🩸 Can I donate? (AI helper)" android:textSize="22sp" android:textStyle="bold" />
+            android:text="Can I donate? (AI helper)" android:textSize="22sp" android:textStyle="bold"
+            android:textColor="@color/on_surface" />
 
         <TextView
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="10dp" android:textSize="13sp"
+            android:textColor="@color/text_secondary"
             android:text="@string/safety_ask_donate_top" />
 
         <EditText
@@ -38,11 +42,12 @@
             android:padding="8dp" android:visibility="gone">
             <ProgressBar android:id="@+id/progressSync"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true"
+                android:indeterminateTint="@color/brand_primary_container" />
             <TextView android:id="@+id/syncLabel"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginStart="8dp" android:textSize="14sp"
-                android:textColor="?android:textColorSecondary" />
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
 
         <Button
@@ -54,16 +59,20 @@
             android:id="@+id/tvAnswer"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:textIsSelectable="true"
-            android:textSize="15sp" android:visibility="gone" />
+            android:textSize="15sp" android:textColor="@color/on_surface"
+            android:background="@drawable/bg_input" android:padding="16dp"
+            android:visibility="gone" />
 
         <TextView
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="18dp" android:textSize="12sp"
+            android:textColor="@color/text_secondary"
             android:text="@string/safety_ask_donate_bottom" />
 
         <TextView
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="10dp" android:textSize="12sp"
+            android:textColor="@color/text_secondary"
             android:text="@string/safety_ask_donate_note" />
 
     </LinearLayout>

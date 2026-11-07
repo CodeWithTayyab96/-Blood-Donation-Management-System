@@ -1,56 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Offline emergency mode. Warm Clinical Sanguine restyle: crimson title, cached requests
+     in a white card, compose form in a white card, primary queue button. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp">
+        android:orientation="vertical" android:padding="16dp">
 
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/title_emergency"
+            android:textAppearance="@style/TextAppearance.Blood.Title"
+            android:textColor="@color/text_accent" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/emergency_cached_note" android:textSize="13sp"
-            android:textColor="@color/text_secondary" android:layout_marginBottom="10dp" />
+            android:textColor="@color/text_secondary" android:layout_marginTop="4dp" />
 
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/title_emergency" android:textSize="18sp" android:textStyle="bold"
-            android:textColor="@color/text_accent" />
-        <LinearLayout android:id="@+id/containerCached" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:orientation="vertical"
-            android:layout_marginTop="8dp" />
-        <TextView android:id="@+id/tvCachedEmpty" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="@string/emergency_empty"
-            android:textColor="@color/text_secondary" android:visibility="gone" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Queued requests"
+                    android:textAppearance="@style/TextAppearance.Blood.SectionTitle" />
+                <LinearLayout android:id="@+id/containerCached" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:orientation="vertical"
+                    android:layout_marginTop="8dp" />
+                <TextView android:id="@+id/tvCachedEmpty" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="@string/emergency_empty"
+                    android:textColor="@color/text_secondary" android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        <View android:layout_width="match_parent" android:layout_height="1dp"
-            android:background="?android:attr/listDivider" android:layout_marginTop="18dp"
-            android:layout_marginBottom="12dp" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="16dp">
 
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/emergency_compose_title" android:textSize="16sp"
-            android:textStyle="bold" android:textColor="@color/text_accent" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/emergency_compose_title" android:textSize="16sp"
+                    android:textStyle="bold" android:textColor="@color/text_accent" />
 
-        <EditText android:id="@+id/etEmBg" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="@string/emergency_bg_hint"
-            android:inputType="textCapCharacters" android:layout_marginTop="8dp" />
-        <EditText android:id="@+id/etEmUnits" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="@string/emergency_units_hint"
-            android:inputType="number" android:layout_marginTop="8dp" />
-        <EditText android:id="@+id/etEmCity" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="@string/emergency_city_hint"
-            android:inputType="textCapWords" android:layout_marginTop="8dp" />
-        <EditText android:id="@+id/etEmHospital" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:hint="@string/emergency_hospital_hint"
-            android:inputType="textCapWords" android:layout_marginTop="8dp" />
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="@string/emergency_urgency_hint" android:textSize="13sp"
-            android:textColor="@color/text_secondary" android:layout_marginTop="8dp" />
-        <Spinner android:id="@+id/spEmUrgency" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="4dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Blood group" android:textAppearance="@style/TextAppearance.Blood.Label"
+                    android:layout_marginTop="14dp" android:layout_marginBottom="6dp" />
+                <EditText android:id="@+id/etEmBg" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:hint="@string/emergency_bg_hint"
+                    android:inputType="textCapCharacters" />
 
-        <Button android:id="@+id/btnQueue" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="@string/label_queue_request"
-            android:layout_marginTop="14dp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Units needed" android:textAppearance="@style/TextAppearance.Blood.Label"
+                    android:layout_marginTop="12dp" android:layout_marginBottom="6dp" />
+                <EditText android:id="@+id/etEmUnits" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:hint="@string/emergency_units_hint"
+                    android:inputType="number" />
 
-        <TextView android:id="@+id/tvQueued" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold"
-            android:textColor="@color/status_ok" android:layout_marginTop="10dp"
-            android:visibility="gone" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="City" android:textAppearance="@style/TextAppearance.Blood.Label"
+                    android:layout_marginTop="12dp" android:layout_marginBottom="6dp" />
+                <EditText android:id="@+id/etEmCity" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:hint="@string/emergency_city_hint"
+                    android:inputType="textCapWords" />
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Hospital" android:textAppearance="@style/TextAppearance.Blood.Label"
+                    android:layout_marginTop="12dp" android:layout_marginBottom="6dp" />
+                <EditText android:id="@+id/etEmHospital" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:hint="@string/emergency_hospital_hint"
+                    android:inputType="textCapWords" />
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/emergency_urgency_hint" android:textSize="13sp"
+                    android:textColor="@color/text_secondary" android:layout_marginTop="12dp" />
+                <Spinner android:id="@+id/spEmUrgency" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:layout_marginTop="4dp" />
+
+                <Button android:id="@+id/btnQueue" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="@string/label_queue_request"
+                    android:layout_marginTop="16dp" />
+
+                <TextView android:id="@+id/tvQueued" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold"
+                    android:textColor="@color/status_ok" android:layout_marginTop="10dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 </ScrollView>

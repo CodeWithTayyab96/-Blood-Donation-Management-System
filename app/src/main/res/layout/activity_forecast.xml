@@ -1,10 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+<!-- Stock forecast list. Warm Clinical Sanguine restyle: headline, warm canvas, card rows. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/warm_background">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Stock Forecast" android:textAppearance="@style/TextAppearance.Blood.Headline"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Projected stock levels by blood group"
+        android:textAppearance="@style/TextAppearance.Blood.Secondary"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+        android:layout_marginTop="2dp" />
+
     <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvForecast"
-        android:layout_width="match_parent" android:layout_height="match_parent" />
-    <TextView android:id="@+id/tvEmpty" android:layout_width="wrap_content"
-        android:layout_height="wrap_content" android:layout_gravity="center"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:layout_marginTop="12dp" android:clipToPadding="false"
+        android:paddingBottom="8dp" />
+    <TextView android:id="@+id/tvEmpty" android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:text="@string/forecast_empty" android:gravity="center"
-        android:padding="24dp" android:visibility="gone" android:textSize="15sp" />
-</FrameLayout>
+        android:padding="24dp" android:visibility="gone" android:textSize="15sp"
+        android:textColor="@color/text_secondary" />
+</LinearLayout>

@@ -63,7 +63,7 @@
 
     <string name="safety_request_detail">حفاظت: یہ ایپ بلڈ گروپ، شناخت یا صحت کی تصدیق نہیں کر سکتی۔ یہاں سب کچھ خود بتایا گیا ہے۔ خون کے لیے کبھی پیسے نہ دیں اور صرف ہسپتال یا رجسٹرڈ بلڈ بینک میں ملیں۔</string>
     <string name="hint_register_phone">فون نمبر *</string>
-    <string name="safety_ask_donate_top">⚠️ صرف عمومی معلومات — طبی مشورہ نہیں۔ ہر بلڈ بینک کے اپنے اصول ہیں اور صرف ان کی صحت کی جانچ فیصلہ کر سکتی ہے۔ یہاں اپنا فون نمبر یا مریض کے نام جیسی ذاتی معلومات نہ بھیجیں۔</string>
+    <string name="safety_ask_donate_top">صرف عمومی معلومات — طبی مشورہ نہیں۔ ہر بلڈ بینک کے اپنے اصول ہیں اور صرف ان کی صحت کی جانچ فیصلہ کر سکتی ہے۔ یہاں اپنا فون نمبر یا مریض کے نام جیسی ذاتی معلومات نہ بھیجیں۔</string>
     <string name="safety_ask_donate_bottom">عطیہ صرف لائسنس یافتہ بلڈ بینک یا ہسپتال میں ہونا چاہیے۔ اس فون سے کوئی ذاتی معلومات نہیں جاتی — ایپ آپ کا نام، فون نمبر، مریض کے نام یا عطیہ کی تاریخ نہیں بھیجتی، اور اے آئی کا جواب صرف عمومی معلومات ہے۔</string>
     <string name="safety_create_request">درخواستیں سائن ان عطیہ دہندگان کے لیے عوامی ہیں۔ آپ کا رابطہ نمبر انہیں دکھایا جاتا ہے تاکہ وہ آپ سے رابطہ کر سکیں۔ صرف وہی شیئر کریں جس سے آپ مطمئن ہوں۔</string>
     <string name="safety_profile_availability">دستیاب عطیہ دہندگان قریبی درخواستوں پر مدد کی پیشکش کر سکتے ہیں۔ آپ کا فون نمبر درخواست دہندہ کو صرف دونوں کی قبولیت کے بعد دیا جاتا ہے۔</string>
@@ -289,9 +289,9 @@
     <string name="emergency_invalid">براہ کرم بلڈ گروپ، یونٹس، شہر اور ہسپتال بھریں۔</string>
 
     <!-- Phase 3: navigation buttons -->
-    <string name="nav_camps">🏕  بلڈ کیمپس</string>
-    <string name="nav_slots">📅  اپائنٹمنٹ سلیٹس</string>
-    <string name="nav_forecast">📈  اسٹاک پیشن گوئی</string>
-    <string name="nav_emergency">🚨  ایمرجنسی (آف لائن)</string>
-    <string name="nav_verify">✓  ڈونر کی تصدیق</string>
+    <string name="nav_camps">بلڈ کیمپس</string>
+    <string name="nav_slots">اپائنٹمنٹ سلیٹس</string>
+    <string name="nav_forecast">اسٹاک پیشن گوئی</string>
+    <string name="nav_emergency">ایمرجنسی (آف لائن)</string>
+    <string name="nav_verify">✓ ڈونر کی تصدیق</string>
 </resources>

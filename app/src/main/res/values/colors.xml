@@ -1,24 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Warm Clinical Sanguine palette (Stitch design system, 2026-11-07).
+  Light-first: warm off-white canvas, deep crimson primary.
+  Old colour names are kept as aliases so any surviving reference still resolves.
+-->
 <resources>
-    <color name="blood_red">#B71C1C</color>
-    <color name="blood_red_dark">#7F0000</color>
-    <color name="blood_red_light">#FFEBEE</color>
+    <!-- Brand -->
+    <color name="brand_primary">#9E001F</color>
+    <color name="brand_primary_container">#C8102E</color>
+    <color name="brand_primary_press">#A50D25</color>
+    <color name="brand_primary_dark">#7A0018</color>
+
+    <!-- Surfaces -->
+    <color name="warm_background">#FFF8F5</color>
+    <color name="warm_surface">#FFFFFF</color>
+    <color name="surface_container">#FDEAE0</color>
+    <color name="surface_container_low">#FFF1EA</color>
+    <color name="surface_container_high">#F7E4DB</color>
+
+    <!-- Text -->
+    <color name="on_surface">#231A14</color>
+    <color name="on_surface_variant">#5C403F</color>
+    <color name="text_secondary">#6E6259</color>
+
+    <!-- Lines and outlines -->
+    <color name="card_border">#F4ECE6</color>
+    <color name="outline">#906F6E</color>
+    <color name="outline_variant">#E5BDBB</color>
+
+    <!-- Rose tint (secondary surfaces, badges, icon tiles) -->
+    <color name="rose_tint">#FDECEC</color>
+    <color name="rose_tint_press">#F8D7D7</color>
+    <color name="rose_border">#FAD3D3</color>
+
+    <!-- Status: green / amber / red -->
+    <color name="status_green">#047857</color>
+    <color name="status_green_bg">#D1FAE5</color>
+    <color name="status_green_border">#A7F3D0</color>
+    <color name="status_amber">#D97706</color>
+    <color name="status_amber_dark">#B45309</color>
+    <color name="status_amber_bg">#FEF3C7</color>
+    <color name="status_amber_border">#FDE68A</color>
+    <color name="status_red">#DC2626</color>
+    <color name="status_red_bg">#FEE2E2</color>
+    <color name="status_red_border">#FECACA</color>
+
+    <!-- Error -->
+    <color name="error">#BA1A1A</color>
+    <color name="error_container">#FFDAD6</color>
+
+    <!-- Secondary (warm grey) -->
+    <color name="secondary_grey">#675C5C</color>
+
+    <!-- Legacy aliases (kept so old references keep working) -->
+    <color name="blood_red">@color/brand_primary_container</color>
+    <color name="blood_red_dark">@color/brand_primary</color>
+    <color name="blood_red_light">@color/rose_tint</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
-    <color name="grey_text">#5F6368</color>
-    <color name="green_ok">#2E7D32</color>
-    <color name="orange_warn">#E65100</color>
+    <color name="grey_text">@color/text_secondary</color>
+    <color name="green_ok">@color/status_green</color>
+    <color name="orange_warn">@color/status_amber</color>
 
-    <!--
-        Theme-aware colours. These have a matching override in values-night so
-        text stays readable on both the light and the dark surface. Fixed
-        colours like @color/grey_text cannot do that: the theme is DayNight, so
-        the surface changes but the text does not.
-    -->
-    <color name="text_secondary">#5F6368</color>
-    <color name="text_accent">#B71C1C</color>
-    <color name="status_ok">#2E7D32</color>
-    <color name="status_warn">#E65100</color>
-    <color name="status_bad">#B71C1C</color>
+    <!-- Latest-only role names, kept as aliases on the new palette so
+         existing layouts and Kotlin keep resolving (v1.20 used these). -->
+    <color name="text_accent">@color/brand_primary_container</color>
+    <color name="status_ok">@color/status_green</color>
+    <color name="status_warn">@color/status_amber</color>
+    <color name="status_bad">@color/status_red</color>
 </resources>
-

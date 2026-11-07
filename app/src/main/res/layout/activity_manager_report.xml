@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Manager report. Warm Clinical Sanguine restyle: crimson title, summary in a white card, primary export. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp">
+        android:orientation="vertical" android:padding="16dp">
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/report_title" android:textSize="20sp"
-            android:textStyle="bold" android:textColor="@color/text_accent" />
+            android:text="@string/report_title"
+            android:textAppearance="@style/TextAppearance.Blood.Title"
+            android:textColor="@color/text_accent" />
 
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/report_summary" android:textSize="14sp"
-            android:textColor="@color/text_secondary" android:layout_marginTop="8dp" />
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Blood.Card"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="@string/report_summary" android:textSize="14sp"
+                android:textColor="@color/text_secondary" android:padding="16dp" />
+        </com.google.android.material.card.MaterialCardView>
 
         <Button android:id="@+id/btnExportCsv"
             android:layout_width="match_parent" android:layout_height="wrap_content"

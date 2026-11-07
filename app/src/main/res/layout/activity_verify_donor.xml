@@ -1,16 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Verify a donor (manager only). Warm Clinical Sanguine restyle (2026-11-07).
+     Status pill: Kotlin sets the text per state; the layout gives it a neutral
+     pill shell (bg_pill_grey). -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
 
         <TextView android:id="@+id/tvVerifyName" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:textSize="24sp" android:textStyle="bold"
-            android:textColor="@color/text_accent" />
+            android:textColor="@color/brand_primary" />
 
-        <TextView android:id="@+id/tvVerifyStatus" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:textSize="16sp"
-            android:layout_marginTop="10dp" android:textColor="@color/text_secondary" />
+        <TextView android:id="@+id/tvVerifyStatus" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold"
+            android:background="@drawable/bg_pill_grey"
+            android:paddingTop="8dp" android:paddingBottom="8dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:layout_marginTop="12dp" android:textColor="@color/text_secondary" />
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="@string/verify_note_hint" android:textSize="13sp"
@@ -24,6 +31,6 @@
             android:layout_marginBottom="8dp" />
         <Button android:id="@+id/btnReject" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="@string/label_verify_reject"
-            style="?attr/materialButtonOutlinedStyle" />
+            style="@style/Widget.Blood.Button.Danger" />
     </LinearLayout>
 </ScrollView>

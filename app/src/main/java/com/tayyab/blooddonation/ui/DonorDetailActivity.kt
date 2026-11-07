@@ -225,6 +225,9 @@ class DonorDetailActivity : AppCompatActivity() {
         val tv = findViewById<TextView>(R.id.tvDetailEligibility)
         tv.text = (if (eligible) "✓ " else "✗ ") + reason
         tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+        tv.setBackgroundResource(
+            if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
+        )
 
         // Phase 3: donor verification status (set by a manager) and a manager-only
         // action to change it. The badge uses the same isDonorVerified() rule the
@@ -235,9 +238,11 @@ class DonorDetailActivity : AppCompatActivity() {
         if (verified) {
             tvVerified.text = getString(R.string.verify_badge)
             tvVerified.setTextColor(getColor(R.color.status_ok))
+            tvVerified.setBackgroundResource(R.drawable.bg_pill_green)
         } else {
             tvVerified.text = getString(R.string.verify_not_verified)
             tvVerified.setTextColor(getColor(R.color.text_secondary))
+            tvVerified.setBackgroundResource(R.drawable.bg_pill_grey)
         }
         val btnVerify = findViewById<Button>(R.id.btnVerify)
         if (Session.isManager) {

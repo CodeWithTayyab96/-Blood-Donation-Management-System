@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Blood stock: 8 group cards in a 2-column grid (GridLayoutManager set in StockActivity). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="Units available per blood group" android:padding="14dp"
-        android:textSize="16sp" android:textStyle="bold" />
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/warm_background">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Blood Stock" android:textAppearance="@style/TextAppearance.Blood.Headline"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Units available per blood group"
+        android:textAppearance="@style/TextAppearance.Blood.Secondary"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+        android:layout_marginTop="2dp" android:layout_marginBottom="8dp" />
     <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvStock"
-        android:layout_width="match_parent" android:layout_height="match_parent" />
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:clipToPadding="false" android:padding="10dp" />
 
     <!-- In-flight sync indicator: shown while stock is pulled. -->
     <LinearLayout android:id="@+id/syncRow"

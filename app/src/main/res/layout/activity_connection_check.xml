@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Connection check. Warm Clinical Sanguine restyle (2026-11-07). -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
 
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Connection check" android:textSize="18sp" android:textStyle="bold"
-            android:textColor="@color/text_accent" />
+            android:text="Connection check" android:textSize="22sp" android:textStyle="bold"
+            android:textColor="@color/on_surface" />
 
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Five checks, in order. The first one that fails is the reason the app looks empty or says it cannot reach the server."
@@ -21,11 +23,12 @@
             android:layout_marginTop="12dp">
             <ProgressBar android:id="@+id/progressSync"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true"
+                android:indeterminateTint="@color/brand_primary_container" />
             <TextView android:id="@+id/syncLabel"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginStart="8dp" android:textSize="14sp"
-                android:textColor="?android:textColorSecondary" />
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
 
         <Button android:id="@+id/btnRunChecks"
@@ -34,8 +37,9 @@
 
         <TextView android:id="@+id/tvChecks"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textSize="14sp" android:textColor="@color/text_secondary"
+            android:textSize="14sp" android:textColor="@color/on_surface"
             android:lineSpacingExtra="6dp" android:layout_marginTop="16dp"
+            android:background="@drawable/bg_input" android:padding="16dp"
             android:textIsSelectable="true" />
     </LinearLayout>
 </ScrollView>

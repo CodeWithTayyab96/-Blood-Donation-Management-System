@@ -1,28 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Request row: group badge, patient, meta, status pill (background + colour set in RequestAdapter). -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Widget.Blood.Card"
     android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:layout_margin="8dp" app:cardCornerRadius="10dp" app:cardElevation="3dp">
+    android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+    android:layout_marginTop="6dp" android:layout_marginBottom="6dp">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="horizontal" android:padding="12dp" android:gravity="center_vertical">
-        <TextView android:id="@+id/tvReqGroup" android:layout_width="52dp" android:layout_height="52dp"
-            android:background="@drawable/bg_group_circle" android:gravity="center"
-            android:textColor="@color/white" android:textSize="17sp" android:textStyle="bold" />
-        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
-            <TextView android:id="@+id/tvReqPatient" android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:textSize="17sp" android:textStyle="bold" />
-            <TextView android:id="@+id/tvReqMeta" android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:textSize="13sp" android:textColor="@color/text_secondary" />
-            <TextView android:id="@+id/tvReqStatus" android:layout_width="wrap_content"
-                android:layout_height="wrap_content" android:textSize="13sp" android:textStyle="bold" />
-            <!-- P2P: only shown in "My requests", and only while the request
-                 is still open (see RequestAdapter). -->
-            <Button android:id="@+id/btnCancelRequest" android:layout_width="wrap_content"
-                android:layout_height="36dp" android:minWidth="0dp" android:minHeight="0dp"
-                android:text="Cancel request" android:textSize="12sp"
-                android:visibility="gone" android:layout_marginTop="6dp" />
+        android:orientation="vertical" android:padding="16dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/tvReqGroup" android:layout_width="52dp" android:layout_height="52dp"
+                android:background="@drawable/bg_group_circle" android:gravity="center"
+                android:textColor="@color/white" android:textSize="17sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
+                <TextView android:id="@+id/tvReqPatient" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="17sp" android:textStyle="bold"
+                    android:textColor="@color/on_surface" />
+                <TextView android:id="@+id/tvReqMeta" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:textSize="13sp"
+                    android:textColor="@color/text_secondary" android:layout_marginTop="2dp" />
+            </LinearLayout>
         </LinearLayout>
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="@color/card_border" android:layout_marginTop="12dp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:layout_marginTop="12dp">
+            <TextView android:id="@+id/tvReqStatus" android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill_rose"
+                android:textSize="12sp" android:textStyle="bold"
+                android:textColor="@color/brand_primary_container"
+                android:paddingTop="6dp" android:paddingBottom="6dp"
+                android:paddingStart="12dp" android:paddingEnd="12dp" />
+            <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="View details" android:textSize="13sp" android:textStyle="bold"
+                android:textColor="@color/brand_primary_container" />
+        </LinearLayout>
+        <!-- P2P: only shown in "My requests", and only while the request
+             is still open (see RequestAdapter). -->
+        <Button android:id="@+id/btnCancelRequest" android:layout_width="wrap_content"
+            android:layout_height="36dp" android:minWidth="0dp" android:minHeight="0dp"
+            android:text="Cancel request" android:textSize="12sp"
+            android:textColor="@color/status_bad"
+            android:visibility="gone" android:layout_marginTop="10dp"
+            style="?attr/materialButtonOutlinedStyle" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

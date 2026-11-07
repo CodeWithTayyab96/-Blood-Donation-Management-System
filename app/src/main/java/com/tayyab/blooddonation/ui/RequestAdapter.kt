@@ -46,6 +46,7 @@ class RequestAdapter(
         h.meta.text = "$city${r.hospital} • ${r.unitsNeeded} unit(s) • ${r.urgency}"
         h.status.text = r.status
         h.status.setTextColor(statusColor(h, r.status))
+        h.status.setBackgroundResource(statusPill(r.status))
 
         if (showCancel && isOpen(r.status)) {
             h.cancel.visibility = View.VISIBLE
@@ -70,6 +71,13 @@ class RequestAdapter(
             else -> R.color.status_bad
         }
     )
+
+    private fun statusPill(status: String): Int = when (status) {
+        "Fulfilled" -> R.drawable.bg_pill_green
+        "Matched" -> R.drawable.bg_pill_amber
+        "Cancelled", "Expired" -> R.drawable.bg_pill_grey
+        else -> R.drawable.bg_pill_rose
+    }
 
     fun submit(list: List<BloodRequest>) {
         items = list

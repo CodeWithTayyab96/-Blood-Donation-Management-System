@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.work.BackoffPolicy
+import com.google.android.material.card.MaterialCardView
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -140,6 +141,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, StockActivity::class.java))
         }
         findViewById<Button>(R.id.btnRequests).setOnClickListener {
+            startActivity(Intent(this, RequestListActivity::class.java))
+        }
+        // Urgent banner: tap opens the requests list.
+        findViewById<MaterialCardView>(R.id.cardUrgentBanner).setOnClickListener {
             startActivity(Intent(this, RequestListActivity::class.java))
         }
         // P2P: moderation (reports and offers) is a manager-only screen.
@@ -396,8 +401,17 @@ class MainActivity : AppCompatActivity() {
     private fun renderFromLocal() {
         findViewById<TextView>(R.id.tvStatDonors).text = db.donorCount().toString()
         findViewById<TextView>(R.id.tvStatUnits).text = db.totalUnitsInStock().toString()
-        findViewById<TextView>(R.id.tvStatRequests).text = db.pendingRequestCount().toString()
+        val pending = db.pendingRequestCount()
+        findViewById<TextView>(R.id.tvStatRequests).text = pending.toString()
         findViewById<TextView>(R.id.tvStatMonth).text = db.donationsThisMonth().toString()
+        // Urgent banner: live pending count only, shown when there is work to do.
+        val banner = findViewById<MaterialCardView>(R.id.cardUrgentBanner)
+        banner.visibility = if (pending > 0) View.VISIBLE else View.GONE
+        if (pending > 0) {
+            findViewById<TextView>(R.id.tvUrgentBanner).text =
+                if (pending == 1) "Urgent: 1 pending blood request"
+                else "Urgent: $pending pending blood requests"
+        }
         val stock = db.stockLevels()
         findViewById<TextView>(R.id.tvStockSummary).text =
             BloodCompatibility.ALL_GROUPS.joinToString("\n") { g -> "$g : ${stock[g] ?: 0} unit(s)" }

@@ -24,6 +24,6 @@ class DonationAdapter(private val items: List<Donation>) :
 
     override fun onBindViewHolder(h: VH, pos: Int) {
         val d = items[pos]
-        h.row.text = "🩸 ${d.date} — ${d.units} unit(s) of ${d.bloodGroup}"
+        h.row.text = "${d.date} — ${d.units} unit(s) of ${d.bloodGroup}"
     }
 }

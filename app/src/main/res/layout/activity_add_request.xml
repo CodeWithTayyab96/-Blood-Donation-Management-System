@@ -1,22 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- New blood request. Warm Clinical Sanguine restyle (2026-11-07). -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/warm_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:padding="18dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="New Request" android:textSize="22sp"
+            android:textStyle="bold" android:textColor="@color/on_surface" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Request blood for a patient in need."
+            android:textSize="14sp" android:textColor="@color/text_secondary"
+            android:layout_marginTop="4dp" android:layout_marginBottom="16dp" />
         <EditText android:id="@+id/etPatient" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:hint="Patient name *" android:inputType="textPersonName" />
         <EditText android:id="@+id/etHospital" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:hint="Hospital *" android:inputType="text" />
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blood group needed" android:layout_marginTop="10dp" />
+            android:hint="Hospital *" android:inputType="text"
+            android:layout_marginTop="10dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blood group needed"
+            android:textAppearance="@style/TextAppearance.Blood.Label"
+            android:layout_marginTop="14dp" android:layout_marginBottom="6dp" />
         <Spinner android:id="@+id/spReqGroup" android:layout_width="match_parent" android:layout_height="wrap_content" />
         <EditText android:id="@+id/etUnits" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:hint="Units needed *" android:inputType="number" />
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Urgency" android:layout_marginTop="10dp" />
+            android:hint="Units needed *" android:inputType="number"
+            android:layout_marginTop="10dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Urgency"
+            android:textAppearance="@style/TextAppearance.Blood.Label"
+            android:layout_marginTop="14dp" android:layout_marginBottom="6dp" />
         <Spinner android:id="@+id/spUrgency" android:layout_width="match_parent" android:layout_height="wrap_content" />
         <EditText android:id="@+id/etContact" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:hint="Contact number *" android:inputType="phone" />
+            android:hint="Contact number *" android:inputType="phone"
+            android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnSaveRequest" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/label_save_request" android:layout_marginTop="16dp" />
+            android:text="@string/label_save_request" android:layout_marginTop="20dp" />
 
         <!-- In-flight sync indicator: shown while the request is saved to Supabase. -->
         <LinearLayout android:id="@+id/syncRow"
@@ -25,11 +41,12 @@
             android:padding="8dp" android:visibility="gone">
             <ProgressBar android:id="@+id/progressSync"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                style="?android:attr/progressBarStyleSmall" android:indeterminate="true" />
+                style="?android:attr/progressBarStyleSmall" android:indeterminate="true"
+                android:indeterminateTint="@color/brand_primary_container" />
             <TextView android:id="@+id/syncLabel"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginStart="8dp" android:textSize="14sp"
-                android:textColor="?android:textColorSecondary" />
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>
