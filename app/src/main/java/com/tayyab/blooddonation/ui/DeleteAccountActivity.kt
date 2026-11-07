@@ -10,6 +10,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.AccountDeletion
 import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.DonationReminderScheduler
 import com.tayyab.blooddonation.util.Session
 
 /**
@@ -106,6 +107,9 @@ class DeleteAccountActivity : AppCompatActivity() {
      * login screen.
      */
     private fun finishDeletion() {
+        // Stop the one-off eligibility reminder: the account, and its local
+        // donation history, are about to be gone.
+        DonationReminderScheduler.cancel(this)
         Background.run {
             runCatching { DbHelper(this@DeleteAccountActivity).wipeLocalData() }
             runOnUiThread {

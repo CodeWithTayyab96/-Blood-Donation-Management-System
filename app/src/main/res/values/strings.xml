@@ -110,4 +110,38 @@
 
     <string name="fact_today">Today</string>
     <string name="fact_card_title">Did you know?</string>
+
+    <!-- Phase 1: contact actions (Call / WhatsApp) -->
+    <string name="label_call">Call</string>
+    <string name="label_whatsapp">WhatsApp</string>
+    <string name="msg_whatsapp_not_installed">WhatsApp is not installed on this phone.</string>
+    <string name="msg_no_dialer">No phone app is available on this device.</string>
+    <string name="msg_no_browser">No app can open this link.</string>
+    <string name="msg_no_share_app">No app is available to share this request.</string>
+
+    <!-- Phase 1: share a request -->
+    <string name="label_share">Share request</string>
+    <string name="share_chooser_title">Share this request</string>
+    <string name="share_request_heading">Blood needed — please share</string>
+    <string name="share_request_group">Blood group: %1$s</string>
+    <string name="share_request_units">Units needed: %1$d</string>
+    <string name="share_request_hospital">Hospital: %1$s</string>
+    <string name="share_request_city">City: %1$s</string>
+    <string name="share_request_contact">Contact: %1$s</string>
+    <string name="share_request_footer">Shared from Blood Donation</string>
+
+    <!-- Phase 1: language -->
+    <string name="settings_language_heading">Language</string>
+    <string name="settings_language_summary">Applies to the whole app. Urdu also mirrors the layout for right-to-left reading.</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_urdu">اردو</string>
+
+    <!-- Phase 1: donation reminder -->
+    <string name="settings_reminder_heading">Donation reminder</string>
+    <string name="settings_reminder_summary">One reminder on the day you can donate again, 90 days after a recorded donation. Turn notifications on in Android settings to receive it.</string>
+    <string name="reminder_channel_name">Donation reminders</string>
+    <string name="reminder_channel_description">One reminder on the day you become eligible to donate again.</string>
+    <string name="reminder_notification_title">You can donate again</string>
+    <string name="reminder_notification_body">It has been 90 days since your last donation. If you are well, a licensed blood bank or hospital can check whether you can donate today.</string>
+    <string name="notification_permission_message">This app can tell you when someone needs blood your group can give, and remind you on the day you can donate again. Urgent requests are checked about every 15 minutes while you are online, and are never announced twice. You can turn this off at any time in Android settings.</string>
 </resources>

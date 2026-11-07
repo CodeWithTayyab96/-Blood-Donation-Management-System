@@ -9,6 +9,15 @@
          notifications are silently dropped, so MainActivity asks for it. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Android 11+ package visibility: the WhatsApp button checks whether the
+         app is installed before opening a wa.me link, so the lookup has to be
+         declared here. ACTION_DIAL needs no such declaration and no CALL_PHONE
+         permission. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <!--
         allowBackup is OFF: the session store holds Supabase refresh tokens and
         the offline password hash, and a cloud backup or adb backup would copy

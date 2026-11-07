@@ -18,6 +18,7 @@ import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.DonationReminderScheduler
 import com.tayyab.blooddonation.util.FcmPush
 import com.tayyab.blooddonation.util.MotivationFacts
 import com.tayyab.blooddonation.util.RequestAlertScheduler
@@ -83,6 +84,9 @@ class UserHomeActivity : AppCompatActivity() {
         if (Session.donorId != null) {
             RequestAlertScheduler.schedule(this)
             askForNotificationPermission()
+            // Recompute the one-off 90-day reminder from the local donation
+            // history, so a reinstall or a missed day cannot leave a stale job.
+            DonationReminderScheduler.rescheduleForDonor(this, Session.donorId)
         }
 
         findViewById<TextView>(R.id.tvUserHomeWho).text = Session.label()
@@ -130,12 +134,7 @@ class UserHomeActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Allow blood request alerts?")
-            .setMessage(
-                "This app can tell you when someone needs blood your group can give. " +
-                    "It checks about every 15 minutes while you are online, and never " +
-                    "notifies you twice for the same request.\n\n" +
-                    "You can turn this off at any time in Android settings."
-            )
+            .setMessage(getString(R.string.notification_permission_message))
             .setPositiveButton("Allow") { _, _ ->
                 RequestAlerts.markPermissionAsked(this)
                 requestPermissions(
@@ -240,6 +239,9 @@ class UserHomeActivity : AppCompatActivity() {
                 // context the token delete needs (the row is keyed by Auth
                 // user id).
                 RequestAlertScheduler.cancel(this)
+                // A signed-out phone must not wake up for somebody else's
+                // eligibility reminder.
+                DonationReminderScheduler.cancel(this)
                 Background.run { FcmPush.forgetToken(applicationContext) }
                 Session.logout(this)
                 startActivity(Intent(this, LoginActivity::class.java))

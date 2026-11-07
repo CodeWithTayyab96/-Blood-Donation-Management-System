@@ -25,6 +25,27 @@
             android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginTop="10dp"
             android:text="@string/safety_request_detail" />
 
+        <!-- Only shown when this account is allowed to see a usable contact
+             number. Uses start/end so the row mirrors in Urdu (RTL). -->
+        <LinearLayout android:id="@+id/contactActions"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginTop="12dp"
+            android:visibility="gone">
+            <Button android:id="@+id/btnCall"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="@string/label_call"
+                style="?attr/materialButtonOutlinedStyle" />
+            <Button android:id="@+id/btnWhatsApp"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_marginStart="8dp"
+                android:text="@string/label_whatsapp"
+                style="?attr/materialButtonOutlinedStyle" />
+        </LinearLayout>
+
+        <Button android:id="@+id/btnShare" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/label_share" android:layout_marginTop="8dp"
+            style="?attr/materialButtonOutlinedStyle" />
+
         <Button android:id="@+id/btnFulfill" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_fulfill_stock" android:layout_marginTop="14dp" />
 

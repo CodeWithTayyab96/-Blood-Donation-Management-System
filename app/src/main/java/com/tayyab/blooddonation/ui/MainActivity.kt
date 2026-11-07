@@ -23,6 +23,7 @@ import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.AiCoach
 import com.tayyab.blooddonation.util.AiRules
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.DonationReminderScheduler
 import com.tayyab.blooddonation.util.RequestAlertScheduler
 import com.tayyab.blooddonation.util.RequestAlertWorker
 import com.tayyab.blooddonation.util.RequestAlerts
@@ -94,7 +95,11 @@ class MainActivity : AppCompatActivity() {
         if (Session.role == Session.ROLE_DONOR && Session.donorId != null) {
             RequestAlertScheduler.schedule(this)
             askForNotificationPermission()
+            DonationReminderScheduler.rescheduleForDonor(this, Session.donorId)
         } else {
+            // Only the request poll is cancelled here: this is the manager
+            // dashboard. The eligibility reminder is cancelled on logout and
+            // account deletion, not when a manager opens their own home.
             RequestAlertScheduler.cancel(this)
         }
 
@@ -162,6 +167,7 @@ class MainActivity : AppCompatActivity() {
             // because clearing it loses the sign-in context the delete needs
             // (the row is keyed by the Auth user id being signed out).
             RequestAlertScheduler.cancel(this)
+            DonationReminderScheduler.cancel(this)
             val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
             val label = findViewById<android.widget.TextView>(R.id.syncLabel)
             spinner.visibility = android.view.View.VISIBLE
@@ -199,12 +205,7 @@ class MainActivity : AppCompatActivity() {
 
         AlertDialog.Builder(this)
             .setTitle("Allow blood request alerts?")
-            .setMessage(
-                "This app can tell you when someone needs blood your group can give. " +
-                    "It checks about every 15 minutes while you are online, and never " +
-                    "notifies you twice for the same request.\n\n" +
-                    "You can turn this off at any time in Android settings."
-            )
+            .setMessage(getString(R.string.notification_permission_message))
             .setPositiveButton("Allow") { _, _ ->
                 RequestAlerts.markPermissionAsked(this)
                 requestPermissions(

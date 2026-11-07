@@ -7,10 +7,12 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
+import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import com.tayyab.blooddonation.R
+import com.tayyab.blooddonation.util.LanguagePrefs
 import com.tayyab.blooddonation.util.TipSchedule
 import com.tayyab.blooddonation.util.TipScheduler
 
@@ -34,6 +36,22 @@ class SettingsActivity : AppCompatActivity() {
             TipSchedule.setEnabled(this, checked)
             if (checked) TipScheduler.schedule(this) else TipScheduler.cancel(this)
             updateState()
+        }
+
+        // Per-app language. AppCompatDelegate persists the choice and recreates
+        // the activities, so set the checked state first and attach the
+        // listener afterwards — exactly like the tips switch above.
+        val rgLanguage = findViewById<RadioGroup>(R.id.rgLanguage)
+        val saved = LanguagePrefs.savedTag(this)
+        rgLanguage.check(
+            if (saved == LanguagePrefs.URDU) R.id.rbUrdu else R.id.rbEnglish
+        )
+        rgLanguage.setOnCheckedChangeListener { _, checkedId ->
+            val tag = if (checkedId == R.id.rbUrdu) LanguagePrefs.URDU
+                      else LanguagePrefs.ENGLISH
+            if (tag != LanguagePrefs.savedTag(this)) {
+                LanguagePrefs.apply(this, tag)
+            }
         }
 
         findViewById<Button>(R.id.btnConnectionCheck).setOnClickListener {

@@ -49,6 +49,24 @@ offline fallback — see "Supabase mode (v1.4)" below. Version 1.2
   people they may have helped). All computed locally from the donation history.
 - **Optional daily tip** — a practical, non-medical tip, off by default, at
   most one a day and never at night. Toggle it in **Settings**.
+- **Call / WhatsApp** — both contact screens show a **Call** (ACTION_DIAL, no
+  CALL_PHONE permission) and a **WhatsApp** button when a usable number is
+  available. Pakistani numbers are normalised to `+92…` by one tested helper,
+  and the buttons disappear when the number is missing or this account is not
+  allowed to see it. A phone without WhatsApp gets a clear message instead of
+  a dead button.
+- **Share a request** — a **Share request** button sends the blood group,
+  units, hospital, city, contact (only when visible) and a short app mention
+  through ACTION_SEND. The text is built by a pure, tested function; all
+  wording is in `strings.xml`.
+- **English / اردو** — Settings → **Language** switches the whole app with
+  `AppCompatDelegate.setApplicationLocales`. `values-ur/strings.xml` translates
+  every string; the choice is persisted and Urdu mirrors the layout (RTL).
+- **Donation reminder** — one WorkManager notification on the day a donor
+  becomes eligible again (the same 90-day rule as the eligibility checker).
+  It is rescheduled whenever a donation is recorded and cancelled on logout or
+  account deletion. Uses its own notification channel and honours
+  POST_NOTIFICATIONS on Android 13+.
 
 ## Urgent request alerts
 
@@ -147,6 +165,32 @@ client secrets and no new app dependency).
   personal data) and stores them; every other user that day is served from the
   table for free. No scheduled job. The model is `openrouter/free` by default,
   with a fallback list of other `:free` models.
+
+## Phase 1 — quick wins (contacts, sharing, Urdu, reminder)
+
+**SQL files to run in Supabase: none.** Phase 1 adds no tables, columns or RLS
+policies. It only reads the contact numbers the existing `donor_phone` and
+`request_contact` RPCs already gate, so a build without an anon key still works
+fully offline. There is no SQLite schema change either: `DB_VERSION` stays at 8.
+
+- **Call** opens the dialler with `tel:+92…` (ACTION_DIAL, no CALL_PHONE
+  permission). **WhatsApp** opens `https://wa.me/<number>`; the two package
+  names are declared as `<queries>` for Android 11+ package visibility, and a
+  phone without either app gets a plain message. Both buttons are hidden when
+  `PhoneNumber.normalize()` rejects the stored value.
+- **Share request** never sends a contact the account cannot see: the RLS-gated
+  `contact` column is blank for everyone except the requester and a manager,
+  and a blank line is dropped from the share text.
+- **Language** lives in Settings. AppCompat's per-app locales persist the
+  choice across restarts; Urdu is right-to-left and the touched layouts use
+  `start`/`end` margins and padding, never `left`/`right`.
+- **Donation reminder** is a unique one-time WorkManager job
+  (`donation-eligibility-reminder`) due at 09:00 on the 90th day after the last
+  recorded donation. It reads only local SQLite, carries a linear backoff, and
+  posts on its own `donation_reminders` channel. Both home screens already ask
+  for POST_NOTIFICATIONS on Android 13+; declining it is respected and logged.
+  The job is replaced when a donation is recorded and cancelled on logout and
+  on account deletion.
 
 ## Screenshots
 

@@ -22,6 +22,23 @@
             android:textSize="15sp" android:lineSpacingMultiplier="1.4" android:layout_marginTop="8dp" />
         <TextView android:id="@+id/tvDetailEligibility" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="10dp" />
+
+        <!-- Hidden unless the local row holds a number this account may see. -->
+        <LinearLayout android:id="@+id/contactActions"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginTop="12dp"
+            android:visibility="gone">
+            <Button android:id="@+id/btnCall"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="@string/label_call"
+                style="?attr/materialButtonOutlinedStyle" />
+            <Button android:id="@+id/btnWhatsApp"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:layout_marginStart="8dp"
+                android:text="@string/label_whatsapp"
+                style="?attr/materialButtonOutlinedStyle" />
+        </LinearLayout>
+
         <Button android:id="@+id/btnRecordDonation" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_record_donation" android:layout_marginTop="14dp" />
         <Button android:id="@+id/btnDeleteDonor" android:layout_width="match_parent" android:layout_height="wrap_content"

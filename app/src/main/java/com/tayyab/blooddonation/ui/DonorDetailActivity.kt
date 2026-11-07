@@ -14,6 +14,8 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.ContactActions
+import com.tayyab.blooddonation.util.DonationReminderScheduler
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 
@@ -64,6 +66,13 @@ class DonorDetailActivity : AppCompatActivity() {
                     } else {
                         db.recordDonation(donor, 1)
                     }
+                    // A recorded donation moves the 90-day eligible date, so
+                    // replace the pending one-time reminder (local-only work).
+                    if (Session.donorId == donorId) {
+                        DonationReminderScheduler.rescheduleForDonor(
+                            this@DonorDetailActivity, donorId
+                        )
+                    }
                     runOnUiThread {
                         if (isFinishing || isDestroyed) return@runOnUiThread
                         spinner.visibility = View.GONE
@@ -97,6 +106,9 @@ class DonorDetailActivity : AppCompatActivity() {
                 }
             } else {
                 db.recordDonation(donor, 1)
+                if (Session.donorId == donorId) {
+                    DonationReminderScheduler.rescheduleForDonor(this, donorId)
+                }
                 Toast.makeText(this, "Thank you for donating! 1 unit of ${donor.bloodGroup} added to stock.", Toast.LENGTH_LONG).show()
                 refresh()
             }
@@ -176,6 +188,15 @@ class DonorDetailActivity : AppCompatActivity() {
         val tv = findViewById<TextView>(R.id.tvDetailEligibility)
         tv.text = (if (eligible) "✓ " else "✗ ") + reason
         tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+
+        // A blank phone means "not yours to see" (RLS), so both buttons hide.
+        ContactActions.bind(
+            this,
+            findViewById<View>(R.id.contactActions),
+            findViewById<Button>(R.id.btnCall),
+            findViewById<Button>(R.id.btnWhatsApp),
+            donor.phone
+        )
 
         val history = db.donationsForDonor(donorId)
         val rv = findViewById<RecyclerView>(R.id.rvHistory)

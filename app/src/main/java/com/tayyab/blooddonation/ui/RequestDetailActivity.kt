@@ -20,8 +20,10 @@ import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
 import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.BloodCompatibility
+import com.tayyab.blooddonation.util.ContactActions
 import com.tayyab.blooddonation.util.P2pRules
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.ShareText
 import com.tayyab.blooddonation.util.SupabaseClient
 import com.tayyab.blooddonation.util.SupabaseSync
 import com.tayyab.blooddonation.ui.UISync
@@ -150,7 +152,37 @@ class RequestDetailActivity : AppCompatActivity() {
     }
 
         findViewById<Button>(R.id.btnReport).setOnClickListener { showReportDialog() }
+        findViewById<Button>(R.id.btnShare).setOnClickListener { shareRequest() }
         findViewById<Button>(R.id.btnFulfill).isEnabled = true
+    }
+
+    /**
+     * ACTION_SEND with the facts a helper needs to decide whether they can
+     * donate. Every label is a string resource; [ShareText] only decides the
+     * order and drops the lines this account may not see.
+     */
+    private fun shareRequest() {
+        val req = db.getRequest(requestId) ?: return
+        val cityLine = req.city.takeIf { it.isNotBlank() }?.let {
+            getString(R.string.share_request_city, it)
+        }
+        // A blank contact means RLS did not reveal it to this account. Never
+        // put "Contact: " or a placeholder into a message that leaves the phone.
+        val contactLine = req.contact.takeIf { it.isNotBlank() }?.let {
+            getString(R.string.share_request_contact, it)
+        }
+        ContactActions.share(
+            this,
+            ShareText.requestText(
+                heading = getString(R.string.share_request_heading),
+                group = getString(R.string.share_request_group, req.bloodGroup),
+                units = getString(R.string.share_request_units, req.unitsNeeded),
+                hospital = getString(R.string.share_request_hospital, req.hospital),
+                city = cityLine,
+                contact = contactLine,
+                footer = getString(R.string.share_request_footer)
+            )
+        )
     }
 
     override fun onResume() {
@@ -199,6 +231,16 @@ class RequestDetailActivity : AppCompatActivity() {
             neededBy +
             "Status: ${req.status}\n" +
             "In stock (${req.bloodGroup}): ${db.stockLevels()[req.bloodGroup] ?: 0} unit(s)"
+
+        // Re-bound on every render: a sync can arrive without a contact this
+        // account is allowed to see, in which case both buttons disappear.
+        ContactActions.bind(
+            this,
+            findViewById<View>(R.id.contactActions),
+            findViewById<Button>(R.id.btnCall),
+            findViewById<Button>(R.id.btnWhatsApp),
+            req.contact
+        )
 
         val compatibleGroups = BloodCompatibility.donorGroupsFor(req.bloodGroup)
         findViewById<TextView>(R.id.tvCompatNote).text =

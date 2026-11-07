@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Urdu (Pakistan) translation of EVERY string in values/strings.xml.
+    Placeholders such as %1$s / %1$d are intentionally kept: they are filled
+    from data at runtime, never translated. "DELETE" stays in Latin letters
+    because the delete-account screen asks the user to type exactly that word.
+-->
+<resources>
+    <string name="app_name">خون کا عطیہ</string>
+
+    <string name="label_sign_in">سائن ان کریں</string>
+    <string name="label_sign_in_subtitle">جاری رکھنے کے لیے سائن ان کریں</string>
+    <string name="label_register_donor">عطیہ دہندہ کے طور پر رجسٹر ہوں</string>
+    <string name="label_forgot_password">پاس ورڈ بھول گئے؟</string>
+    <string name="label_send_code">مجھے کوڈ بھیجیں</string>
+    <string name="label_set_password">نیا پاس ورڈ سیٹ کریں</string>
+    <string name="label_resend_code">کوڈ دوبارہ بھیجیں</string>
+    <string name="label_my_requests">میری درخواستیں</string>
+    <string name="label_browse_requests">درخواستیں اور پیشکشیں دیکھیں</string>
+    <string name="label_settings">ترتیبات</string>
+    <string name="label_log_out">لاگ آؤٹ</string>
+    <string name="label_delete_account">میرا اکاؤنٹ حذف کریں</string>
+    <string name="label_keep_account">میرا اکاؤنٹ رکھیں</string>
+    <string name="label_report_request">اس درخواست کی اطلاع دیں</string>
+    <string name="label_fulfill_stock">اسٹاک سے پوری کریں</string>
+    <string name="label_i_can_donate">میں خون دے سکتا ہوں</string>
+    <string name="label_donation_completed">عطیہ مکمل ہو گیا</string>
+    <string name="label_accept">قبول کریں</string>
+    <string name="label_decline">مسترد کریں</string>
+    <string name="label_record_donation">عطیہ درج کریں (1 یونٹ)</string>
+    <string name="label_delete_donor">عطیہ دہندہ حذف کریں</string>
+    <string name="label_save_donor">عطیہ دہندہ محفوظ کریں</string>
+    <string name="label_save_request">درخواست محفوظ کریں</string>
+    <string name="label_post_request">درخواست شائع کریں</string>
+    <string name="label_browse">دیکھیں</string>
+    <string name="label_need_blood">مجھے خون چاہیے — درخواست دیں</string>
+    <string name="label_my_profile">میری پروفائل</string>
+    <string name="label_user_settings">ترتیبات</string>
+    <string name="label_user_logout">لاگ آؤٹ</string>
+    <string name="label_open_android_notification_settings">اینڈرائیڈ نوٹیفکیشن ترتیبات کھولیں</string>
+    <string name="label_run_connection_check">کنکشن چیک چلائیں</string>
+    <string name="label_check_for_updates">اپ ڈیٹس چیک کریں</string>
+    <string name="label_download_install">ڈاؤن لوڈ اور انسٹال کریں</string>
+    <string name="label_later">بعد میں</string>
+    <string name="label_cancel">منسوخ کریں</string>
+    <string name="label_delete">حذف کریں</string>
+    <string name="label_close">بند کریں</string>
+    <string name="label_back_to_login">سائن ان پر واپس جائیں</string>
+    <string name="label_no">نہیں</string>
+    <string name="label_yes">ہاں</string>
+    <string name="label_ok">ٹھیک ہے</string>
+    <string name="label_retry">دوبارہ کوشش کریں</string>
+    <string name="label_i_want_to_donate">میں خون دینا چاہتا ہوں</string>
+    <string name="label_ai_helper">کیا میں خون دے سکتا ہوں؟ (اے آئی مددگار)</string>
+    <string name="label_ai_helper_home">کیا میں خون دے سکتا ہوں؟ (اے آئی مددگار)</string>
+    <string name="label_tip_switch">روزانہ عطیہ ٹپ</string>
+    <string name="label_btn_check_requests_debug">درخواستیں ابھی چیک کریں (صرف ڈیبگ)</string>
+    <string name="label_send_verification">تصدیق بھیجیں</string>
+    <string name="label_verify_code">کوڈ کی تصدیق کریں</string>
+    <string name="label_monitor">نگرانی</string>
+    <string name="label_add_donor">عطیہ دہندہ شامل کریں</string>
+    <string name="label_add_request">درخواست شامل کریں</string>
+
+    <string name="safety_request_detail">حفاظت: یہ ایپ بلڈ گروپ، شناخت یا صحت کی تصدیق نہیں کر سکتی۔ یہاں سب کچھ خود بتایا گیا ہے۔ خون کے لیے کبھی پیسے نہ دیں اور صرف ہسپتال یا رجسٹرڈ بلڈ بینک میں ملیں۔</string>
+    <string name="hint_register_phone">فون نمبر *</string>
+    <string name="safety_ask_donate_top">⚠️ صرف عمومی معلومات — طبی مشورہ نہیں۔ ہر بلڈ بینک کے اپنے اصول ہیں اور صرف ان کی صحت کی جانچ فیصلہ کر سکتی ہے۔ یہاں اپنا فون نمبر یا مریض کے نام جیسی ذاتی معلومات نہ بھیجیں۔</string>
+    <string name="safety_ask_donate_bottom">عطیہ صرف لائسنس یافتہ بلڈ بینک یا ہسپتال میں ہونا چاہیے۔ اس فون سے کوئی ذاتی معلومات نہیں جاتی — ایپ آپ کا نام، فون نمبر، مریض کے نام یا عطیہ کی تاریخ نہیں بھیجتی، اور اے آئی کا جواب صرف عمومی معلومات ہے۔</string>
+    <string name="safety_create_request">درخواستیں سائن ان عطیہ دہندگان کے لیے عوامی ہیں۔ آپ کا رابطہ نمبر انہیں دکھایا جاتا ہے تاکہ وہ آپ سے رابطہ کر سکیں۔ صرف وہی شیئر کریں جس سے آپ مطمئن ہوں۔</string>
+    <string name="safety_profile_availability">دستیاب عطیہ دہندگان قریبی درخواستوں پر مدد کی پیشکش کر سکتے ہیں۔ آپ کا فون نمبر درخواست دہندہ کو صرف دونوں کی قبولیت کے بعد دیا جاتا ہے۔</string>
+    <string name="safety_login_subtitle">اپنے اکاؤنٹ کے ای میل اور پاس ورڈ سے سائن ان کریں۔ اب کوئی آف لائن ڈیمو لاگ ان نہیں ہے۔</string>
+    <string name="safety_login_secondary">مینیجر تمام عطیہ دہندگان، اسٹاک اور درخواستوں کا انتظام کر سکتے ہیں۔ عطیہ دہندگان سب دیکھ سکتے ہیں مگر صرف اپنی پروفائل اور عطیات تبدیل کر سکتے ہیں۔</string>
+
+    <string name="hint_et_confirm_delete">DELETE</string>
+    <string name="hint_forgot_password_status">اپنے اکاؤنٹ کا ای میل درج کریں، ہم آپ کو 6 ہندسوں کا کوڈ بھیجیں گے۔</string>
+    <string name="hint_forgot_password_step2">کوڈ ابھی بھیجی گئی ای میل میں ہے۔ یہ چھ ہندسوں کا ہے اور اس کی میعاد ختم ہوتی ہے۔</string>
+    <string name="hint_stock_heading">ہر بلڈ گروپ کے دستیاب یونٹ</string>
+    <string name="hint_compatible_donors">ہم آہنگ عطیہ دہندگان</string>
+    <string name="hint_donation_history">عطیہ کی تاریخ</string>
+    <string name="hint_no_history">ابھی تک کوئی عطیہ درج نہیں ہوا۔</string>
+    <string name="hint_no_history_short">ابھی تک کوئی عطیہ نہیں۔</string>
+    <string name="hint_reports_heading">اطلاعات</string>
+    <string name="hint_offers_header">مدد کی پیشکشیں</string>
+    <string name="hint_no_reports">کوئی اطلاع نہیں۔</string>
+    <string name="hint_no_reports_short">کوئی اطلاع نہیں۔</string>
+    <string name="hint_no_offers">کوئی پیشکش نہیں۔</string>
+    <string name="hint_no_offers_short">کوئی پیشکش نہیں۔</string>
+    <string name="hint_search_donors">نام یا شہر سے تلاش کریں</string>
+    <string name="hint_no_donors">کوئی عطیہ دہندہ نہیں ملا۔</string>
+    <string name="hint_no_requests">ابھی تک کوئی درخواست نہیں۔</string>
+    <string name="hint_register_heading">اپنا عطیہ دہندہ اکاؤنٹ بنائیں</string>
+    <string name="hint_register_name">پورا نام *</string>
+    <string name="hint_register_email">ای میل *</string>
+    <string name="hint_register_password">پاس ورڈ *</string>
+    <string name="hint_register_age">عمر *</string>
+    <string name="hint_register_weight">وزن (کلوگرام) *</string>
+    <string name="hint_reg_gender_short">جنس</string>
+    <string name="hint_reg_blood_group_short">بلڈ گروپ</string>
+    <string name="hint_register_city">شہر *</string>
+    <string name="hint_btn_pick_date">آخری عطیہ کی تاریخ: کبھی نہیں</string>
+    <string name="hint_login_username">ای میل یا صارف نام *</string>
+    <string name="hint_login_password">پاس ورڈ *</string>
+    <string name="safety_ask_donate_note">یہ مددگار صرف آپ کا پہلا نام، عطیات کی تعداد، آخری عطیہ کے بعد کے دن اور بلڈ گروپ کو مقامی ہجے / الفاظ کی جانچ کے لیے استعمال کرتا ہے، اور کچھ بھی اس فون پر محفوظ یا کہیں بھیجے نہیں جاتا۔</string>
+
+    <string name="settings_notifications_heading">نوٹیفکیشنز</string>
+    <string name="settings_connection_heading">کنکشن</string>
+    <string name="settings_account_heading">اکاؤنٹ</string>
+    <string name="settings_tip_summary">دن میں ایک مختصر ٹپ۔ پہلے سے بند ہے، اور آپ کبھی بھی دوبارہ بند کر سکتے ہیں۔</string>
+    <string name="settings_alert_note">فوری خون کی درخواست کے الرٹ ٹپس سے الگ ہیں اور اس سوئچ سے متاثر نہیں ہوتے۔</string>
+    <string name="settings_connection_summary">کیا یہ بلڈ ترتیب شدہ ہے، سرور قابل رسائی ہے، آپ کا سیشن درست ہے، اور ڈیٹابیس کے مددگار جواب دیتے ہیں؟ پہلی ناکامی عموماً پوری کہانی بتا دیتی ہے۔</string>
+    <string name="settings_delete_summary">آپ کی پروفائل، رابطہ نمبر، پیشکشیں اور کھلی درخواستیں حذف ہو جائیں گی اور اکاؤنٹ بند ہو جائے گا۔ یہ واپس نہیں ہو سکتا۔</string>
+
+    <string name="fact_today">آج</string>
+    <string name="fact_card_title">کیا آپ جانتے ہیں؟</string>
+
+    <!-- Phase 1: contact actions (Call / WhatsApp) -->
+    <string name="label_call">کال کریں</string>
+    <string name="label_whatsapp">واٹس ایپ</string>
+    <string name="msg_whatsapp_not_installed">اس فون پر واٹس ایپ انسٹال نہیں ہے۔</string>
+    <string name="msg_no_dialer">اس ڈیوائس پر کوئی فون ایپ دستیاب نہیں۔</string>
+    <string name="msg_no_browser">یہ لنک کھولنے کے لیے کوئی ایپ نہیں۔</string>
+    <string name="msg_no_share_app">یہ درخواست شیئر کرنے کے لیے کوئی ایپ دستیاب نہیں۔</string>
+
+    <!-- Phase 1: share a request -->
+    <string name="label_share">درخواست شیئر کریں</string>
+    <string name="share_chooser_title">یہ درخواست شیئر کریں</string>
+    <string name="share_request_heading">خون درکار ہے — براہ کرم شیئر کریں</string>
+    <string name="share_request_group">بلڈ گروپ: %1$s</string>
+    <string name="share_request_units">درکار یونٹس: %1$d</string>
+    <string name="share_request_hospital">ہسپتال: %1$s</string>
+    <string name="share_request_city">شہر: %1$s</string>
+    <string name="share_request_contact">رابطہ: %1$s</string>
+    <string name="share_request_footer">بلڈ ڈونیشن سے شیئر کیا گیا</string>
+
+    <!-- Phase 1: language -->
+    <string name="settings_language_heading">زبان</string>
+    <string name="settings_language_summary">پوری ایپ پر لاگو ہوتا ہے۔ اردو میں ترتیب بھی دائیں سے بائیں ہو جاتی ہے۔</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_urdu">اردو</string>
+
+    <!-- Phase 1: donation reminder -->
+    <string name="settings_reminder_heading">عطیہ کی یاد دہانی</string>
+    <string name="settings_reminder_summary">جب آپ دوبارہ خون دینے کے اہل ہوں، آخری عطیہ کے 90 دن بعد ایک یاد دہانی۔ اسے وصول کرنے کے لیے اینڈرائیڈ ترتیبات میں نوٹیفکیشنز آن کریں۔</string>
+    <string name="reminder_channel_name">عطیہ کی یاد دہانیاں</string>
+    <string name="reminder_channel_description">جب آپ دوبارہ عطیہ دینے کے اہل ہوں تو ایک یاد دہانی۔</string>
+    <string name="reminder_notification_title">آپ دوبارہ خون دے سکتے ہیں</string>
+    <string name="reminder_notification_body">آپ کے آخری عطیہ کو 90 دن ہو گئے ہیں۔ اگر آپ صحت مند ہیں تو لائسنس یافتہ بلڈ بینک یا ہسپتال جانچ سکتا ہے کہ آج آپ خون دے سکتے ہیں یا نہیں۔</string>
+    <string name="notification_permission_message">یہ ایپ آپ کو بتا سکتی ہے کہ کب کسی کو آپ کے گروپ کا خون درکار ہے، اور جس دن آپ دوبارہ خون دے سکتے ہوں اس دن یاد دہانی بھیج سکتی ہے۔ آن لائن ہونے پر فوری درخواستیں تقریباً ہر 15 منٹ بعد چیک کی جاتی ہیں اور ایک درخواست کی اطلاع دوبارہ نہیں دی جاتی۔ آپ اسے اینڈرائیڈ ترتیبات سے کبھی بھی بند کر سکتے ہیں۔</string>
+</resources>
