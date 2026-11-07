@@ -3,7 +3,9 @@
 -- Existing tables (donors, donations, requests, stock, offers, …) are untouched.
 
 drop trigger if exists trg_prevent_overbooking on public.appointment_bookings;
+drop trigger if exists trg_decrement_booked on public.appointment_bookings;
 drop function if exists public.prevent_overbooking();
+drop function if exists public.decrement_booked();
 
 drop policy if exists "stock movements write managers" on public.stock_movements;
 drop policy if exists "stock movements read all authenticated" on public.stock_movements;

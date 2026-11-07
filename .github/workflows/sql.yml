@@ -85,6 +85,8 @@ jobs:
             sql/applied/supabase_fcm_policies.sql \
             sql/applied/supabase_ai_migration.sql \
             sql/applied/supabase_ai_quotebank.sql \
+            sql/applied/supabase_phase2_migration.sql \
+            sql/applied/supabase_phase3_migration.sql \
             supabase_delete_account.sql ; do
             echo "=== $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"
@@ -150,6 +152,8 @@ jobs:
         run: |
           for f in \
             supabase_delete_account_rollback.sql \
+            sql/applied/supabase_phase3_migration_rollback.sql \
+            sql/applied/supabase_phase2_migration_rollback.sql \
             sql/applied/supabase_ai_quotebank_rollback.sql \
             sql/applied/supabase_ai_migration_rollback.sql \
             supabase_fcm_triggers_rollback.sql \
@@ -179,6 +183,8 @@ jobs:
             sql/applied/supabase_fcm_policies.sql \
             sql/applied/supabase_ai_migration.sql \
             sql/applied/supabase_ai_quotebank.sql \
+            sql/applied/supabase_phase2_migration.sql \
+            sql/applied/supabase_phase3_migration.sql \
             supabase_delete_account.sql ; do
             echo "=== $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"

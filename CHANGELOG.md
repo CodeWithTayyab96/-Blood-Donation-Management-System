@@ -3,6 +3,24 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.18 — 2026-11-07
+
+versionCode 19. Fixes from the Phase 1-3 review (see review 2026-11-07):
+
+- `DbHelper.bookSlot`: the slot-not-found path ended the transaction twice
+  (`endTransaction()` in `also` plus the `finally`), which crashed at runtime.
+  The early return now leaves the transaction to the `finally` alone.
+- `supabase_phase3_migration.sql`: `prevent_overbooking()` now locks the slot
+  row (`FOR UPDATE`) before counting, so two donors racing the last seat
+  really cannot both book; the trigger also keeps `appointment_slots.booked`
+  in step, with a delete trigger to decrement it on cancellation.
+- `CampRules.sortByDate`: unparseable dates now sort last, as the comment
+  always said.
+- CI now replays the Phase 2/3 migrations: both files added to `sql.yml`
+  (forward passes + rollback pass), and `supabase_verify_policies.sql`
+  expects their 16 policies and 7 tables (44 policies, 16 tables total).
+- Removed the committed `.kotlin/errors/` daemon log and git-ignored `.kotlin/`.
+
 ## 1.17 — 2026-11-07
 
 versionCode 18. Phase 3: blood camps, appointment slots, donor verification,

@@ -123,6 +123,11 @@ create policy "bookings delete managers"
 -- the slot's capacity; if it would overfill, the insert is rejected. This is the
 -- server-side mirror of the transactional guard in DbHelper.bookSlot(), so two
 -- donors racing the last seat cannot both succeed even if the app check passes.
+-- The FOR UPDATE lock is what makes that true: concurrent booking inserts for
+-- the same slot queue on the slot row, so the count below sees every committed
+-- booking. Without it both racers could read count < capacity and both insert.
+-- The trigger also keeps the booked counter in step with the rows, since the
+-- app reads it for capacity display.
 create or replace function public.prevent_overbooking()
 returns trigger
 language plpgsql
@@ -134,7 +139,7 @@ declare
   v_count    integer;
 begin
   select capacity into v_capacity
-    from public.appointment_slots where id = new.slot_id;
+    from public.appointment_slots where id = new.slot_id for update;
   if v_capacity is null then
     raise exception 'unknown slot';
   end if;
@@ -143,6 +148,7 @@ begin
   if v_count >= v_capacity then
     raise exception 'slot is full';
   end if;
+  update public.appointment_slots set booked = booked + 1 where id = new.slot_id;
   return new;
 end;
 $$;
@@ -151,6 +157,25 @@ drop trigger if exists trg_prevent_overbooking on public.appointment_bookings;
 create trigger trg_prevent_overbooking
   before insert on public.appointment_bookings
   for each row execute function public.prevent_overbooking();
+
+-- Keep booked honest when a manager removes a booking.
+create or replace function public.decrement_booked()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.appointment_slots
+    set booked = greatest(booked - 1, 0) where id = old.slot_id;
+  return old;
+end;
+$$;
+
+drop trigger if exists trg_decrement_booked on public.appointment_bookings;
+create trigger trg_decrement_booked
+  after delete on public.appointment_bookings
+  for each row execute function public.decrement_booked();
 
 -- ---------------------------------------------------------------------------
 -- 5. donor verification (manager-set)

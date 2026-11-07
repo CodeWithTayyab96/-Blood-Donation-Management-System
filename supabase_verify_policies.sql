@@ -16,7 +16,7 @@
 -- "Authenticated full access" policies, or "requests write manager", which
 -- supabase_p2p_policies.sql removes.
 --
--- Expected final state: 28 policies across 9 tables, RLS on for all 11 tables,
+-- Expected final state: 44 policies across 16 tables, RLS on for all 18 tables,
 -- no policy at all on ai_coach_usage, and no SELECT privilege for
 -- `authenticated` on donors.phone or requests.contact.
 --
@@ -60,7 +60,25 @@ with expected_all(tbl, pol, cmd) as (
     ('device_tokens','device tokens read manager','SELECT'),
     -- Phase 4 quote bank. Filtered out when the table has not been created
     -- yet, so this file still works before supabase_ai_quotebank.sql runs.
-    ('ai_quotes','authenticated can read today''s quotes','SELECT')
+    ('ai_quotes','authenticated can read today''s quotes','SELECT'),
+    -- Phase 2 status timeline + Phase 3 camps/slots/verifications/movements.
+    -- Filtered out the same way when their tables do not exist yet.
+    ('request_status_history','status history read owner or manager','SELECT'),
+    ('request_status_history','status history insert owner or manager','INSERT'),
+    ('camps','camps read all authenticated','SELECT'),
+    ('camps','camps write managers','ALL'),
+    ('camp_attendance','camp attendance read all authenticated','SELECT'),
+    ('camp_attendance','camp attendance insert authenticated','INSERT'),
+    ('camp_attendance','camp attendance delete managers','DELETE'),
+    ('appointment_slots','slots read all authenticated','SELECT'),
+    ('appointment_slots','slots write managers','ALL'),
+    ('appointment_bookings','bookings read all authenticated','SELECT'),
+    ('appointment_bookings','bookings insert authenticated','INSERT'),
+    ('appointment_bookings','bookings delete managers','DELETE'),
+    ('donor_verifications','verifications read all authenticated','SELECT'),
+    ('donor_verifications','verifications write managers','ALL'),
+    ('stock_movements','stock movements read all authenticated','SELECT'),
+    ('stock_movements','stock movements write managers','INSERT')
 ), expected as (
   select e.tbl, e.pol, e.cmd
     from expected_all e
@@ -90,7 +108,9 @@ with expected_all(tbl, pol, cmd) as (
    where t.schemaname = 'public'
      and t.tablename in ('donors','donations','requests','stock','offers',
                          'contact_details','reports','device_tokens','ai_coach_usage',
-                         'ai_quotes','ai_provider_calls')
+                         'ai_quotes','ai_provider_calls','request_status_history',
+                         'camps','camp_attendance','appointment_slots',
+                         'appointment_bookings','donor_verifications','stock_movements')
      and not t.rowsecurity
 ), privilege_problems as (
   select 'authenticated can still SELECT donors.phone' as problem

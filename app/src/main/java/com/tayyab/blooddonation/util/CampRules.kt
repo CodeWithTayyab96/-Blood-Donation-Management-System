@@ -21,5 +21,5 @@ object CampRules {
 
     /** Ascending by camp date; unparseable dates sort last. */
     fun sortByDate(camps: List<Camp>): List<Camp> =
-        camps.sortedBy { runCatching { LocalDate.parse(it.campDate) }.getOrNull() }
+        camps.sortedBy { runCatching { LocalDate.parse(it.campDate) }.getOrNull() ?: LocalDate.MAX }
 }

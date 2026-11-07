@@ -1228,7 +1228,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         if (hasBooking(slotId, donorId)) return AppointmentRules.BookResult.Duplicate
         db.beginTransaction()
         return try {
-            val slot = getSlot(slotId) ?: return AppointmentRules.BookResult.Full.also { db.endTransaction() }
+            val slot = getSlot(slotId) ?: return AppointmentRules.BookResult.Full
             val decision = AppointmentRules.evaluate(slot.capacity, slot.booked, alreadyBooked = false)
             if (decision == AppointmentRules.BookResult.Ok) {
                 val b = ContentValues().apply {

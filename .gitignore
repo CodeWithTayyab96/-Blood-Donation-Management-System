@@ -12,3 +12,5 @@ release.keystore
 *.keystore
 keystore.properties
 app/release.keystore
+# Kotlin daemon logs - local build artifacts, never commit.
+/.kotlin/
