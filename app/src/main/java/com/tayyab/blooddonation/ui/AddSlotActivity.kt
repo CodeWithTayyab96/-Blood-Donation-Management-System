@@ -8,6 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.AppointmentSlot
+import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.SupabaseSync
 
 /** Phase 3: manager-only creation of an appointment slot with a capacity guard. */
 class AddSlotActivity : AppCompatActivity() {
@@ -32,11 +34,30 @@ class AddSlotActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.slot_invalid, Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-            db.insertSlot(
-                AppointmentSlot(slotTime = time, capacity = capacity, booked = 0, note = note)
-            )
-            Toast.makeText(this, R.string.slot_saved, Toast.LENGTH_SHORT).show()
-            finish()
+            val slot = AppointmentSlot(slotTime = time, capacity = capacity, booked = 0, note = note)
+            if (SupabaseSync.isOnline) {
+                // Online first so the slot keeps its server id locally
+                // too; if Supabase is unreachable, save locally only and
+                // say so.
+                Background.run {
+                    val remoteId = SupabaseSync.addSlotRemote(slot)
+                    if (remoteId != null) db.upsertSlot(slot.copy(id = remoteId))
+                    else db.insertSlot(slot)
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            if (remoteId != null) R.string.slot_saved
+                            else R.string.slot_saved_phone_only,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        finish()
+                    }
+                }
+            } else {
+                db.insertSlot(slot)
+                Toast.makeText(this, R.string.slot_saved, Toast.LENGTH_SHORT).show()
+                finish()
+            }
         }
     }
 }

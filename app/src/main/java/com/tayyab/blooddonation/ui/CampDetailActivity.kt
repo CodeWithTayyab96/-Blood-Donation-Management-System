@@ -8,7 +8,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.model.CampAttendance
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 
 /**
@@ -67,9 +70,38 @@ class CampDetailActivity : AppCompatActivity() {
             btn.visibility = View.VISIBLE
             checkedIn.visibility = View.GONE
             btn.setOnClickListener {
-                db.recordAttendance(campId, donorId, LocalDate.now().toString())
-                Toast.makeText(this, R.string.camp_attended, Toast.LENGTH_SHORT).show()
-                render()
+                val attendedAt = LocalDate.now().toString()
+                if (SupabaseSync.isOnline) {
+                    // Online first so the check-in keeps its server id
+                    // locally too; if Supabase is unreachable, check in
+                    // on this phone only and say so.
+                    Background.run {
+                        val remoteId = SupabaseSync.recordAttendanceRemote(campId, donorId, attendedAt)
+                        if (remoteId != null) {
+                            db.upsertCampAttendance(
+                                CampAttendance(
+                                    id = remoteId, campId = campId,
+                                    donorId = donorId, attendedAt = attendedAt
+                                )
+                            )
+                        } else {
+                            db.recordAttendance(campId, donorId, attendedAt)
+                        }
+                        runOnUiThread {
+                            Toast.makeText(
+                                this,
+                                if (remoteId != null) R.string.camp_attended
+                                else R.string.camp_attended_phone_only,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            render()
+                        }
+                    }
+                } else {
+                    db.recordAttendance(campId, donorId, attendedAt)
+                    Toast.makeText(this, R.string.camp_attended, Toast.LENGTH_SHORT).show()
+                    render()
+                }
             }
         }
     }

@@ -1,12 +1,18 @@
 package com.tayyab.blooddonation.util
 
 import com.tayyab.blooddonation.BuildConfig
+import com.tayyab.blooddonation.model.AppointmentBooking
+import com.tayyab.blooddonation.model.AppointmentSlot
 import com.tayyab.blooddonation.model.BloodRequest
+import com.tayyab.blooddonation.model.Camp
+import com.tayyab.blooddonation.model.CampAttendance
 import com.tayyab.blooddonation.model.Donation
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.model.Movement
 import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
 import com.tayyab.blooddonation.model.StatusEvent
+import com.tayyab.blooddonation.model.Verification
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -837,5 +843,215 @@ object SupabaseClient {
             createdAt = if (obj.isNull("created_at")) "" else obj.optString("created_at", ""),
             resolvedAt = resolved
         )
+    }
+
+    // ------------------------------------------------------------- Phase 3: camps, slots, verification, movements
+
+    /**
+     * Phase 3 column lists. Every list names the exact server columns,
+     * including `created_at` — the local tables predate that column and
+     * the local models do not carry it (except [AppointmentBooking]),
+     * so the value is selected for shape-parity and dropped on parse,
+     * except where the model stores it. Local ordering never depends on
+     * it: camps order by camp_date, slots by slot_time, movements by
+     * date, verifications by id.
+     */
+    private const val CAMP_COLUMNS =
+        "id,name,location,city,camp_date,organizer,created_at"
+    private const val ATTENDANCE_COLUMNS =
+        "id,camp_id,donor_id,attended_at,created_at"
+    private const val SLOT_COLUMNS =
+        "id,slot_time,capacity,booked,note,created_at"
+    private const val BOOKING_COLUMNS =
+        "id,slot_id,donor_id,created_at"
+    private const val VERIFICATION_COLUMNS =
+        "id,donor_id,status,verified_by,verified_at,note,created_at"
+    private const val MOVEMENT_COLUMNS =
+        "id,blood_group,delta,reason,date,created_at"
+
+    private fun campFromJson(obj: JSONObject): Camp = Camp(
+        id = obj.optLong("id", 0),
+        name = obj.optString("name", ""),
+        location = obj.optString("location", ""),
+        city = obj.optString("city", ""),
+        campDate = if (obj.isNull("camp_date")) "" else obj.optString("camp_date", ""),
+        organizer = obj.optString("organizer", "")
+    )
+
+    private fun attendanceFromJson(obj: JSONObject): CampAttendance = CampAttendance(
+        id = obj.optLong("id", 0),
+        campId = obj.optLong("camp_id", 0),
+        donorId = obj.optLong("donor_id", 0),
+        attendedAt = if (obj.isNull("attended_at")) "" else obj.optString("attended_at", "")
+    )
+
+    private fun slotFromJson(obj: JSONObject): AppointmentSlot = AppointmentSlot(
+        id = obj.optLong("id", 0),
+        slotTime = if (obj.isNull("slot_time")) "" else obj.optString("slot_time", ""),
+        capacity = obj.optInt("capacity", 0),
+        booked = obj.optInt("booked", 0),
+        note = obj.optString("note", "")
+    )
+
+    private fun bookingFromJson(obj: JSONObject): AppointmentBooking = AppointmentBooking(
+        id = obj.optLong("id", 0),
+        slotId = obj.optLong("slot_id", 0),
+        donorId = obj.optLong("donor_id", 0),
+        createdAt = if (obj.isNull("created_at")) "" else obj.optString("created_at", "")
+    )
+
+    private fun verificationFromJson(obj: JSONObject): Verification = Verification(
+        id = obj.optLong("id", 0),
+        donorId = obj.optLong("donor_id", 0),
+        status = obj.optString("status", ""),
+        verifiedBy = if (obj.isNull("verified_by")) null else obj.optString("verified_by", ""),
+        verifiedAt = if (obj.isNull("verified_at")) null else obj.optString("verified_at", ""),
+        note = obj.optString("note", "")
+    )
+
+    private fun movementFromJson(obj: JSONObject): Movement = Movement(
+        id = obj.optLong("id", 0),
+        bloodGroup = obj.optString("blood_group", ""),
+        delta = obj.optInt("delta", 0),
+        reason = obj.optString("reason", ""),
+        date = if (obj.isNull("date")) "" else obj.optString("date", "")
+    )
+
+    /** All camps, earliest first. Reads are open to every authenticated user. */
+    fun getCamps(): List<Camp>? {
+        val array = getArray("/camps?select=$CAMP_COLUMNS&order=camp_date.asc,id.asc") ?: return null
+        val out = ArrayList<Camp>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(campFromJson(it)) }
+        }
+        return out
+    }
+
+    /** One camp's check-ins, earliest first. */
+    fun getCampAttendance(campId: Long): List<CampAttendance>? {
+        val array = getArray(
+            "/camp_attendance?camp_id=eq.$campId&select=$ATTENDANCE_COLUMNS&order=attended_at.asc,id.asc"
+        ) ?: return null
+        val out = ArrayList<CampAttendance>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(attendanceFromJson(it)) }
+        }
+        return out
+    }
+
+    /** All appointment slots, earliest first. */
+    fun getSlots(): List<AppointmentSlot>? {
+        val array = getArray("/appointment_slots?select=$SLOT_COLUMNS&order=slot_time.asc,id.asc") ?: return null
+        val out = ArrayList<AppointmentSlot>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(slotFromJson(it)) }
+        }
+        return out
+    }
+
+    /** One slot's bookings, earliest first. */
+    fun getBookings(slotId: Long): List<AppointmentBooking>? {
+        val array = getArray(
+            "/appointment_bookings?slot_id=eq.$slotId&select=$BOOKING_COLUMNS&order=created_at.asc,id.asc"
+        ) ?: return null
+        val out = ArrayList<AppointmentBooking>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(bookingFromJson(it)) }
+        }
+        return out
+    }
+
+    /** One donor's verification records, oldest first. */
+    fun getVerifications(donorId: Long): List<Verification>? {
+        val array = getArray(
+            "/donor_verifications?donor_id=eq.$donorId&select=$VERIFICATION_COLUMNS&order=id.asc"
+        ) ?: return null
+        val out = ArrayList<Verification>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(verificationFromJson(it)) }
+        }
+        return out
+    }
+
+    /** All stock movements, oldest first. */
+    fun getMovements(): List<Movement>? {
+        val array = getArray("/stock_movements?select=$MOVEMENT_COLUMNS&order=date.asc,id.asc") ?: return null
+        val out = ArrayList<Movement>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(movementFromJson(it)) }
+        }
+        return out
+    }
+
+    /** Inserts a camp online (manager-only by RLS); returns the server id, or null. */
+    fun insertCamp(c: Camp): Long? {
+        val body = JSONObject().apply {
+            put("name", c.name)
+            put("location", c.location)
+            put("city", c.city)
+            put("camp_date", c.campDate)
+            put("organizer", c.organizer)
+        }
+        return insertRow("camps", body)
+    }
+
+    /** Inserts a slot online (manager-only by RLS); returns the server id, or null. */
+    fun insertSlot(s: AppointmentSlot): Long? {
+        val body = JSONObject().apply {
+            put("slot_time", s.slotTime)
+            put("capacity", s.capacity)
+            put("note", s.note)
+        }
+        return insertRow("appointment_slots", body)
+    }
+
+    /**
+     * Inserts a booking online; returns the server id, or null.
+     *
+     * The server trigger answers the capacity question: a full slot is
+     * refused with "slot is full" and a second booking by the same donor
+     * with a duplicate-key error. Both surface in [lastError] for the
+     * caller ([SupabaseSync.bookSlotRemote]) to tell apart — a null here
+     * never means "the seat is free, book it locally".
+     */
+    fun insertBooking(slotId: Long, donorId: Long): Long? {
+        val body = JSONObject().apply {
+            put("slot_id", slotId)
+            put("donor_id", donorId)
+        }
+        return insertRow("appointment_bookings", body)
+    }
+
+    /** Inserts a check-in online; returns the server id, or null. */
+    fun insertAttendance(campId: Long, donorId: Long, attendedAt: String?): Long? {
+        val body = JSONObject().apply {
+            put("camp_id", campId)
+            put("donor_id", donorId)
+            if (!attendedAt.isNullOrBlank()) put("attended_at", attendedAt)
+        }
+        return insertRow("camp_attendance", body)
+    }
+
+    /** Inserts a verification online (manager-only by RLS); returns the server id, or null. */
+    fun insertVerification(v: Verification): Long? {
+        val body = JSONObject().apply {
+            put("donor_id", v.donorId)
+            put("status", v.status)
+            if (v.verifiedBy != null) put("verified_by", v.verifiedBy) else put("verified_by", JSONObject.NULL)
+            if (v.verifiedAt != null) put("verified_at", v.verifiedAt) else put("verified_at", JSONObject.NULL)
+            put("note", v.note)
+        }
+        return insertRow("donor_verifications", body)
+    }
+
+    /** Inserts a stock movement online (manager-only by RLS); returns the server id, or null. */
+    fun insertMovement(m: Movement): Long? {
+        val body = JSONObject().apply {
+            put("blood_group", m.bloodGroup)
+            put("delta", m.delta)
+            put("reason", m.reason)
+            put("date", m.date)
+        }
+        return insertRow("stock_movements", body)
     }
 }

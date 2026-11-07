@@ -219,12 +219,14 @@
     <string name="label_save_camp">Save Camp</string>
     <string name="camp_invalid">Please fill the name, location, city and a valid date.</string>
     <string name="camp_saved">Camp saved.</string>
+    <string name="camp_saved_phone_only">Camp saved on this phone (not synced to Supabase).</string>
     <string name="camp_date_label">Date</string>
     <string name="camp_location_label">Location</string>
     <string name="camp_city_label">City</string>
     <string name="camp_organizer_label">Organizer</string>
     <string name="camp_attend">Check in</string>
     <string name="camp_attended">You are checked in.</string>
+    <string name="camp_attended_phone_only">Checked in on this phone (not synced to Supabase).</string>
     <string name="camp_attendance_count">%1$d donors checked in</string>
     <string name="camp_no_attendance">No one has checked in yet.</string>
 
@@ -242,9 +244,11 @@
     <string name="slot_full">Full</string>
     <string name="slot_booked">Booked</string>
     <string name="slot_saved">Slot saved.</string>
+    <string name="slot_saved_phone_only">Slot saved on this phone (not synced to Supabase).</string>
     <string name="slot_book_ok">Slot booked.</string>
     <string name="slot_book_full">Sorry, that slot is full.</string>
     <string name="slot_book_dup">You have already booked this slot.</string>
+    <string name="slot_book_phone_only">Slot booked on this phone (not synced to Supabase).</string>
 
     <!-- Phase 3: donor verification -->
     <string name="title_verify">Donor Verification</string>
@@ -258,6 +262,7 @@
     <string name="label_verify_reject">Reject</string>
     <string name="verify_note_hint">Note (optional)</string>
     <string name="verify_saved">Verification updated.</string>
+    <string name="verify_saved_phone_only">Verification saved on this phone (not synced to Supabase).</string>
 
     <!-- Phase 3: stock forecast -->
     <string name="title_forecast">Stock Forecast</string>

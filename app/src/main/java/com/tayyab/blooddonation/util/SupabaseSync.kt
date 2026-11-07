@@ -1,11 +1,17 @@
 package com.tayyab.blooddonation.util
 
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.model.AppointmentBooking
+import com.tayyab.blooddonation.model.AppointmentSlot
 import com.tayyab.blooddonation.model.BloodRequest
+import com.tayyab.blooddonation.model.Camp
+import com.tayyab.blooddonation.model.CampAttendance
 import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.model.Movement
 import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
+import com.tayyab.blooddonation.model.Verification
 import java.time.LocalDate
 
 /**
@@ -88,6 +94,74 @@ object SupabaseSync {
         return true
     }
 
+    // ------------------------------------------------------------- Phase 3: camps, slots, verification, movements
+
+    /** Downloads all camps and merges them into SQLite. False on failure. */
+    fun pullCamps(db: DbHelper): Boolean {
+        val camps = SupabaseClient.getCamps() ?: return false
+        for (c in camps) db.upsertCamp(c)
+        return true
+    }
+
+    /** Downloads one camp's check-ins. False on failure. */
+    fun pullCampAttendance(db: DbHelper, campId: Long): Boolean {
+        val rows = SupabaseClient.getCampAttendance(campId) ?: return false
+        for (a in rows) db.upsertCampAttendance(a)
+        return true
+    }
+
+    /**
+     * Downloads all slots and, for each one, its bookings. False when the
+     * slot list itself could not be fetched; one slot's bookings failing
+     * does not fail the whole pull, since the slot rows are what the
+     * screen needs most.
+     */
+    fun pullSlots(db: DbHelper): Boolean {
+        val slots = SupabaseClient.getSlots() ?: return false
+        for (s in slots) {
+            db.upsertSlot(s)
+            val bookings = SupabaseClient.getBookings(s.id) ?: continue
+            for (b in bookings) db.upsertBooking(b)
+        }
+        return true
+    }
+
+    /** Downloads one donor's verification records. False on failure. */
+    fun pullVerifications(db: DbHelper, donorId: Long): Boolean {
+        val records = SupabaseClient.getVerifications(donorId) ?: return false
+        for (v in records) db.upsertVerification(v)
+        return true
+    }
+
+    /** Downloads all stock movements. False on failure. */
+    fun pullMovements(db: DbHelper): Boolean {
+        val movements = SupabaseClient.getMovements() ?: return false
+        for (m in movements) db.upsertMovement(m)
+        return true
+    }
+
+    /**
+     * Downloads everything Phase 3: camps, slots with their bookings,
+     * stock movements, and — per camp and per locally known donor — the
+     * check-ins and verification records. True if at least one landed.
+     * Attendance and verifications are pulled per parent row because the
+     * client reads them that way; a parent failing does not fail the
+     * rest of the pull.
+     */
+    fun pullPhase3(db: DbHelper): Boolean {
+        var ok = false
+        if (pullCamps(db)) ok = true
+        if (pullSlots(db)) ok = true
+        if (pullMovements(db)) ok = true
+        for (camp in db.getAllCamps()) {
+            if (pullCampAttendance(db, camp.id)) ok = true
+        }
+        for (donor in db.getAllDonors()) {
+            if (pullVerifications(db, donor.id)) ok = true
+        }
+        return ok
+    }
+
     /** Downloads stock levels and writes them into SQLite. False on failure. */
     fun pullStock(db: DbHelper): Boolean {
         val stock = SupabaseClient.getStock() ?: return false
@@ -119,12 +193,13 @@ object SupabaseSync {
         return true
     }
 
-    /** Downloads donors, requests and stock. True if at least one landed. */
+    /** Downloads donors, requests, stock and everything Phase 3. True if at least one landed. */
     fun pullAll(db: DbHelper): Boolean {
         var ok = false
         if (pullDonors(db)) ok = true
         if (pullRequests(db)) ok = true
         if (pullStock(db)) ok = true
+        if (pullPhase3(db)) ok = true
         return ok
     }
 
@@ -213,6 +288,92 @@ object SupabaseSync {
     /** Deletes a donor online. False on failure (caller still deletes locally). */
     fun deleteDonorRemote(donorId: Long): Boolean = SupabaseClient.deleteDonor(donorId)
 
+    // ------------------------------------------------------------- Phase 3: pushes
+
+    /** Creates a camp online (manager-only by RLS); returns the server id, or null. */
+    fun addCampRemote(camp: Camp): Long? = SupabaseClient.insertCamp(camp)
+
+    /** Creates a slot online (manager-only by RLS); returns the server id, or null. */
+    fun addSlotRemote(slot: AppointmentSlot): Long? = SupabaseClient.insertSlot(slot)
+
+    /**
+     * Whether this device may write a row that names [donorId]. The RLS
+     * rule is the same on both tables: the donor row's `auth_id` must be
+     * the caller's, unless the caller is a manager. Kept pure (session
+     * passed in) so the rule itself is unit-testable.
+     */
+    fun mayWriteForDonor(donorId: Long, ownDonorId: Long?, isManager: Boolean): Boolean =
+        isManager || ownDonorId == donorId
+
+    /** What an online booking attempt came back with. */
+    sealed class BookingOutcome {
+        /** The booking reached the server; [bookingId] is its server id. */
+        data class Booked(val bookingId: Long) : BookingOutcome()
+
+        /**
+         * The server refused the booking: the slot is full. The caller
+         * must NOT fall back to a local-only booking — that would claim
+         * a seat the server denied.
+         */
+        object Full : BookingOutcome()
+
+        /** The server already holds a booking by this donor on this slot. */
+        object Duplicate : BookingOutcome()
+
+        /** The server could not be asked, or refused for another reason.
+         *  [detail] carries the server's own words. The caller may fall
+         *  back to a local-only booking here, but must say so. */
+        data class Failed(val detail: String) : BookingOutcome()
+    }
+
+    /**
+     * Turns a failed booking insert into an outcome, from the server's
+     * own error text ([SupabaseClient.lastError]). Pure, so the mapping
+     * is unit-testable without a network call.
+     */
+    fun mapBookingFailure(detail: String?): BookingOutcome {
+        val text = detail.orEmpty()
+        return when {
+            text.contains("slot is full", ignoreCase = true) -> BookingOutcome.Full
+            text.contains("duplicate key", ignoreCase = true) -> BookingOutcome.Duplicate
+            else -> BookingOutcome.Failed(
+                detail?.takeIf { it.isNotBlank() } ?: "the server did not accept the booking"
+            )
+        }
+    }
+
+    /**
+     * Books a slot online. [Booked] carries the server id for the caller
+     * to store locally; [Full] and [Duplicate] are distinct refusals the
+     * caller must not paper over with a local-only booking.
+     */
+    fun bookSlotRemote(slotId: Long, donorId: Long): BookingOutcome {
+        if (!mayWriteForDonor(donorId, Session.donorId, Session.isManager)) {
+            return BookingOutcome.Failed("this booking is for another donor")
+        }
+        val id = SupabaseClient.insertBooking(slotId, donorId)
+        if (id != null && id > 0) return BookingOutcome.Booked(id)
+        return mapBookingFailure(SupabaseClient.lastError)
+    }
+
+    /**
+     * Records a check-in online; returns the server id, or null when the
+     * write did not land (unreachable, refused, or for another donor —
+     * the guard above). The caller treats null as "local only" and says
+     * so; from the check-in screen the guard cannot trip, since the
+     * button only exists for the signed-in donor's own id.
+     */
+    fun recordAttendanceRemote(campId: Long, donorId: Long, attendedAt: String): Long? {
+        if (!mayWriteForDonor(donorId, Session.donorId, Session.isManager)) return null
+        return SupabaseClient.insertAttendance(campId, donorId, attendedAt)
+    }
+
+    /** Inserts a verification online (manager-only by RLS); returns the server id, or null. */
+    fun insertVerificationRemote(v: Verification): Long? = SupabaseClient.insertVerification(v)
+
+    /** Inserts a stock movement online (manager-only by RLS); returns the server id, or null. */
+    fun insertMovementRemote(m: Movement): Long? = SupabaseClient.insertMovement(m)
+
     /**
      * Outcome of an online donation write.
      *
@@ -268,7 +429,15 @@ object SupabaseSync {
         data class Recorded(
             val donationId: Long,
             val stockSynced: Boolean,
-            val stockDetail: String? = null
+            val stockDetail: String? = null,
+            /**
+             * The server id of the stock-movement row this donation wrote
+             * (Phase 3), or null when that insert did not land. The caller
+             * stores the local movement under this id, so a later pull
+             * updates it instead of adding a second one; null means the
+             * local movement keeps its own id and stays phone-only.
+             */
+            val movementId: Long? = null
         ) : DonationOutcome()
 
         /** Nothing was recorded online. [failure] says which step and why. */
@@ -306,11 +475,19 @@ object SupabaseSync {
         // A single server-side statement, so concurrent donations cannot lose a
         // unit — but it can still fail, and that must not be swallowed.
         val stockSynced = SupabaseClient.adjustStock(donor.bloodGroup, units)
+        // Phase 3: the same donation as a dated stock movement, so the
+        // forecast's burn rate is fed by every device. Best-effort: when
+        // it does not land, the local movement keeps its own id and stays
+        // phone-only, so a later pull can never double-count it.
+        val movementId = insertMovementRemote(
+            Movement(bloodGroup = donor.bloodGroup, delta = units, reason = "donation", date = dateStr)
+        )
         return DonationOutcome.Recorded(
             donationId = donationId,
             stockSynced = stockSynced,
             stockDetail = if (stockSynced) null
-            else SupabaseClient.lastError ?: "the server refused the stock change"
+            else SupabaseClient.lastError ?: "the server refused the stock change",
+            movementId = movementId
         )
     }
 
@@ -323,7 +500,13 @@ object SupabaseSync {
         SupabaseClient.updateRequestStatus(id, "Cancelled")
 
     sealed class FulfilResult {
-        object Success : FulfilResult()
+        /**
+         * The request was fulfilled from stock online. [movementId] is the
+         * server id of the stock-movement row this fulfilment wrote
+         * (Phase 3), or null when that insert did not land — the caller
+         * then stores the local movement under its own id, phone-only.
+         */
+        data class Success(val movementId: Long? = null) : FulfilResult()
 
         /**
          * The online stock was read and really is short. [available] is what
@@ -379,6 +562,16 @@ object SupabaseSync {
         if (!SupabaseClient.updateRequestStatus(req.id, "Fulfilled")) {
             return FulfilResult.Error
         }
-        return FulfilResult.Success
+        // Phase 3: the same fulfilment as a dated stock movement, so the
+        // forecast sees it on every device. Best-effort, as in
+        // recordDonationRemote: a missed insert leaves the local
+        // movement local-only, never duplicated.
+        val movementId = insertMovementRemote(
+            Movement(
+                bloodGroup = req.bloodGroup, delta = -req.unitsNeeded,
+                reason = "fulfilment", date = LocalDate.now().toString()
+            )
+        )
+        return FulfilResult.Success(movementId)
     }
 }

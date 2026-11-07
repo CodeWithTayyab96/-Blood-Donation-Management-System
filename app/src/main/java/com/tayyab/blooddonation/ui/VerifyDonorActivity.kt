@@ -9,7 +9,9 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Verification
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.Session
+import com.tayyab.blooddonation.util.SupabaseSync
 import com.tayyab.blooddonation.util.VerificationRules
 import java.time.LocalDate
 
@@ -63,16 +65,35 @@ class VerifyDonorActivity : AppCompatActivity() {
     }
 
     private fun save(status: String, note: String, actor: String) {
-        db.insertVerification(
-            Verification(
-                donorId = donorId,
-                status = status,
-                verifiedBy = actor,
-                verifiedAt = LocalDate.now().toString(),
-                note = note
-            )
+        val verification = Verification(
+            donorId = donorId,
+            status = status,
+            verifiedBy = actor,
+            verifiedAt = LocalDate.now().toString(),
+            note = note
         )
-        Toast.makeText(this, R.string.verify_saved, Toast.LENGTH_SHORT).show()
-        finish()
+        if (SupabaseSync.isOnline) {
+            // Online first so the record keeps its server id locally
+            // too; if Supabase is unreachable, save locally only and
+            // say so.
+            Background.run {
+                val remoteId = SupabaseSync.insertVerificationRemote(verification)
+                if (remoteId != null) db.upsertVerification(verification.copy(id = remoteId))
+                else db.insertVerification(verification)
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        if (remoteId != null) R.string.verify_saved
+                        else R.string.verify_saved_phone_only,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    finish()
+                }
+            }
+        } else {
+            db.insertVerification(verification)
+            Toast.makeText(this, R.string.verify_saved, Toast.LENGTH_SHORT).show()
+            finish()
+        }
     }
 }

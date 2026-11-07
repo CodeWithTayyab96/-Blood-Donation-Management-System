@@ -646,15 +646,17 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
      * assigned, so the local history entry and the online row are the same row.
      * Without this, an online donation would be inserted here under a fresh
      * local id and then downloaded again under its server id — two entries for
-     * one donation.
+     * one donation. [movementId] does the same for the Phase 3 movement row;
+     * null keeps the local-only behaviour.
      */
     fun recordDonationWithId(
         donor: Donor,
         units: Int,
         donationId: Long,
+        movementId: Long? = null,
         date: LocalDate = LocalDate.now()
     ) {
-        recordDonationInternal(donor, units, date, donationId)
+        recordDonationInternal(donor, units, date, donationId, movementId)
     }
 
     /**
@@ -666,7 +668,8 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         donor: Donor,
         units: Int,
         date: LocalDate,
-        donationId: Long?
+        donationId: Long?,
+        movementId: Long? = null
     ) {
         val db = writableDatabase
         val dateStr = date.toString()
@@ -695,7 +698,17 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                 put("blood_group", donor.bloodGroup); put("delta", units)
                 put("reason", "donation"); put("date", dateStr)
             }
-            db.insert("stock_movements", null, mv)
+            if (movementId != null) {
+                // Same upsert as the donation row: the server already owns
+                // this movement, so the local copy takes its id and a later
+                // pull updates it instead of adding a second one.
+                if (db.update("stock_movements", mv, "id=?", arrayOf(movementId.toString())) == 0) {
+                    mv.put("id", movementId)
+                    db.insert("stock_movements", null, mv)
+                }
+            } else {
+                db.insert("stock_movements", null, mv)
+            }
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -1088,7 +1101,14 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
      * transaction, so the request can never be marked Fulfilled without the
      * units actually leaving stock (or vice versa).
      */
-    fun fulfillRequest(r: BloodRequest): Boolean {
+    /**
+     * Fulfils a request from local stock. [movementId] is the server id of
+     * the stock-movement row the online fulfilment already wrote (Phase 3);
+     * the local movement then takes that id, so a later pull updates it
+     * instead of adding a second one. Null keeps the local-only behaviour
+     * (offline, or the server could not be asked).
+     */
+    fun fulfillRequest(r: BloodRequest, movementId: Long? = null): Boolean {
         val db = writableDatabase
         var fulfilled = false
         db.beginTransaction()
@@ -1105,7 +1125,14 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                     put("blood_group", r.bloodGroup); put("delta", -r.unitsNeeded)
                     put("reason", "fulfilment"); put("date", LocalDate.now().toString())
                 }
-                db.insert("stock_movements", null, mv)
+                if (movementId != null) {
+                    if (db.update("stock_movements", mv, "id=?", arrayOf(movementId.toString())) == 0) {
+                        mv.put("id", movementId)
+                        db.insert("stock_movements", null, mv)
+                    }
+                } else {
+                    db.insert("stock_movements", null, mv)
+                }
                 val upd = ContentValues().apply { put("status", "Fulfilled") }
                 db.update("requests", upd, "id=?", arrayOf(r.id.toString()))
                 // Same transaction as the stock debit, so a fulfilled request
@@ -1320,5 +1347,140 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             )
         }
         return out
+    }
+
+    // -------------------------------------------- Phase 3: sync upserts
+    //
+    // Same shape as upsertDonor / upsertOffer: update by server id first,
+    // insert with the server id only when the row is new, so a local-only
+    // row (created offline, never uploaded) is never wiped by a pull.
+    // The server `created_at` column has no local counterpart and is not
+    // stored; local ordering uses camp_date / slot_time / date instead.
+
+    /** Merges a downloaded camp by id. */
+    fun upsertCamp(c: Camp) {
+        if (c.id <= 0) return
+        val v = ContentValues().apply {
+            put("name", c.name); put("location", c.location); put("city", c.city)
+            put("camp_date", c.campDate); put("organizer", c.organizer)
+        }
+        if (writableDatabase.update("camps", v, "id=?", arrayOf(c.id.toString())) == 0) {
+            v.put("id", c.id)
+            writableDatabase.insert("camps", null, v)
+        }
+    }
+
+    /** Merges a downloaded check-in by id. */
+    fun upsertCampAttendance(a: CampAttendance) {
+        if (a.id <= 0) return
+        val db = writableDatabase
+        val v = ContentValues().apply {
+            put("camp_id", a.campId); put("donor_id", a.donorId); put("attended_at", a.attendedAt)
+        }
+        if (db.update("camp_attendance", v, "id=?", arrayOf(a.id.toString())) == 0) {
+            v.put("id", a.id)
+            if (db.insert("camp_attendance", null, v) == -1L) {
+                // A local-only row already holds this (camp, donor) pair
+                // under a different id (checked in offline, never
+                // uploaded). The server row wins: drop the local shadow
+                // and store the server row in its place.
+                db.delete(
+                    "camp_attendance", "camp_id=? AND donor_id=? AND id!=?",
+                    arrayOf(a.campId.toString(), a.donorId.toString(), a.id.toString())
+                )
+                db.insert("camp_attendance", null, v)
+            }
+        }
+    }
+
+    /** Merges a downloaded slot by id. The server `booked` count is
+     *  authoritative and overwrites the local one. */
+    fun upsertSlot(s: AppointmentSlot) {
+        if (s.id <= 0) return
+        val v = ContentValues().apply {
+            put("slot_time", s.slotTime); put("capacity", s.capacity)
+            put("booked", s.booked); put("note", s.note)
+        }
+        if (writableDatabase.update("appointment_slots", v, "id=?", arrayOf(s.id.toString())) == 0) {
+            v.put("id", s.id)
+            writableDatabase.insert("appointment_slots", null, v)
+        }
+    }
+
+    /** Merges a downloaded booking by id. */
+    fun upsertBooking(b: AppointmentBooking) {
+        if (b.id <= 0) return
+        val db = writableDatabase
+        val v = ContentValues().apply {
+            put("slot_id", b.slotId); put("donor_id", b.donorId); put("created_at", b.createdAt)
+        }
+        if (db.update("appointment_bookings", v, "id=?", arrayOf(b.id.toString())) == 0) {
+            v.put("id", b.id)
+            if (db.insert("appointment_bookings", null, v) == -1L) {
+                // Same shadow-row case as upsertCampAttendance: a
+                // local-only booking already holds this (slot, donor)
+                // pair under a different id. The server row wins.
+                db.delete(
+                    "appointment_bookings", "slot_id=? AND donor_id=? AND id!=?",
+                    arrayOf(b.slotId.toString(), b.donorId.toString(), b.id.toString())
+                )
+                db.insert("appointment_bookings", null, v)
+            }
+        }
+    }
+
+    /** Merges a downloaded verification by id. */
+    fun upsertVerification(v: Verification) {
+        if (v.id <= 0) return
+        val cv = ContentValues().apply {
+            put("donor_id", v.donorId); put("status", v.status)
+            put("verified_by", v.verifiedBy); put("verified_at", v.verifiedAt); put("note", v.note)
+        }
+        if (writableDatabase.update("donor_verifications", cv, "id=?", arrayOf(v.id.toString())) == 0) {
+            cv.put("id", v.id)
+            writableDatabase.insert("donor_verifications", null, cv)
+        }
+    }
+
+    /** Merges a downloaded stock movement by id. */
+    fun upsertMovement(m: Movement) {
+        if (m.id <= 0) return
+        val v = ContentValues().apply {
+            put("blood_group", m.bloodGroup); put("delta", m.delta)
+            put("reason", m.reason); put("date", m.date)
+        }
+        if (writableDatabase.update("stock_movements", v, "id=?", arrayOf(m.id.toString())) == 0) {
+            v.put("id", m.id)
+            writableDatabase.insert("stock_movements", null, v)
+        }
+    }
+
+    /**
+     * Stores a booking that already exists online (server id known) and
+     * keeps the local `booked` count in step. The server trigger already
+     * incremented its own counter; this mirrors it locally so the slot
+     * screen shows the right count before the next pull.
+     *
+     * The count is bumped only when this donor did not already hold a
+     * local booking on the slot — a pulled server row replacing a
+     * local-only shadow row must not count the same seat twice.
+     */
+    fun storeRemoteBooking(b: AppointmentBooking) {
+        if (b.id <= 0) return
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val already = hasBooking(b.slotId, b.donorId)
+            upsertBooking(b)
+            if (!already) {
+                db.execSQL(
+                    "UPDATE appointment_slots SET booked = booked + 1 WHERE id = ?",
+                    arrayOf(b.slotId.toString())
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
     }
 }

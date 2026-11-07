@@ -77,7 +77,7 @@ class RequestDetailActivity : AppCompatActivity() {
                 sync("Fulfilling request…") {
                     when (val result = SupabaseSync.fulfilRequestRemote(req)) {
                         is SupabaseSync.FulfilResult.Success -> {
-                            db.fulfillRequest(req)
+                            db.fulfillRequest(req, result.movementId)
                             runOnUiThread {
                                 if (isFinishing || isDestroyed) return@runOnUiThread
                                 Toast.makeText(this, "Request fulfilled from stock.", Toast.LENGTH_LONG).show()

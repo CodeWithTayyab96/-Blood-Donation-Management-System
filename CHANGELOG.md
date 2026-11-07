@@ -3,6 +3,27 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.20 — 2026-11-07
+
+versionCode 21. Phase 3 sync: camps, slots, bookings, check-ins, verifications
+and stock movements now sync with Supabase instead of living on one phone only.
+
+- `SupabaseClient` gains get/insert calls for all six Phase 3 tables, with
+  column lists matching the migration exactly; `DbHelper` gains matching
+  upserts (by server id, local-only rows survive), and `SupabaseSync` gains
+  `pullPhase3` (wired into `pullAll`) plus online-first pushes.
+- Camp, slot, check-in, booking and verification screens write online first
+  and keep the server id locally; when the server cannot be reached they
+  save on the phone only and say so. A Full refusal from the server is never
+  papered over with a local-only booking.
+- Donation and fulfilment flows also write their stock movement online and
+  store the local movement under the server id, so the forecast sees every
+  device's data without double-counting. A missed movement insert leaves
+  the local movement phone-only, never duplicated.
+- 6 new unit tests for the booking-failure mapping and the caller-ownership
+  guard. The SQLite upsert behaviours still need an on-device run to verify
+  (no SQLite on the JVM test classpath).
+
 ## 1.19 — 2026-11-07
 
 versionCode 20. Polish fixes for the known issues from the Phase 1-3 review:

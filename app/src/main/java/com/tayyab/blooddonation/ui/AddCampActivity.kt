@@ -8,6 +8,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Camp
+import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 
 /** Phase 3: manager-only creation of a blood camp. */
@@ -38,14 +40,33 @@ class AddCampActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.camp_invalid, Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-            db.insertCamp(
-                Camp(
-                    name = name, location = location, city = city,
-                    campDate = date, organizer = organizer
-                )
+            val camp = Camp(
+                name = name, location = location, city = city,
+                campDate = date, organizer = organizer
             )
-            Toast.makeText(this, R.string.camp_saved, Toast.LENGTH_SHORT).show()
-            finish()
+            if (SupabaseSync.isOnline) {
+                // Online first so the camp keeps its server id locally
+                // too; if Supabase is unreachable, save locally only and
+                // say so.
+                Background.run {
+                    val remoteId = SupabaseSync.addCampRemote(camp)
+                    if (remoteId != null) db.upsertCamp(camp.copy(id = remoteId))
+                    else db.insertCamp(camp)
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            if (remoteId != null) R.string.camp_saved
+                            else R.string.camp_saved_phone_only,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        finish()
+                    }
+                }
+            } else {
+                db.insertCamp(camp)
+                Toast.makeText(this, R.string.camp_saved, Toast.LENGTH_SHORT).show()
+                finish()
+            }
         }
     }
 }

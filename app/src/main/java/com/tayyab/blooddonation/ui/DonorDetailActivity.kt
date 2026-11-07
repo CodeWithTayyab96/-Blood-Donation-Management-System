@@ -65,7 +65,7 @@ class DonorDetailActivity : AppCompatActivity() {
                     if (recorded != null) {
                         // Keep the server id locally, so the pull that follows
                         // updates this row instead of adding a second one.
-                        db.recordDonationWithId(donor, 1, recorded.donationId)
+                        db.recordDonationWithId(donor, 1, recorded.donationId, recorded.movementId)
                     } else {
                         db.recordDonation(donor, 1)
                     }
