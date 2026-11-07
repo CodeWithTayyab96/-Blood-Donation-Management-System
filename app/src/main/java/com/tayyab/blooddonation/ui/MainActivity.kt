@@ -121,6 +121,21 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnDonors).setOnClickListener {
             startActivity(Intent(this, DonorListActivity::class.java))
         }
+        // Phase 3: camps, slots, forecast and offline emergency entry points.
+        // Donors reach the same screens from their home; managers get them here
+        // too, plus the manager-only create actions inside each screen.
+        findViewById<Button>(R.id.btnCamps).setOnClickListener {
+            startActivity(Intent(this, CampListActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnSlots).setOnClickListener {
+            startActivity(Intent(this, SlotListActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnForecast).setOnClickListener {
+            startActivity(Intent(this, ForecastActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnEmergency).setOnClickListener {
+            startActivity(Intent(this, EmergencyActivity::class.java))
+        }
         findViewById<Button>(R.id.btnStock).setOnClickListener {
             startActivity(Intent(this, StockActivity::class.java))
         }

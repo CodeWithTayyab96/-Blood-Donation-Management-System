@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+
+        <TextView android:id="@+id/tvCampName" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="24sp" android:textStyle="bold"
+            android:textColor="@color/text_accent" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/camp_date_label" android:textSize="13sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="14dp" />
+        <TextView android:id="@+id/tvCampDate" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="16sp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/camp_location_label" android:textSize="13sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="10dp" />
+        <TextView android:id="@+id/tvCampLocation" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="16sp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/camp_city_label" android:textSize="13sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="10dp" />
+        <TextView android:id="@+id/tvCampCity" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="16sp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/camp_organizer_label" android:textSize="13sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="10dp" />
+        <TextView android:id="@+id/tvCampOrganizer" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:textSize="16sp" />
+
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="?android:attr/listDivider" android:layout_marginTop="16dp" />
+
+        <TextView android:id="@+id/tvAttendance" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="16sp" android:textStyle="bold"
+            android:layout_marginTop="14dp" />
+        <TextView android:id="@+id/tvAttendees" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="14sp"
+            android:layout_marginTop="6dp" android:textColor="@color/text_secondary" />
+
+        <Button android:id="@+id/btnCheckIn" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/camp_attend"
+            android:layout_marginTop="16dp" />
+        <TextView android:id="@+id/tvCheckedIn" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/camp_attended"
+            android:textSize="16sp" android:textStyle="bold" android:textColor="@color/status_ok"
+            android:layout_marginTop="12dp" android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>

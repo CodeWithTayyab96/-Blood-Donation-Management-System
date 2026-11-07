@@ -73,6 +73,20 @@
                 android:text="@string/label_need_blood"
                 android:layout_marginBottom="8dp" />
 
+            <!-- Phase 3: blood camps, appointment slots, forecast and offline emergency. -->
+            <Button android:id="@+id/btnCamps" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="@string/nav_camps"
+                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+            <Button android:id="@+id/btnSlots" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="@string/nav_slots"
+                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+            <Button android:id="@+id/btnForecast" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="@string/nav_forecast"
+                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+            <Button android:id="@+id/btnEmergency" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="@string/nav_emergency"
+                android:layout_marginBottom="8dp" style="?attr/materialButtonOutlinedStyle" />
+
             <Button android:id="@+id/btnMyRequests"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="@string/label_my_requests" android:layout_marginBottom="8dp"

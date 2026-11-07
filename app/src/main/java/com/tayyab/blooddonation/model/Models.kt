@@ -110,3 +110,66 @@ data class Report(
     val createdAt: String = "",
     val resolvedAt: String? = null
 )
+
+// ---------------------------------------------------------------------------
+// Phase 3 models
+// ---------------------------------------------------------------------------
+
+/**
+ * A dated change to stock for one blood group. Inflow (donations) is positive;
+ * outflow (fulfilments, wastage) is negative. The server is the source of truth
+ * and the app records local movements then syncs them, so real net burn can be
+ * forecast instead of guessed from requests.
+ */
+data class Movement(
+    val id: Long = 0,
+    val bloodGroup: String,
+    val delta: Int,        // +inflow / -outflow
+    val reason: String,    // "donation" | "fulfilment" | "wastage" | "adjustment"
+    val date: String       // ISO yyyy-MM-dd
+)
+
+/** A blood donation camp. */
+data class Camp(
+    val id: Long = 0,
+    val name: String,
+    val location: String,
+    val city: String,
+    val campDate: String,  // ISO yyyy-MM-dd
+    val organizer: String = ""
+)
+
+/** A donor's check-in at a camp (the attendance record). */
+data class CampAttendance(
+    val id: Long = 0,
+    val campId: Long,
+    val donorId: Long,
+    val attendedAt: String // ISO date or timestamptz
+)
+
+/** A bookable appointment slot with a capacity guard enforced at the DB level. */
+data class AppointmentSlot(
+    val id: Long = 0,
+    val slotTime: String,  // ISO datetime
+    val capacity: Int,
+    val booked: Int = 0,
+    val note: String = ""
+)
+
+/** One donor's booking on a slot. */
+data class AppointmentBooking(
+    val id: Long = 0,
+    val slotId: Long,
+    val donorId: Long,
+    val createdAt: String = ""
+)
+
+/** A donor verification record, set by a manager. */
+data class Verification(
+    val id: Long = 0,
+    val donorId: Long,
+    val status: String,    // "pending" | "verified" | "rejected"
+    val verifiedBy: String? = null,
+    val verifiedAt: String? = null,
+    val note: String = ""
+)

@@ -1,5 +1,6 @@
 package com.tayyab.blooddonation.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -224,6 +225,31 @@ class DonorDetailActivity : AppCompatActivity() {
         val tv = findViewById<TextView>(R.id.tvDetailEligibility)
         tv.text = (if (eligible) "✓ " else "✗ ") + reason
         tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+
+        // Phase 3: donor verification status (set by a manager) and a manager-only
+        // action to change it. The badge uses the same isDonorVerified() rule the
+        // manager screen writes through, so the two never disagree.
+        val verified = db.isDonorVerified(donorId)
+        val tvVerified = findViewById<TextView>(R.id.tvVerified)
+        tvVerified.visibility = View.VISIBLE
+        if (verified) {
+            tvVerified.text = getString(R.string.verify_badge)
+            tvVerified.setTextColor(getColor(R.color.status_ok))
+        } else {
+            tvVerified.text = getString(R.string.verify_not_verified)
+            tvVerified.setTextColor(getColor(R.color.text_secondary))
+        }
+        val btnVerify = findViewById<Button>(R.id.btnVerify)
+        if (Session.isManager) {
+            btnVerify.visibility = View.VISIBLE
+            btnVerify.setOnClickListener {
+                startActivity(
+                    Intent(this, VerifyDonorActivity::class.java).putExtra("donorId", donorId)
+                )
+            }
+        } else {
+            btnVerify.visibility = View.GONE
+        }
 
         // A blank phone means "not yours to see" (RLS), so both buttons hide.
         ContactActions.bind(

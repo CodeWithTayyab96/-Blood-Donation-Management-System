@@ -3,6 +3,43 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.17 — 2026-11-07
+
+versionCode 18. Phase 3: blood camps, appointment slots, donor verification,
+stock forecasting and offline emergency mode. Local `DB_VERSION` 9 → 10 (six new
+tables, additive); new Supabase migration `supabase_phase3_migration.sql` with
+matching rollback. Build and 184 unit tests pass.
+
+### Blood camps
+
+- `CampListActivity` splits camps into Upcoming / Past (`CampRules`). Donors check
+  in (`recordAttendance`, de-duped by `UNIQUE(camp_id, donor_id)`); everyone sees
+  the attendance count and names. Managers create camps.
+
+### Appointment slots
+
+- `SlotListActivity` books through `DbHelper.bookSlot`, which re-checks capacity
+  inside a transaction and returns `Ok` / `Full` / `Duplicate`; the row button
+  mirrors that result. The Supabase migration adds a `prevent_overbooking` trigger
+  as the server-side guard. Managers create slots.
+
+### Donor verification
+
+- Managers set pending / verified / rejected in `VerifyDonorActivity`;
+  `VerificationRules.isVerified` treats the latest record as authoritative.
+  `DonorDetailActivity` shows the `✓ Verified donor` badge.
+
+### Stock forecast
+
+- `ForecastActivity` runs `StockForecast.forecast` over the new `stock_movements`
+  history (donations write an inflow, fulfilments an outflow) to show per-group
+  burn rate, days of stock left, and a SURPLUS / OK / LOW / CRITICAL status.
+
+### Offline emergency mode
+
+- `EmergencyActivity` opens to a cached list of the most urgent recent requests and
+  queues a composed request locally (`OfflineQueue`) for flushing when back online.
+
 ## 1.14 — 2026-11-02
 
 versionCode 15. Five verified bug fixes in the donor alert and offer flows,

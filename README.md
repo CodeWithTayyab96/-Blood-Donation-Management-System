@@ -229,6 +229,48 @@ additively, so an upgrade never wipes data.
   (the donor *offers*, the requester *accepts*): the existing new-offer push to
   the requester is kept, and a new `Fulfilled → requester` push is added.
 
+## Phase 3 — camps, slots, verification, forecasting, offline mode
+
+**SQL files to run in Supabase (Phase 3):**
+`sql/applied/supabase_phase3_migration.sql` — six new tables
+(`camps`, `camp_attendance`, `appointment_slots`, `appointment_bookings`,
+`donor_verifications`, `stock_movements`), role-aware RLS for each, and a
+`prevent_overbooking` trigger that rejects an `appointment_bookings` insert past
+the slot's capacity (the server-side mirror of the transactional guard in
+`DbHelper.bookSlot`). Rollback is
+`sql/applied/supabase_phase3_migration_rollback.sql`. Apply it **after**
+`supabase_role_policies.sql` (it uses `public.is_manager()`).
+**Local SQLite:** `DB_VERSION` bumped 9 → 10; `onCreate` and `onUpgrade` add the
+six tables additively, so an upgrade never wipes data. Donations now also write a
+`stock_movements` inflow row and fulfilments an outflow row, so the forecast burns
+real numbers instead of guessing from `requests.units_needed`.
+
+- **Blood camps** — `CampListActivity` splits camps into **Upcoming** / **Past**
+  by `CampRules` (pure date math, unit tested). A donor checks in at a camp
+  (`recordAttendance`, de-duped by a `UNIQUE(camp_id, donor_id)`); everyone sees
+  the attendance count and the names of those who checked in. Managers create
+  camps from `AddCampActivity`.
+- **Appointment slots** — `SlotListActivity` lists slots with a live
+  `booked / capacity` counter. Booking runs through `DbHelper.bookSlot`, which
+  re-checks capacity inside a transaction and returns `AppointmentRules.BookResult`
+  (`Ok` / `Full` / `Duplicate`); the button in `SlotAdapter` reflects that same
+  result, so the UI can never promise a slot the database would reject. Managers
+  create slots from `AddSlotActivity`.
+- **Donor verification** — a manager sets a donor's status (pending / verified /
+  rejected) in `VerifyDonorActivity`; `VerificationRules.isVerified` treats the
+  latest record as authoritative, so a later rejection or re-submission clears a
+  previous badge. `DonorDetailActivity` shows the `✓ Verified donor` badge
+  (using the same `DbHelper.isDonorVerified` rule).
+- **Stock forecast** — `ForecastActivity` runs `StockForecast.forecast` over the
+  `stock_movements` history and current stock, showing per-group burn rate, days
+  of stock left, and a SURPLUS / OK / LOW / CRITICAL status (thresholds 14 / 7
+  days). Pure and deterministic, with fixed dates — unit tested.
+- **Offline emergency mode** — `EmergencyActivity` opens straight to a cached list
+  of the most urgent recent requests (`EmergencyLogic.cachedForOffline`, urgency
+  then recency) and lets the user compose a new request that is queued locally
+  (`OfflineQueue`, SharedPreferences) and flushed when the network returns.
+  De-duplication of queued requests uses `EmergencyLogic.isDuplicate`.
+
 ## Screenshots
 
 _Add screenshots here after running the app._

@@ -60,6 +60,20 @@
         <!-- The ordinary user's home. Launched by LoginActivity when the JWT
              role is not MANAGER; a manager is redirected to MainActivity. -->
         <activity android:name=".ui.UserHomeActivity" android:exported="false" />
+
+        <!-- Phase 3: blood camps -->
+        <activity android:name=".ui.CampListActivity" android:exported="false" />
+        <activity android:name=".ui.CampDetailActivity" android:exported="false" />
+        <activity android:name=".ui.AddCampActivity" android:exported="false" />
+        <!-- Phase 3: appointment slots -->
+        <activity android:name=".ui.SlotListActivity" android:exported="false" />
+        <activity android:name=".ui.AddSlotActivity" android:exported="false" />
+        <!-- Phase 3: donor verification (manager) -->
+        <activity android:name=".ui.VerifyDonorActivity" android:exported="false" />
+        <!-- Phase 3: stock forecast -->
+        <activity android:name=".ui.ForecastActivity" android:exported="false" />
+        <!-- Phase 3: offline emergency mode -->
+        <activity android:name=".ui.EmergencyActivity" android:exported="false" />
         <activity android:name=".ui.ConnectionCheckActivity" android:exported="false" />
         <!-- Reached from the login screen. Not exported: nothing outside the
              app can start it. -->

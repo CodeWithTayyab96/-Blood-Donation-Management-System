@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+
+        <EditText android:id="@+id/etSlotTime" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="@string/slot_time_hint"
+            android:inputType="text" android:layout_marginBottom="10dp" />
+        <EditText android:id="@+id/etSlotCapacity" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="@string/slot_capacity_hint"
+            android:inputType="number" android:layout_marginBottom="10dp" />
+        <EditText android:id="@+id/etSlotNote" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="@string/slot_note_hint"
+            android:inputType="textCapSentences" android:layout_marginBottom="16dp" />
+
+        <Button android:id="@+id/btnSaveSlot" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/label_save_slot" />
+    </LinearLayout>
+</ScrollView>

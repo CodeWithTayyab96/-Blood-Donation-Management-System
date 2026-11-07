@@ -204,4 +204,93 @@
     <string name="report_section_low">Low stock</string>
     <string name="report_share_chooser">Share report</string>
     <string name="report_failed">Could not create the report file.</string>
+
+    <!-- Phase 3: blood camps -->
+    <string name="title_camps">Blood Camps</string>
+    <string name="camps_empty">No camps scheduled yet.</string>
+    <string name="camps_upcoming">Upcoming</string>
+    <string name="camps_past">Past</string>
+    <string name="label_add_camp">Add Camp</string>
+    <string name="camp_name_hint">Camp name *</string>
+    <string name="camp_location_hint">Location *</string>
+    <string name="camp_city_hint">City *</string>
+    <string name="camp_date_hint">Date (yyyy-MM-dd) *</string>
+    <string name="camp_organizer_hint">Organizer</string>
+    <string name="label_save_camp">Save Camp</string>
+    <string name="camp_invalid">Please fill the name, location, city and a valid date.</string>
+    <string name="camp_saved">Camp saved.</string>
+    <string name="camp_date_label">Date</string>
+    <string name="camp_location_label">Location</string>
+    <string name="camp_city_label">City</string>
+    <string name="camp_organizer_label">Organizer</string>
+    <string name="camp_attend">Check in</string>
+    <string name="camp_attended">You are checked in.</string>
+    <string name="camp_attendance_count">%1$d donors checked in</string>
+    <string name="camp_no_attendance">No one has checked in yet.</string>
+
+    <!-- Phase 3: appointment slots -->
+    <string name="title_slots">Appointment Slots</string>
+    <string name="slots_empty">No appointment slots yet.</string>
+    <string name="label_add_slot">Add Slot</string>
+    <string name="slot_time_hint">Slot time (yyyy-MM-dd HH:mm) *</string>
+    <string name="slot_capacity_hint">Capacity *</string>
+    <string name="slot_note_hint">Note</string>
+    <string name="label_save_slot">Save Slot</string>
+    <string name="slot_invalid">Please enter a valid time and a capacity of at least 1.</string>
+    <string name="slot_capacity_label">%1$d / %2$d booked</string>
+    <string name="slot_book">Book</string>
+    <string name="slot_full">Full</string>
+    <string name="slot_booked">Booked</string>
+    <string name="slot_saved">Slot saved.</string>
+    <string name="slot_book_ok">Slot booked.</string>
+    <string name="slot_book_full">Sorry, that slot is full.</string>
+    <string name="slot_book_dup">You have already booked this slot.</string>
+
+    <!-- Phase 3: donor verification -->
+    <string name="title_verify">Donor Verification</string>
+    <string name="verify_status_label">Status: %1$s</string>
+    <string name="verify_pending">Pending</string>
+    <string name="verify_verified">Verified</string>
+    <string name="verify_rejected">Rejected</string>
+    <string name="verify_badge">✓ Verified donor</string>
+    <string name="verify_not_verified">Not verified</string>
+    <string name="label_verify_approve">Approve</string>
+    <string name="label_verify_reject">Reject</string>
+    <string name="verify_note_hint">Note (optional)</string>
+    <string name="verify_saved">Verification updated.</string>
+
+    <!-- Phase 3: stock forecast -->
+    <string name="title_forecast">Stock Forecast</string>
+    <string name="forecast_empty">Record donations and fulfilments to see a forecast.</string>
+    <string name="forecast_surplus">Surplus</string>
+    <string name="forecast_ok">OK</string>
+    <string name="forecast_low">Low</string>
+    <string name="forecast_critical">Critical</string>
+    <string name="forecast_days_left">%1$d days of stock left</string>
+    <string name="forecast_no_burn">No burn recorded — stock not being consumed</string>
+    <string name="forecast_burn">Burn: %1$.1f units/day</string>
+    <string name="forecast_stock_label">%1$d units in stock</string>
+
+    <!-- Phase 3: offline emergency mode -->
+    <string name="title_emergency">Emergency (Offline)</string>
+    <string name="emergency_cached_note">Showing the most urgent recent requests saved on this phone.</string>
+    <string name="emergency_empty">No cached requests on this phone.</string>
+    <string name="emergency_compose_title">Compose a request (queued offline)</string>
+    <string name="emergency_bg_hint">Blood group *</string>
+    <string name="emergency_units_hint">Units *</string>
+    <string name="emergency_city_hint">City *</string>
+    <string name="emergency_hospital_hint">Hospital *</string>
+    <string name="emergency_urgency_hint">Urgency</string>
+    <string name="label_queue_request">Queue request</string>
+    <string name="emergency_queued">%1$d request(s) queued — they will send when you are back online.</string>
+    <string name="emergency_queued_toast">Request queued. It will send when you are back online.</string>
+    <string name="emergency_duplicate">This request is already queued.</string>
+    <string name="emergency_invalid">Please fill the blood group, units, city and hospital.</string>
+
+    <!-- Phase 3: navigation buttons -->
+    <string name="nav_camps">🏕  Blood Camps</string>
+    <string name="nav_slots">📅  Appointment Slots</string>
+    <string name="nav_forecast">📈  Stock Forecast</string>
+    <string name="nav_emergency">🚨  Emergency (Offline)</string>
+    <string name="nav_verify">✓  Verify Donor</string>
 </resources>

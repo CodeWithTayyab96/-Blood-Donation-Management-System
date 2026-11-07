@@ -128,6 +128,17 @@
 
         <Button android:id="@+id/btnDonors" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="👥  Manage Donors" android:layout_marginTop="20dp" />
+        <!-- Phase 3: blood camps, slots, forecast and offline emergency. -->
+        <Button android:id="@+id/btnCamps" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/nav_camps" android:layout_marginTop="10dp" />
+        <Button android:id="@+id/btnSlots" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/nav_slots" android:layout_marginTop="10dp" />
+        <Button android:id="@+id/btnForecast" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/nav_forecast" android:layout_marginTop="10dp"
+            style="?attr/materialButtonOutlinedStyle" />
+        <Button android:id="@+id/btnEmergency" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/nav_emergency" android:layout_marginTop="10dp"
+            style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnStock" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="🏥  Blood Stock" android:layout_marginTop="10dp" />
         <Button android:id="@+id/btnRequests" android:layout_width="match_parent" android:layout_height="wrap_content"

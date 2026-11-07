@@ -6,16 +6,24 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.tayyab.blooddonation.model.BloodRequest
+import com.tayyab.blooddonation.model.Camp
+import com.tayyab.blooddonation.model.CampAttendance
 import com.tayyab.blooddonation.model.ContactDetail
 import com.tayyab.blooddonation.model.Donation
 import com.tayyab.blooddonation.model.Donor
+import com.tayyab.blooddonation.model.Movement
 import com.tayyab.blooddonation.model.Offer
+import com.tayyab.blooddonation.model.AppointmentBooking
+import com.tayyab.blooddonation.model.AppointmentSlot
 import com.tayyab.blooddonation.model.Report
 import com.tayyab.blooddonation.model.StatusEvent
 import com.tayyab.blooddonation.model.UserAccount
+import com.tayyab.blooddonation.model.Verification
+import com.tayyab.blooddonation.util.AppointmentRules
 import com.tayyab.blooddonation.util.BloodCompatibility
 import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.StatusTimeline
+import com.tayyab.blooddonation.util.VerificationRules
 import java.time.LocalDate
 
 class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
@@ -45,7 +53,10 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         // dropped and legacy manager rows keep a null requester_id.
         // v9 (Phase 2): request_status_history, for the status timeline.
         // CREATE TABLE only — no existing row is touched or dropped.
-        private const val DB_VERSION = 9
+        // v10 (Phase 3): camps, camp_attendance, appointment_slots,
+        // appointment_bookings, donor_verifications, stock_movements. All CREATE
+        // TABLE — additive, no existing row is touched or dropped.
+        private const val DB_VERSION = 10
 
         /**
          * Explicit column lists. `SELECT *` plus positional access silently
@@ -115,6 +126,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         createContactDetailsTable(db)
         createReportsTable(db)
         createStatusHistoryTable(db)
+        createPhase3Tables(db)
         for (g in BloodCompatibility.ALL_GROUPS) {
             db.execSQL("INSERT INTO stock(blood_group, units) VALUES('$g', 0)")
         }
@@ -162,6 +174,49 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                 status TEXT NOT NULL,
                 changed_at TEXT NOT NULL,
                 actor TEXT)"""
+        )
+    }
+
+    /** Phase 3: camps, attendance, appointment slots, donor verification and
+     *  stock movements. Each is additive and independent of the others. */
+    private fun createPhase3Tables(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE camps(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL, location TEXT NOT NULL, city TEXT NOT NULL,
+                camp_date TEXT NOT NULL, organizer TEXT NOT NULL DEFAULT '')"""
+        )
+        db.execSQL(
+            """CREATE TABLE camp_attendance(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                camp_id INTEGER NOT NULL, donor_id INTEGER NOT NULL,
+                attended_at TEXT NOT NULL,
+                UNIQUE(camp_id, donor_id))"""
+        )
+        db.execSQL(
+            """CREATE TABLE appointment_slots(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slot_time TEXT NOT NULL, capacity INTEGER NOT NULL,
+                booked INTEGER NOT NULL DEFAULT 0, note TEXT NOT NULL DEFAULT '')"""
+        )
+        db.execSQL(
+            """CREATE TABLE appointment_bookings(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slot_id INTEGER NOT NULL, donor_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(slot_id, donor_id))"""
+        )
+        db.execSQL(
+            """CREATE TABLE donor_verifications(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                donor_id INTEGER NOT NULL, status TEXT NOT NULL,
+                verified_by TEXT, verified_at TEXT, note TEXT NOT NULL DEFAULT '')"""
+        )
+        db.execSQL(
+            """CREATE TABLE stock_movements(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                blood_group TEXT NOT NULL, delta INTEGER NOT NULL,
+                reason TEXT NOT NULL, date TEXT NOT NULL)"""
         )
     }
 
@@ -230,6 +285,11 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             // current status; the timeline simply starts from the next change.
             createStatusHistoryTable(db)
         }
+        if (oldVersion < 10) {
+            // v10 (Phase 3): additive only. Six new tables, no existing row
+            // touched. A jump from v8 -> v10 still runs v9 then this.
+            createPhase3Tables(db)
+        }
     }
 
     /**
@@ -292,7 +352,9 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         try {
             for (table in listOf(
                 "donations", "contact_details", "reports", "offers",
-                "request_status_history", "requests", "donors", "stock", "users"
+                "request_status_history", "requests", "donors", "stock", "users",
+                "camps", "camp_attendance", "appointment_slots",
+                "appointment_bookings", "donor_verifications", "stock_movements"
             )) {
                 db.delete(table, null, null)
             }
@@ -628,6 +690,12 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                 "UPDATE stock SET units = units + ? WHERE blood_group = ?",
                 arrayOf(units, donor.bloodGroup)
             )
+            // Phase 3: a dated inflow movement, so forecasting can use real burn.
+            val mv = ContentValues().apply {
+                put("blood_group", donor.bloodGroup); put("delta", units)
+                put("reason", "donation"); put("date", dateStr)
+            }
+            db.insert("stock_movements", null, mv)
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -1031,6 +1099,13 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                     "UPDATE stock SET units = units - ? WHERE blood_group = ?",
                     arrayOf(r.unitsNeeded, r.bloodGroup)
                 )
+                // Phase 3: a dated outflow movement, paired with the stock debit
+                // so the forecast's burn rate is real, not guessed.
+                val mv = ContentValues().apply {
+                    put("blood_group", r.bloodGroup); put("delta", -r.unitsNeeded)
+                    put("reason", "fulfilment"); put("date", LocalDate.now().toString())
+                }
+                db.insert("stock_movements", null, mv)
                 val upd = ContentValues().apply { put("status", "Fulfilled") }
                 db.update("requests", upd, "id=?", arrayOf(r.id.toString()))
                 // Same transaction as the stock debit, so a fulfilled request
@@ -1047,5 +1122,203 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             db.endTransaction()
         }
         return fulfilled
+    }
+
+    // ----------------------------------------------------- Phase 3: camps
+    fun insertCamp(c: Camp): Long {
+        val v = ContentValues().apply {
+            put("name", c.name); put("location", c.location); put("city", c.city)
+            put("camp_date", c.campDate); put("organizer", c.organizer)
+        }
+        return writableDatabase.insert("camps", null, v)
+    }
+
+    fun getAllCamps(): List<Camp> {
+        val out = mutableListOf<Camp>()
+        readableDatabase.rawQuery(
+            "SELECT id, name, location, city, camp_date, organizer FROM camps ORDER BY camp_date ASC", null
+        ).use { c ->
+            while (c.moveToNext()) out.add(
+                Camp(
+                    id = c.getLong(0), name = c.getString(1), location = c.getString(2),
+                    city = c.getString(3), campDate = c.getString(4), organizer = c.getString(5)
+                )
+            )
+        }
+        return out
+    }
+
+    /** Records (or ignores) a donor's check-in at a camp. */
+    fun recordAttendance(campId: Long, donorId: Long, attendedAt: String): Boolean {
+        val v = ContentValues().apply {
+            put("camp_id", campId); put("donor_id", donorId); put("attended_at", attendedAt)
+        }
+        return writableDatabase.insertWithOnConflict(
+            "camp_attendance", null, v, SQLiteDatabase.CONFLICT_IGNORE
+        ) != -1L
+    }
+
+    fun getAttendance(campId: Long): List<CampAttendance> {
+        val out = mutableListOf<CampAttendance>()
+        readableDatabase.rawQuery(
+            "SELECT id, camp_id, donor_id, attended_at FROM camp_attendance WHERE camp_id = ? ORDER BY attended_at ASC",
+            arrayOf(campId.toString())
+        ).use { c ->
+            while (c.moveToNext()) out.add(
+                CampAttendance(
+                    id = c.getLong(0), campId = c.getLong(1), donorId = c.getLong(2),
+                    attendedAt = c.getString(3)
+                )
+            )
+        }
+        return out
+    }
+
+    fun hasAttended(campId: Long, donorId: Long): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM camp_attendance WHERE camp_id = ? AND donor_id = ?",
+            arrayOf(campId.toString(), donorId.toString())
+        ).use { it.moveToFirst() }
+
+    // -------------------------------------------- Phase 3: appointment slots
+    fun insertSlot(s: AppointmentSlot): Long {
+        val v = ContentValues().apply {
+            put("slot_time", s.slotTime); put("capacity", s.capacity)
+            put("booked", s.booked); put("note", s.note)
+        }
+        return writableDatabase.insert("appointment_slots", null, v)
+    }
+
+    fun getAllSlots(): List<AppointmentSlot> {
+        val out = mutableListOf<AppointmentSlot>()
+        readableDatabase.rawQuery(
+            "SELECT id, slot_time, capacity, booked, note FROM appointment_slots ORDER BY slot_time ASC", null
+        ).use { c ->
+            while (c.moveToNext()) out.add(
+                AppointmentSlot(
+                    id = c.getLong(0), slotTime = c.getString(1), capacity = c.getInt(2),
+                    booked = c.getInt(3), note = c.getString(4)
+                )
+            )
+        }
+        return out
+    }
+
+    fun getSlot(id: Long): AppointmentSlot? {
+        readableDatabase.rawQuery(
+            "SELECT id, slot_time, capacity, booked, note FROM appointment_slots WHERE id = ?",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (!c.moveToFirst()) return null
+            return AppointmentSlot(
+                id = c.getLong(0), slotTime = c.getString(1), capacity = c.getInt(2),
+                booked = c.getInt(3), note = c.getString(4)
+            )
+        }
+    }
+
+    /**
+     * Books a slot inside a transaction that re-checks capacity after the row is
+     * read, so two donors racing the same last seat cannot both succeed. The
+     * returned [AppointmentRules.BookResult] is exactly what the UI consults, so
+     * the message and the database can never disagree.
+     */
+    fun bookSlot(slotId: Long, donorId: Long, createdAt: String): AppointmentRules.BookResult {
+        val db = writableDatabase
+        if (hasBooking(slotId, donorId)) return AppointmentRules.BookResult.Duplicate
+        db.beginTransaction()
+        return try {
+            val slot = getSlot(slotId) ?: return AppointmentRules.BookResult.Full.also { db.endTransaction() }
+            val decision = AppointmentRules.evaluate(slot.capacity, slot.booked, alreadyBooked = false)
+            if (decision == AppointmentRules.BookResult.Ok) {
+                val b = ContentValues().apply {
+                    put("slot_id", slotId); put("donor_id", donorId); put("created_at", createdAt)
+                }
+                db.insert("appointment_bookings", null, b)
+                db.execSQL(
+                    "UPDATE appointment_slots SET booked = booked + 1 WHERE id = ?",
+                    arrayOf(slotId.toString())
+                )
+                db.setTransactionSuccessful()
+            }
+            decision
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun getBookings(slotId: Long): List<AppointmentBooking> {
+        val out = mutableListOf<AppointmentBooking>()
+        readableDatabase.rawQuery(
+            "SELECT id, slot_id, donor_id, created_at FROM appointment_bookings WHERE slot_id = ? ORDER BY created_at ASC",
+            arrayOf(slotId.toString())
+        ).use { c ->
+            while (c.moveToNext()) out.add(
+                AppointmentBooking(
+                    id = c.getLong(0), slotId = c.getLong(1), donorId = c.getLong(2),
+                    createdAt = c.getString(3)
+                )
+            )
+        }
+        return out
+    }
+
+    fun hasBooking(slotId: Long, donorId: Long): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM appointment_bookings WHERE slot_id = ? AND donor_id = ?",
+            arrayOf(slotId.toString(), donorId.toString())
+        ).use { it.moveToFirst() }
+
+    // ----------------------------------------------- Phase 3: verification
+    fun insertVerification(v: Verification): Long {
+        val cv = ContentValues().apply {
+            put("donor_id", v.donorId); put("status", v.status)
+            put("verified_by", v.verifiedBy); put("verified_at", v.verifiedAt); put("note", v.note)
+        }
+        return writableDatabase.insert("donor_verifications", null, cv)
+    }
+
+    fun getVerifications(donorId: Long): List<Verification> {
+        val out = mutableListOf<Verification>()
+        readableDatabase.rawQuery(
+            "SELECT id, donor_id, status, verified_by, verified_at, note FROM donor_verifications WHERE donor_id = ? ORDER BY id ASC",
+            arrayOf(donorId.toString())
+        ).use { c ->
+            while (c.moveToNext()) out.add(
+                Verification(
+                    id = c.getLong(0), donorId = c.getLong(1), status = c.getString(2),
+                    verifiedBy = c.getString(3), verifiedAt = c.getString(4), note = c.getString(5)
+                )
+            )
+        }
+        return out
+    }
+
+    /** True when the donor's latest verification record is "verified". */
+    fun isDonorVerified(donorId: Long): Boolean =
+        getVerifications(donorId).maxByOrNull { it.id }?.status == VerificationRules.VERIFIED
+
+    // -------------------------------------------- Phase 3: stock movements
+    fun insertMovement(m: Movement): Long {
+        val v = ContentValues().apply {
+            put("blood_group", m.bloodGroup); put("delta", m.delta)
+            put("reason", m.reason); put("date", m.date)
+        }
+        return writableDatabase.insert("stock_movements", null, v)
+    }
+
+    fun getAllMovements(): List<Movement> {
+        val out = mutableListOf<Movement>()
+        readableDatabase.rawQuery(
+            "SELECT id, blood_group, delta, reason, date FROM stock_movements ORDER BY date ASC, id ASC", null
+        ).use { c ->
+            while (c.moveToNext()) out.add(
+                Movement(
+                    id = c.getLong(0), bloodGroup = c.getString(1), delta = c.getInt(2),
+                    reason = c.getString(3), date = c.getString(4)
+                )
+            )
+        }
+        return out
     }
 }

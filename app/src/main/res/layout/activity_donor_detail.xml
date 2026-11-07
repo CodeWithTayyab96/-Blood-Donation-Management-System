@@ -23,6 +23,14 @@
         <TextView android:id="@+id/tvDetailEligibility" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="10dp" />
 
+        <!-- Phase 3: donor verification status, set by a manager. -->
+        <TextView android:id="@+id/tvVerified" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="8dp"
+            android:visibility="gone" />
+        <Button android:id="@+id/btnVerify" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/nav_verify" android:layout_marginTop="8dp"
+            style="?attr/materialButtonOutlinedStyle" android:visibility="gone" />
+
         <!-- Hidden unless the local row holds a number this account may see. -->
         <LinearLayout android:id="@+id/contactActions"
             android:layout_width="match_parent" android:layout_height="wrap_content"

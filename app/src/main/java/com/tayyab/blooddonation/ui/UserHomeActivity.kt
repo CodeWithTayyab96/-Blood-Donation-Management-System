@@ -98,6 +98,20 @@ class UserHomeActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnNeedBlood).setOnClickListener {
             startActivity(Intent(this, CreateRequestActivity::class.java))
         }
+        // Phase 3: camps, slots, forecast and offline emergency are available to
+        // donors too (managers additionally get the create actions inside them).
+        findViewById<Button>(R.id.btnCamps).setOnClickListener {
+            startActivity(Intent(this, CampListActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnSlots).setOnClickListener {
+            startActivity(Intent(this, SlotListActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnForecast).setOnClickListener {
+            startActivity(Intent(this, ForecastActivity::class.java))
+        }
+        findViewById<Button>(R.id.btnEmergency).setOnClickListener {
+            startActivity(Intent(this, EmergencyActivity::class.java))
+        }
         findViewById<Button>(R.id.btnMyRequests).setOnClickListener {
             openRequests(RequestListActivity.MODE_MINE)
         }

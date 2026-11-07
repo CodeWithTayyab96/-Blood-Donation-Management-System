@@ -205,4 +205,93 @@
     <string name="report_section_low">کم اسٹاک</string>
     <string name="report_share_chooser">رپورٹ شیئر کریں</string>
     <string name="report_failed">رپورٹ فائل نہیں بن سکی۔</string>
+
+    <!-- Phase 3: blood camps -->
+    <string name="title_camps">بلڈ کیمپس</string>
+    <string name="camps_empty">ابھی تک کوئی کیمپ شیڈول نہیں کیا گیا۔</string>
+    <string name="camps_upcoming">آئندہ</string>
+    <string name="camps_past">گزر گئے</string>
+    <string name="label_add_camp">کیمپ شامل کریں</string>
+    <string name="camp_name_hint">کیمپ کا نام *</string>
+    <string name="camp_location_hint">مقام *</string>
+    <string name="camp_city_hint">شہر *</string>
+    <string name="camp_date_hint">تاریخ (yyyy-MM-dd) *</string>
+    <string name="camp_organizer_hint">منظم کرنے والا</string>
+    <string name="label_save_camp">کیمپ محفوظ کریں</string>
+    <string name="camp_invalid">براہ کرم نام، مقام، شہر اور درست تاریخ درج کریں۔</string>
+    <string name="camp_saved">کیمپ محفوظ ہو گیا۔</string>
+    <string name="camp_date_label">تاریخ</string>
+    <string name="camp_location_label">مقام</string>
+    <string name="camp_city_label">شہر</string>
+    <string name="camp_organizer_label">منظم کرنے والا</string>
+    <string name="camp_attend">چیک ان</string>
+    <string name="camp_attended">آپ چیک ان ہو چکے ہیں۔</string>
+    <string name="camp_attendance_count">%1$d ڈونرز چیک ان ہوئے</string>
+    <string name="camp_no_attendance">ابھی تک کوئی چیک ان نہیں ہوا۔</string>
+
+    <!-- Phase 3: appointment slots -->
+    <string name="title_slots">اپائنٹمنٹ سلیٹس</string>
+    <string name="slots_empty">ابھی تک کوئی سلیٹ نہیں ہے۔</string>
+    <string name="label_add_slot">سلیٹ شامل کریں</string>
+    <string name="slot_time_hint">سلیٹ کا وقت (yyyy-MM-dd HH:mm) *</string>
+    <string name="slot_capacity_hint">گنجائش *</string>
+    <string name="slot_note_hint">نوٹ</string>
+    <string name="label_save_slot">سلیٹ محفوظ کریں</string>
+    <string name="slot_invalid">براہ کرم درست وقت اور کم از کم 1 کی گنجائش درج کریں۔</string>
+    <string name="slot_capacity_label">%1$d / %2$d بک کیے گئے</string>
+    <string name="slot_book">بک کریں</string>
+    <string name="slot_full">بھرا ہوا</string>
+    <string name="slot_booked">بک شدہ</string>
+    <string name="slot_saved">سلیٹ محفوظ ہو گیا۔</string>
+    <string name="slot_book_ok">سلیٹ بک ہو گیا۔</string>
+    <string name="slot_book_full">معاف کیجیے، یہ سلیٹ بھر چکی ہے۔</string>
+    <string name="slot_book_dup">آپ اس سلیٹ پر پہلے ہی بک کر چکے ہیں۔</string>
+
+    <!-- Phase 3: donor verification -->
+    <string name="title_verify">ڈونر کی تصدیق</string>
+    <string name="verify_status_label">حالت: %1$s</string>
+    <string name="verify_pending">زیر التوا</string>
+    <string name="verify_verified">تصدیق شدہ</string>
+    <string name="verify_rejected">مسترد</string>
+    <string name="verify_badge">✓ تصدیق شدہ ڈونر</string>
+    <string name="verify_not_verified">تصدیق شدہ نہیں</string>
+    <string name="label_verify_approve">منظور کریں</string>
+    <string name="label_verify_reject">مسترد کریں</string>
+    <string name="verify_note_hint">نوٹ (اختیاری)</string>
+    <string name="verify_saved">تصدیق اپ ڈیٹ ہو گئی۔</string>
+
+    <!-- Phase 3: stock forecast -->
+    <string name="title_forecast">اسٹاک کی پیشن گوئی</string>
+    <string name="forecast_empty">پیشن گوئی دیکھنے کے لیے عطیات اور تکمیل ریکارڈ کریں۔</string>
+    <string name="forecast_surplus">زیادہ</string>
+    <string name="forecast_ok">ٹھیک ہے</string>
+    <string name="forecast_low">کم</string>
+    <string name="forecast_critical">تنقیدی</string>
+    <string name="forecast_days_left">%1$d دن اسٹاک باقی ہے</string>
+    <string name="forecast_no_burn">کوئی خرچ ریکارڈ نہیں — اسٹاک استعمال نہیں ہو رہا</string>
+    <string name="forecast_burn">خرچ: %1$.1f یونٹ/دن</string>
+    <string name="forecast_stock_label">%1$d یونٹ اسٹاک میں</string>
+
+    <!-- Phase 3: offline emergency mode -->
+    <string name="title_emergency">ایمرجنسی (آف لائن)</string>
+    <string name="emergency_cached_note">اس فون پر محفوظ سب سے ہنگامی حالیہ درخواستیں دکھا رہا ہے۔</string>
+    <string name="emergency_empty">اس فون پر کوئی کیش درخواست نہیں۔</string>
+    <string name="emergency_compose_title">درخواست لکھیں (آف لائن قطار میں)</string>
+    <string name="emergency_bg_hint">بلڈ گروپ *</string>
+    <string name="emergency_units_hint">یونٹس *</string>
+    <string name="emergency_city_hint">شہر *</string>
+    <string name="emergency_hospital_hint">ہسپتال *</string>
+    <string name="emergency_urgency_hint">ہنگامی</string>
+    <string name="label_queue_request">درخواست قطار میں ڈالیں</string>
+    <string name="emergency_queued">%1$d درخواستیں قطار میں — جب آپ آن لائن آئیں گے تو بھیجی جائیں گی۔</string>
+    <string name="emergency_queued_toast">درخواست قطار میں ڈال دی گئی۔ جب آپ آن لائن آئیں گے تو بھیجی جائے گی۔</string>
+    <string name="emergency_duplicate">یہ درخواست پہلے ہی قطار میں ہے۔</string>
+    <string name="emergency_invalid">براہ کرم بلڈ گروپ، یونٹس، شہر اور ہسپتال بھریں۔</string>
+
+    <!-- Phase 3: navigation buttons -->
+    <string name="nav_camps">🏕  بلڈ کیمپس</string>
+    <string name="nav_slots">📅  اپائنٹمنٹ سلیٹس</string>
+    <string name="nav_forecast">📈  اسٹاک پیشن گوئی</string>
+    <string name="nav_emergency">🚨  ایمرجنسی (آف لائن)</string>
+    <string name="nav_verify">✓  ڈونر کی تصدیق</string>
 </resources>

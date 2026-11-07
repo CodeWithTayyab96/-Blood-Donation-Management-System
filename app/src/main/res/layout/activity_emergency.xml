@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp">
+
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/emergency_cached_note" android:textSize="13sp"
+            android:textColor="@color/text_secondary" android:layout_marginBottom="10dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/title_emergency" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/text_accent" />
+        <LinearLayout android:id="@+id/containerCached" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:orientation="vertical"
+            android:layout_marginTop="8dp" />
+        <TextView android:id="@+id/tvCachedEmpty" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/emergency_empty"
+            android:textColor="@color/text_secondary" android:visibility="gone" />
+
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="?android:attr/listDivider" android:layout_marginTop="18dp"
+            android:layout_marginBottom="12dp" />
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/emergency_compose_title" android:textSize="16sp"
+            android:textStyle="bold" android:textColor="@color/text_accent" />
+
+        <EditText android:id="@+id/etEmBg" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="@string/emergency_bg_hint"
+            android:inputType="textCapCharacters" android:layout_marginTop="8dp" />
+        <EditText android:id="@+id/etEmUnits" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="@string/emergency_units_hint"
+            android:inputType="number" android:layout_marginTop="8dp" />
+        <EditText android:id="@+id/etEmCity" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="@string/emergency_city_hint"
+            android:inputType="textCapWords" android:layout_marginTop="8dp" />
+        <EditText android:id="@+id/etEmHospital" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="@string/emergency_hospital_hint"
+            android:inputType="textCapWords" android:layout_marginTop="8dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/emergency_urgency_hint" android:textSize="13sp"
+            android:textColor="@color/text_secondary" android:layout_marginTop="8dp" />
+        <Spinner android:id="@+id/spEmUrgency" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="4dp" />
+
+        <Button android:id="@+id/btnQueue" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/label_queue_request"
+            android:layout_marginTop="14dp" />
+
+        <TextView android:id="@+id/tvQueued" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="@color/status_ok" android:layout_marginTop="10dp"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>
