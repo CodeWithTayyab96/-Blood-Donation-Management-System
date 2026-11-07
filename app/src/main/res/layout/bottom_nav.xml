@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shared bottom navigation bar, included at the bottom of the four tab
+     screens. Wired by BottomNav.setup (selected tab, badges, navigation). -->
+<com.google.android.material.bottomnavigation.BottomNavigationView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/bottomNav"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/warm_surface"
+    android:elevation="8dp"
+    app:labelVisibilityMode="labeled"
+    app:itemIconTint="@color/bottom_nav_item"
+    app:itemTextColor="@color/bottom_nav_item"
+    app:menu="@menu/bottom_nav_menu" />

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Three-dot overflow menu in the app bar of the four tab screens: the
+     secondary destinations that are not daily tabs. Reports and Moderation
+     are manager-only (hidden for everyone else in BottomNav). -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/overflow_camps"
+        android:title="@string/nav_camps" />
+    <item
+        android:id="@+id/overflow_slots"
+        android:title="@string/nav_slots" />
+    <item
+        android:id="@+id/overflow_forecast"
+        android:title="@string/nav_forecast" />
+    <item
+        android:id="@+id/overflow_reports"
+        android:title="@string/label_manager_reports" />
+    <item
+        android:id="@+id/overflow_moderation"
+        android:title="@string/overflow_moderation" />
+    <item
+        android:id="@+id/overflow_emergency"
+        android:title="@string/nav_emergency" />
+    <item
+        android:id="@+id/overflow_settings"
+        android:title="@string/label_settings" />
+    <item
+        android:id="@+id/overflow_logout"
+        android:title="@string/label_log_out" />
+</menu>

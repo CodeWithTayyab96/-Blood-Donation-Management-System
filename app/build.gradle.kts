@@ -11,8 +11,8 @@ android {
         applicationId = "com.tayyab.blooddonation"
         minSdk = 26          // Android 8.0 and above
         targetSdk = 34
-        versionCode = 22
-        versionName = "1.21"
+        versionCode = 23
+        versionName = "1.22"
 
         // Supabase (v1.3, Auth added in v1.4): the PostgREST client reads these BuildConfig
         // fields. They come from Gradle project properties of the same

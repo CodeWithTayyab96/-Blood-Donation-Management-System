@@ -4,16 +4,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Donor
@@ -35,6 +37,10 @@ class DonorListActivity : AppCompatActivity() {
         setContentView(R.layout.activity_donor_list)
         title = "Donors"
         db = DbHelper(this)
+
+        // Bottom navigation (v1.22): this is the Donors tab.
+        BottomNav.setup(this, R.id.nav_donors)
+        BottomNav.setupChatFab(this)
 
         val rv = findViewById<RecyclerView>(R.id.rvDonors)
         rv.layoutManager = LinearLayoutManager(this)
@@ -64,12 +70,24 @@ class DonorListActivity : AppCompatActivity() {
 
         // Donors browse and search; only managers add new donor records.
         Session.load(this)
-        val fab = findViewById<FloatingActionButton>(R.id.fabAddDonor)
-        fab.visibility = if (Session.isManager) View.VISIBLE else View.GONE
-        fab.setOnClickListener {
+        val btnAdd = findViewById<Button>(R.id.btnAddDonor)
+        btnAdd.visibility = if (Session.isManager) View.VISIBLE else View.GONE
+        btnAdd.setOnClickListener {
             startActivity(Intent(this, AddDonorActivity::class.java))
         }
     }
+
+    /** Three-dot menu in the app bar: the secondary destinations. */
+    override fun onCreateOptionsMenu(menu: Menu): Boolean =
+        BottomNav.onCreateOptionsMenu(this, menu)
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        BottomNav.onPrepareOptionsMenu(this, menu)
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean =
+        BottomNav.onOptionsItemSelected(this, item) || super.onOptionsItemSelected(item)
 
     override fun onResume() {
         super.onResume()
@@ -99,6 +117,8 @@ class DonorListActivity : AppCompatActivity() {
         allDonors = db.getAllDonors()
         refreshCityFilter()
         applyFilters()
+        // Bottom navigation badges: live pending and low-stock counts.
+        BottomNav.updateBadges(this)
     }
 
     /** City list comes from the donors themselves, so it always matches real data. */

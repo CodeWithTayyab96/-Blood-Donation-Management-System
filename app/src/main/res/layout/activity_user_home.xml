@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Donor home. Warm Clinical Sanguine: light header, white 20dp cards, crimson actions. -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/warm_background">
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="16dp">
+        android:orientation="vertical" android:padding="16dp"
+        android:paddingBottom="96dp">
 
         <!-- Header: light, crimson drop tile, no gradient, no emoji. -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -107,12 +109,8 @@
             android:text="@string/label_browse_requests" android:layout_marginBottom="8dp"
             style="?attr/materialButtonOutlinedStyle" />
 
-        <Button android:id="@+id/btnAskAi"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/label_ai_helper_home"
-            android:layout_marginBottom="8dp"
-            style="?attr/materialButtonOutlinedStyle" />
-
+        <!-- The "Can I donate?" helper is the floating chat button now (v1.22),
+             so there is no helper button in this list any more. -->
         <Button android:id="@+id/btnUserProfile"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_my_profile" android:layout_marginBottom="8dp"
@@ -129,4 +127,11 @@
             android:textColor="@color/status_bad"
             style="?attr/materialButtonOutlinedStyle" />
     </LinearLayout>
-</ScrollView>
+    </ScrollView>
+
+    <!-- Floating chat button only: the donor home has no bottom bar (v1.22). -->
+    <include layout="@layout/chat_fab"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="16dp" android:layout_marginEnd="16dp" />
+</FrameLayout>

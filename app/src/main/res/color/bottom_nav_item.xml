@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bottom navigation icon and label colours: crimson for the active tab, grey for the rest. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="@color/brand_primary_container" />
+    <item android:color="@color/text_secondary" />
+</selector>

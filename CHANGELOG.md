@@ -3,6 +3,10 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.22 — 2026-11-07
+
+versionCode 23. WhatsApp-style bottom navigation, designed in Stitch: Home, Donors, Stock and Requests are tabs on the four main screens, with live badges (Stock shows the groups at or below the low threshold, Requests shows the pending count). The "Can I donate?" helper is a floating crimson chat button above the bar on every tab and on the donor home, and opens as a chat view with a greeting, suggestion chips and message bubbles. The manager dashboard is slimmed to six quick actions (Camps, Appointments, Forecast, Manager reports, My Profile, Check for Updates); Camps, Appointments, Forecast, Manager reports, Moderation, Emergency, Settings and Log out live in the three-dot menu in the app bar. Add donor and New request are full-width buttons now, so the chat button has the bottom-right corner to itself. Home in the bar is role-aware: managers land on the dashboard, donors on their home.
+
 ## 1.21 — 2026-11-07
 
 versionCode 22. Warm Clinical Sanguine redesign of the whole app GUI, designed in Stitch: light-first warm palette (#FFF8F5 canvas, #C8102E primary), 48dp buttons with 16dp radius, 20dp cards, status pills for donors, stock and requests. All 37 layouts restyled, all 279 pre-existing view ids preserved. Dashboard gains an urgent banner with the live pending-request count; stock is a two-column grid with progress bars and Available/Low/Out of Stock pills. One deliberate behaviour change: the app now stays light in system dark mode (night colours removed).

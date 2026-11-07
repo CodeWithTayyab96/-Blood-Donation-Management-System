@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bottom navigation: the four daily destinations, WhatsApp-style. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_nav_home"
+        android:title="@string/nav_home" />
+    <item
+        android:id="@+id/nav_donors"
+        android:icon="@drawable/ic_stat_donors"
+        android:title="@string/nav_donors" />
+    <item
+        android:id="@+id/nav_stock"
+        android:icon="@drawable/ic_stat_stock"
+        android:title="@string/nav_stock" />
+    <item
+        android:id="@+id/nav_requests"
+        android:icon="@drawable/ic_nav_requests"
+        android:title="@string/nav_requests" />
+</menu>

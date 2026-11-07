@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Blood requests list. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:background="@color/warm_background">
+    android:background="@color/warm_background">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical">
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:text="Blood Requests" android:textAppearance="@style/TextAppearance.Blood.Headline"
         android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
@@ -25,18 +27,21 @@
             android:layout_height="wrap_content" android:text="My requests" android:textSize="13sp" />
     </LinearLayout>
 
+    <!-- New request used to be a floating button; it is a full-width button
+         now so the floating chat button can sit at the bottom-right. -->
+    <Button android:id="@+id/btnNewRequest" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/label_new_request"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp" />
+
     <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvRequests"
         android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
         android:layout_marginTop="12dp" android:clipToPadding="false"
-        android:paddingBottom="8dp" />
+        android:paddingBottom="88dp" />
     <TextView android:id="@+id/tvEmptyRequests" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="No requests yet." android:gravity="center" android:padding="24dp"
         android:visibility="gone" android:textSize="15sp"
         android:textColor="@color/text_secondary" />
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAddRequest" android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="end" android:layout_margin="16dp" android:contentDescription="Add request"
-        app:srcCompat="@android:drawable/ic_input_add" />
 
     <!-- In-flight sync indicator: shown while requests/offers are pulled. -->
     <LinearLayout android:id="@+id/syncRow"
@@ -51,4 +56,14 @@
             android:layout_marginStart="8dp" android:textSize="14sp"
             android:textColor="?android:textColorSecondary" />
     </LinearLayout>
-</LinearLayout>
+    </LinearLayout>
+
+    <!-- Bottom navigation + floating chat button (v1.22). -->
+    <include layout="@layout/bottom_nav"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
+    <include layout="@layout/chat_fab"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="72dp" android:layout_marginEnd="16dp" />
+</FrameLayout>

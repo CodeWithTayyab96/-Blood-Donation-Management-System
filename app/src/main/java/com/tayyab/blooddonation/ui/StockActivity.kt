@@ -1,6 +1,8 @@
 package com.tayyab.blooddonation.ui
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -14,6 +16,10 @@ class StockActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_stock)
         title = "Blood Stock"
+
+        // Bottom navigation (v1.22): this is the Stock tab.
+        BottomNav.setup(this, R.id.nav_stock)
+        BottomNav.setupChatFab(this)
         val db = DbHelper(this)
         val rv = findViewById<RecyclerView>(R.id.rvStock)
         rv.layoutManager = GridLayoutManager(this, 2)
@@ -31,10 +37,29 @@ class StockActivity : AppCompatActivity() {
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
                     rv.adapter = StockAdapter(db.stockLevels().toList())
+                    BottomNav.updateBadges(this)
                     spinner.visibility = android.view.View.GONE
                     label.visibility = android.view.View.GONE
                 }
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Bottom navigation badges: live pending and low-stock counts.
+        BottomNav.updateBadges(this)
+    }
+
+    /** Three-dot menu in the app bar: the secondary destinations. */
+    override fun onCreateOptionsMenu(menu: Menu): Boolean =
+        BottomNav.onCreateOptionsMenu(this, menu)
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        BottomNav.onPrepareOptionsMenu(this, menu)
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean =
+        BottomNav.onOptionsItemSelected(this, item) || super.onOptionsItemSelected(item)
 }

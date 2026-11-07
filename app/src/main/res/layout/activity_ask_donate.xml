@@ -1,79 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    "Can I donate?" helper (Phase 4). Deliberately plain: one visible
-    disclaimer up top, one question box, one answer. The AI answer is general
-    information only — the safety notes at the bottom stay visible no matter
-    what the model produces.
-    Warm Clinical Sanguine restyle (2026-11-07).
+    "Can I donate?" helper (Phase 4), chat view since v1.22: the AI greeting,
+    the user's questions and the answers are bubbles in one conversation.
+    Still one visible disclaimer up top, and the safety notes at the bottom
+    stay visible no matter what the model produces. Only the sanitised
+    question is sent, never personal data.
 -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@color/warm_background">
+    android:orientation="vertical" android:background="@color/warm_background"
+    android:padding="18dp">
+
+    <TextView
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="AI Helper" android:textSize="22sp" android:textStyle="bold"
+        android:textColor="@color/on_surface" />
+
+    <TextView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:textSize="13sp"
+        android:textColor="@color/text_secondary"
+        android:text="@string/safety_ask_donate_top" />
+
+    <ScrollView
+        android:id="@+id/scrollMessages"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:layout_marginTop="14dp">
+        <LinearLayout
+            android:id="@+id/messagesContainer"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <!-- Suggestion chips: tap one to fill the question box. -->
+    <HorizontalScrollView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:scrollbars="none">
+        <LinearLayout
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <Button android:id="@+id/chipEligibility"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Am I eligible?" android:textSize="13sp"
+                style="?attr/materialButtonOutlinedStyle" />
+            <Button android:id="@+id/chipOften"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="How often can I donate?" android:textSize="13sp"
+                android:layout_marginStart="8dp"
+                style="?attr/materialButtonOutlinedStyle" />
+            <Button android:id="@+id/chipEat"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="What to eat before donating?" android:textSize="13sp"
+                android:layout_marginStart="8dp"
+                style="?attr/materialButtonOutlinedStyle" />
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp">
-
-        <TextView
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Can I donate? (AI helper)" android:textSize="22sp" android:textStyle="bold"
-            android:textColor="@color/on_surface" />
-
-        <TextView
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="10dp" android:textSize="13sp"
-            android:textColor="@color/text_secondary"
-            android:text="@string/safety_ask_donate_top" />
-
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:layout_marginTop="10dp">
         <EditText
             android:id="@+id/etQuestion"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:gravity="top"
             android:hint="Ask something general, e.g. whether common medicines affect donating"
             android:inputType="textMultiLine|textCapSentences"
-            android:lines="4" android:maxLength="500" android:maxLines="6" />
-
-        <!-- Small spinner beside the Ask button while the AI answer is fetched. -->
-        <LinearLayout
-            android:id="@+id/syncRow"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:gravity="center_vertical"
-            android:padding="8dp" android:visibility="gone">
-            <ProgressBar android:id="@+id/progressSync"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                style="?android:attr/progressBarStyleSmall" android:indeterminate="true"
-                android:indeterminateTint="@color/brand_primary_container" />
-            <TextView android:id="@+id/syncLabel"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginStart="8dp" android:textSize="14sp"
-                android:textColor="@color/text_secondary" />
-        </LinearLayout>
-
+            android:lines="3" android:maxLength="500" android:maxLines="4" />
         <Button
             android:id="@+id/btnAskVerify"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="10dp" android:text="Ask" />
-
-        <TextView
-            android:id="@+id/tvAnswer"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:textIsSelectable="true"
-            android:textSize="15sp" android:textColor="@color/on_surface"
-            android:background="@drawable/bg_input" android:padding="16dp"
-            android:visibility="gone" />
-
-        <TextView
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="18dp" android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:text="@string/safety_ask_donate_bottom" />
-
-        <TextView
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="10dp" android:textSize="12sp"
-            android:textColor="@color/text_secondary"
-            android:text="@string/safety_ask_donate_note" />
-
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:text="Ask" />
     </LinearLayout>
-</ScrollView>
+
+    <!-- Small spinner while the AI answer is fetched. -->
+    <LinearLayout
+        android:id="@+id/syncRow"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:padding="8dp" android:visibility="gone">
+        <ProgressBar android:id="@+id/progressSync"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            style="?android:attr/progressBarStyleSmall" android:indeterminate="true"
+            android:indeterminateTint="@color/brand_primary_container" />
+        <TextView android:id="@+id/syncLabel"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" android:textSize="14sp"
+            android:textColor="@color/text_secondary" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="18dp" android:textSize="12sp"
+        android:textColor="@color/text_secondary"
+        android:text="@string/safety_ask_donate_bottom" />
+
+    <TextView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:textSize="12sp"
+        android:textColor="@color/text_secondary"
+        android:text="@string/safety_ask_donate_note" />
+
+</LinearLayout>

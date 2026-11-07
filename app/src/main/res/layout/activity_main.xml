@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dashboard. Warm Clinical Sanguine: warm canvas, white 20dp cards, crimson actions. -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/warm_background">
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="16dp">
+        android:orientation="vertical" android:padding="16dp"
+        android:paddingBottom="104dp">
 
         <!-- Header: light, crimson drop tile, no gradient, no emoji. -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -200,14 +202,15 @@
             android:textColor="@color/status_warn" android:visibility="gone"
             android:layout_marginBottom="4dp" />
 
-        <!-- Quick actions (existing button navigation, restyled) -->
+        <!-- Quick actions: the six destinations that are not bottom tabs.
+             Donors, Stock and Requests live in the bottom navigation; the
+             chatbot is the floating button; Settings, Moderation, Emergency
+             and Log out live in the three-dot menu in the app bar. -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="Quick Actions"
             android:textAppearance="@style/TextAppearance.Blood.SectionTitle"
             android:layout_marginTop="20dp" android:layout_marginBottom="12dp" />
 
-        <Button android:id="@+id/btnDonors" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Manage Donors" />
         <!-- Phase 3: blood camps, slots, forecast and offline emergency. -->
         <Button android:id="@+id/btnCamps" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/nav_camps" android:layout_marginTop="10dp" />
@@ -216,39 +219,18 @@
         <Button android:id="@+id/btnForecast" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/nav_forecast" android:layout_marginTop="10dp"
             style="?attr/materialButtonOutlinedStyle" />
-        <Button android:id="@+id/btnEmergency" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/nav_emergency" android:layout_marginTop="10dp"
-            style="?attr/materialButtonOutlinedStyle" />
-        <Button android:id="@+id/btnStock" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Blood Stock" android:layout_marginTop="10dp"
-            style="@style/Widget.Blood.Button.Secondary" />
-        <Button android:id="@+id/btnRequests" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Blood Requests" android:layout_marginTop="10dp"
-            style="@style/Widget.Blood.Button.Secondary" />
-        <!-- P2P: managers only. MainActivity leaves this GONE for everyone else. -->
-        <Button android:id="@+id/btnModeration" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Moderation - reports and offers" android:layout_marginTop="10dp"
-            android:visibility="gone" />
         <Button android:id="@+id/btnProfile" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="My Profile" android:layout_marginTop="10dp" />
         <!-- Phase 2: manager-only monthly CSV report. -->
         <Button android:id="@+id/btnManagerReport" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/label_manager_reports" android:layout_marginTop="10dp"
             style="?attr/materialButtonOutlinedStyle" />
-        <!-- Phase 4 AI helper: open to every signed-in user. -->
-        <Button android:id="@+id/btnAskDonate" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Can I donate? (AI helper)" android:layout_marginTop="10dp"
-            style="?attr/materialButtonOutlinedStyle" />
-        <Button android:id="@+id/btnSettings" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Settings" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
         <Button android:id="@+id/btnUpdate" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="Check for Updates" android:layout_marginTop="10dp" />
         <!-- Debug builds only. MainActivity leaves this GONE in release builds. -->
         <Button android:id="@+id/btnCheckRequests" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="Check requests now (debug only)"
             android:layout_marginTop="10dp" android:visibility="gone" />
-        <Button android:id="@+id/btnLogout" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Log Out" android:layout_marginTop="10dp" style="?attr/materialButtonOutlinedStyle" />
 
         <!-- Stock by blood group (live summary text, bound in MainActivity) -->
         <com.google.android.material.card.MaterialCardView
@@ -291,4 +273,14 @@
                 android:textColor="?android:textColorSecondary" />
         </LinearLayout>
     </LinearLayout>
-</ScrollView>
+    </ScrollView>
+
+    <!-- Bottom navigation + floating chat button (v1.22). -->
+    <include layout="@layout/bottom_nav"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
+    <include layout="@layout/chat_fab"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="72dp" android:layout_marginEnd="16dp" />
+</FrameLayout>

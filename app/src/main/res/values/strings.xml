@@ -2,6 +2,16 @@
 <resources>
     <string name="app_name">Blood Donation Management</string>
 
+    <!-- Bottom navigation tabs and the chat button (v1.22). -->
+    <string name="nav_home">Home</string>
+    <string name="nav_donors">Donors</string>
+    <string name="nav_stock">Stock</string>
+    <string name="nav_requests">Requests</string>
+    <string name="overflow_moderation">Moderation</string>
+    <string name="label_new_request">New request</string>
+    <string name="chat_fab_desc">AI helper - Can I donate?</string>
+    <string name="chat_greeting">Hi! Ask me something general about donating blood.</string>
+
     <!-- Shared button labels -->
     <string name="label_sign_in">Sign In</string>
     <string name="label_sign_in_subtitle">Sign in to continue</string>

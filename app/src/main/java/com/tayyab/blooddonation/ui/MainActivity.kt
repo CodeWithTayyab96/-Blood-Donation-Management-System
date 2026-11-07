@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -71,6 +73,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         db = DbHelper(this)
 
+        // Bottom navigation (v1.22): Home is this dashboard; Donors, Stock
+        // and Requests are tabs now, and the chatbot is the floating button.
+        BottomNav.setup(this, R.id.nav_home)
+        BottomNav.setupChatFab(this)
+
         // Phase 1 updates: keep the 12-hour background check scheduled, then
         // decide whether this launch should check now (see handleUpdatePrompt).
         UpdateWorker.schedule(this)
@@ -119,12 +126,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             tvSyncWarning.visibility = View.GONE
         }
-        findViewById<Button>(R.id.btnDonors).setOnClickListener {
-            startActivity(Intent(this, DonorListActivity::class.java))
-        }
-        // Phase 3: camps, slots, forecast and offline emergency entry points.
-        // Donors reach the same screens from their home; managers get them here
-        // too, plus the manager-only create actions inside each screen.
+        // Phase 3: camps, slots and forecast entry points. Donors reach the
+        // same screens from their home; managers get them here too, plus the
+        // manager-only create actions inside each screen.
         findViewById<Button>(R.id.btnCamps).setOnClickListener {
             startActivity(Intent(this, CampListActivity::class.java))
         }
@@ -134,28 +138,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnForecast).setOnClickListener {
             startActivity(Intent(this, ForecastActivity::class.java))
         }
-        findViewById<Button>(R.id.btnEmergency).setOnClickListener {
-            startActivity(Intent(this, EmergencyActivity::class.java))
-        }
-        findViewById<Button>(R.id.btnStock).setOnClickListener {
-            startActivity(Intent(this, StockActivity::class.java))
-        }
-        findViewById<Button>(R.id.btnRequests).setOnClickListener {
-            startActivity(Intent(this, RequestListActivity::class.java))
-        }
         // Urgent banner: tap opens the requests list.
         findViewById<MaterialCardView>(R.id.cardUrgentBanner).setOnClickListener {
             startActivity(Intent(this, RequestListActivity::class.java))
-        }
-        // P2P: moderation (reports and offers) is a manager-only screen.
-        val btnModeration = findViewById<Button>(R.id.btnModeration)
-        if (Session.isManager) {
-            btnModeration.visibility = View.VISIBLE
-            btnModeration.setOnClickListener {
-                startActivity(Intent(this, ModerationActivity::class.java))
-            }
-        } else {
-            btnModeration.visibility = View.GONE
         }
         findViewById<Button>(R.id.btnProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
@@ -164,14 +149,6 @@ class MainActivity : AppCompatActivity() {
         // JWT role too, so hiding the button is never the only guard).
         findViewById<Button>(R.id.btnManagerReport).setOnClickListener {
             startActivity(Intent(this, ManagerReportActivity::class.java))
-        }
-        // Phase 4 AI helper: open to everyone signed in; the Fallback text on
-        // its screen shows when the ai-coach function is not yet deployed.
-        findViewById<Button>(R.id.btnAskDonate).setOnClickListener {
-            startActivity(Intent(this, AskDonateActivity::class.java))
-        }
-        findViewById<Button>(R.id.btnSettings).setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
         }
         findViewById<Button>(R.id.btnUpdate).setOnClickListener {
             checkForUpdate()
@@ -185,31 +162,19 @@ class MainActivity : AppCompatActivity() {
         } else {
             btnCheckRequests.visibility = View.GONE
         }
-        findViewById<Button>(R.id.btnLogout).setOnClickListener {
-            // Stop the request poll before the session is cleared, so a signed
-            // out device does not keep waking up for alerts. The push token row
-            // is removed on a background thread BEFORE the session is cleared,
-            // because clearing it loses the sign-in context the delete needs
-            // (the row is keyed by the Auth user id being signed out).
-            RequestAlertScheduler.cancel(this)
-            DonationReminderScheduler.cancel(this)
-            val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
-            val label = findViewById<android.widget.TextView>(R.id.syncLabel)
-            spinner.visibility = android.view.View.VISIBLE
-            label.visibility = android.view.View.VISIBLE
-            label.text = "Signing out…"
-            Background.run {
-                FcmPush.forgetToken(applicationContext)
-                runOnUiThread {
-                    spinner.visibility = android.view.View.GONE
-                    label.visibility = android.view.View.GONE
-                }
-            }
-            Session.logout(this)
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-        }
     }
+
+    /** Three-dot menu in the app bar: the secondary destinations. */
+    override fun onCreateOptionsMenu(menu: Menu): Boolean =
+        BottomNav.onCreateOptionsMenu(this, menu)
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        BottomNav.onPrepareOptionsMenu(this, menu)
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean =
+        BottomNav.onOptionsItemSelected(this, item) || super.onOptionsItemSelected(item)
 
     /**
      * Android 13+ requires a runtime permission for notifications; without it
@@ -448,6 +413,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             card.visibility = android.view.View.GONE
         }
+        // Bottom navigation badges: live pending and low-stock counts.
+        BottomNav.updateBadges(this)
     }
 
     /** 1 -> "1st", 3 -> "3rd", 11 -> "11th", 21 -> "21st". */

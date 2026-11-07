@@ -71,6 +71,9 @@ class UserHomeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_user_home)
         db = DbHelper(this)
 
+        // The "Can I donate?" helper is the floating chat button now (v1.22).
+        BottomNav.setupChatFab(this)
+
         UpdateWorker.schedule(this)
         UpdatePrompt.checkOnLaunch(
             this,
@@ -117,9 +120,6 @@ class UserHomeActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnBrowseRequests).setOnClickListener {
             openRequests(RequestListActivity.MODE_BROWSE)
-        }
-        findViewById<Button>(R.id.btnAskAi).setOnClickListener {
-            startActivity(Intent(this, AskDonateActivity::class.java))
         }
         findViewById<Button>(R.id.btnUserProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))

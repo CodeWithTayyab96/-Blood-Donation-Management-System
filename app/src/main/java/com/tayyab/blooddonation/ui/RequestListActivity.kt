@@ -2,6 +2,8 @@ package com.tayyab.blooddonation.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -10,7 +12,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.BloodRequest
@@ -54,6 +55,10 @@ class RequestListActivity : AppCompatActivity() {
         title = "Blood Requests"
         db = DbHelper(this)
 
+        // Bottom navigation (v1.22): this is the Requests tab.
+        BottomNav.setup(this, R.id.nav_requests)
+        BottomNav.setupChatFab(this)
+
         val rv = findViewById<RecyclerView>(R.id.rvRequests)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = RequestAdapter(
@@ -75,7 +80,7 @@ class RequestListActivity : AppCompatActivity() {
             if (intent?.getStringExtra(EXTRA_MODE) == MODE_MINE) switchTo(Mode.MINE)
         }
 
-        findViewById<FloatingActionButton>(R.id.fabAddRequest).setOnClickListener {
+        findViewById<Button>(R.id.btnNewRequest).setOnClickListener {
             // Managers raise a request on behalf of a patient and fulfil it
             // from stock (AddRequestActivity). Everyone else posts a peer
             // request of their own, which donors can offer to help with.
@@ -88,6 +93,18 @@ class RequestListActivity : AppCompatActivity() {
             )
         }
     }
+
+    /** Three-dot menu in the app bar: the secondary destinations. */
+    override fun onCreateOptionsMenu(menu: Menu): Boolean =
+        BottomNav.onCreateOptionsMenu(this, menu)
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        BottomNav.onPrepareOptionsMenu(this, menu)
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean =
+        BottomNav.onOptionsItemSelected(this, item) || super.onOptionsItemSelected(item)
 
     private fun switchTo(next: Mode) {
         mode = next
@@ -188,12 +205,14 @@ class RequestListActivity : AppCompatActivity() {
         empty.text = when {
             Session.isManager -> "No requests yet."
             mode == Mode.MINE ->
-                "You have not posted a request yet. Use + to ask for blood."
+                "You have not posted a request yet. Use New request to ask for blood."
             else ->
                 "No open requests you can help with right now. " +
                     "Only requests other people posted, matching your blood " +
                     "group, appear here."
         }
+        // Bottom navigation badges: live pending and low-stock counts.
+        BottomNav.updateBadges(this)
     }
 
     /** Requests this user posted, any status, newest first. */
