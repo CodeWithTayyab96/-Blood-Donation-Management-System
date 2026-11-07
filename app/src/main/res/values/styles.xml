@@ -17,9 +17,9 @@
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0.01</item>
-        <item name="app:cornerRadius">16dp</item>
-        <item name="app:backgroundTint">@color/btn_primary</item>
-        <item name="app:elevation">0dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="backgroundTint">@color/btn_primary</item>
+        <item name="elevation">0dp</item>
     </style>
 
     <style name="Widget.Blood.Button.Secondary" parent="Widget.MaterialComponents.Button">
@@ -33,9 +33,9 @@
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0.01</item>
-        <item name="app:cornerRadius">16dp</item>
-        <item name="app:backgroundTint">@color/btn_secondary</item>
-        <item name="app:elevation">0dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="backgroundTint">@color/btn_secondary</item>
+        <item name="elevation">0dp</item>
     </style>
 
     <style name="Widget.Blood.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
@@ -49,11 +49,11 @@
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0.01</item>
-        <item name="app:cornerRadius">16dp</item>
-        <item name="app:backgroundTint">@android:color/transparent</item>
-        <item name="app:strokeColor">@color/card_border</item>
-        <item name="app:strokeWidth">1dp</item>
-        <item name="app:elevation">0dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="strokeColor">@color/card_border</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="elevation">0dp</item>
     </style>
 
     <style name="Widget.Blood.Button.Danger" parent="Widget.MaterialComponents.Button">
@@ -67,25 +67,25 @@
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0.01</item>
-        <item name="app:cornerRadius">16dp</item>
-        <item name="app:backgroundTint">@color/error</item>
-        <item name="app:elevation">0dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="backgroundTint">@color/error</item>
+        <item name="elevation">0dp</item>
     </style>
 
     <!-- Floating action button -->
     <style name="Widget.Blood.FAB" parent="Widget.MaterialComponents.FloatingActionButton">
-        <item name="app:backgroundTint">@color/brand_primary_container</item>
-        <item name="app:tint">@color/white</item>
-        <item name="app:elevation">6dp</item>
+        <item name="backgroundTint">@color/brand_primary_container</item>
+        <item name="tint">@color/white</item>
+        <item name="elevation">6dp</item>
     </style>
 
     <!-- Cards -->
     <style name="Widget.Blood.Card" parent="Widget.MaterialComponents.CardView">
-        <item name="app:cardCornerRadius">20dp</item>
-        <item name="app:cardElevation">2dp</item>
-        <item name="app:cardBackgroundColor">@color/warm_surface</item>
-        <item name="app:strokeColor">@color/card_border</item>
-        <item name="app:strokeWidth">1dp</item>
+        <item name="cardCornerRadius">20dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="cardBackgroundColor">@color/warm_surface</item>
+        <item name="strokeColor">@color/card_border</item>
+        <item name="strokeWidth">1dp</item>
     </style>
 
     <!-- Inputs -->

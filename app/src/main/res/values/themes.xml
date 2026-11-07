@@ -14,7 +14,7 @@
         <item name="colorOnSecondary">@color/white</item>
         <item name="colorSurface">@color/warm_surface</item>
         <item name="colorOnSurface">@color/on_surface</item>
-        <item name="colorBackground">@color/warm_background</item>
+        <item name="android:colorBackground">@color/warm_background</item>
         <item name="colorOnBackground">@color/on_surface</item>
         <item name="colorError">@color/error</item>
         <item name="android:windowBackground">@color/warm_background</item>
