@@ -309,7 +309,6 @@
     <string name="emergency_hospital_hint">Hospital *</string>
     <string name="emergency_urgency_hint">Urgency</string>
     <string name="label_queue_request">Queue request</string>
-    <string name="label_post_request">Post request</string>
     <string name="emergency_posted_toast">Request posted</string>
     <string name="emergency_flushed">%1$d queued request(s) sent.</string>
     <string name="emergency_sign_in_needed">Posting a request needs an email sign-in.</string>
