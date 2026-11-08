@@ -46,8 +46,10 @@ class RequestAlertsTest {
     }
 
     @Test
-    fun `incompatible request does not match`() {
-        assertFalse(RequestAlerts.matches(donor("A+"), request("O-")))
+    fun `incompatible request still matches`() {
+        // Everyone is alerted, not just the matching groups: a donor who
+        // cannot give may still know someone off the app who can.
+        assertTrue(RequestAlerts.matches(donor("A+"), request("O-")))
     }
 
     @Test
@@ -73,19 +75,20 @@ class RequestAlertsTest {
     }
 
     @Test
-    fun `only the correct direction matches`() {
-        // O+ can give to A+, but A+ cannot give to O+.
+    fun `compatibility direction no longer matters`() {
+        // O+ can give to A+, and A+ cannot give to O+ — but both donors are
+        // alerted either way, so either can pass the word on.
         assertTrue(RequestAlerts.matches(donor("O+"), request("A+")))
-        assertFalse(RequestAlerts.matches(donor("A+"), request("O+")))
+        assertTrue(RequestAlerts.matches(donor("A+"), request("O+")))
     }
 
     @Test
-    fun `a donor is never alerted for their own group only`() {
-        // AB+ can only give to AB+; it must not match any other patient group.
+    fun `every group matches every request`() {
+        // AB+ can only give to AB+, but the alert still reaches them for
+        // every other group too.
         val abPositive = donor("AB+")
-        assertTrue(RequestAlerts.matches(abPositive, request("AB+")))
-        for (other in BloodCompatibility.ALL_GROUPS - "AB+") {
-            assertFalse("AB+ should not match $other", RequestAlerts.matches(abPositive, request(other)))
+        for (other in BloodCompatibility.ALL_GROUPS) {
+            assertTrue("AB+ should match $other", RequestAlerts.matches(abPositive, request(other)))
         }
     }
 }

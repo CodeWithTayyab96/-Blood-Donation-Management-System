@@ -3,6 +3,10 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.24 — 2026-11-08
+
+versionCode 25. Everyone sees every blood request now. The Browse list used to show a donor only the requests their own blood group could give to; it now shows every open request from other people, with the ones their group can give to first, then nearest city, most urgent, newest. On the detail screen a donor whose group cannot give no longer gets a failing Offer button: they see a note saying their group cannot give to that patient, but they can share the request with someone who can. Urgent and Critical request alerts go to every eligible donor too, for the same reason: a donor who cannot give may know a friend or relative off the app who can. Offering to donate is still limited to matching, eligible donors, and the server already lets every signed-in user read every request, so no database change was needed.
+
 ## 1.23 — 2026-11-07
 
 versionCode 24. Themes: Light, Dark and System, picked in Settings. The dark palette is the same Warm Clinical Sanguine brand on deep warm surfaces (not pure black), with brighter status colours so Available / Low / Out of Stock stay readable. The choice is stored in ThemePrefs and applied by a new BloodApp Application class before any screen draws, so the first screen already opens in the right mode; picking a theme applies at once. Default is Light, so nothing changes for anyone until they pick something.

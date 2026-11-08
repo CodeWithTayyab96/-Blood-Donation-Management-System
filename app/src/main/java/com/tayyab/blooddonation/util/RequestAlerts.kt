@@ -32,20 +32,26 @@ object RequestAlerts {
     private const val MAX_REMEMBERED = 500
 
     /**
-     * Whether [request] is worth alerting [donor] about: still pending, not a
-     * routine "Normal" request, and compatible with the donor's group.
+     * Whether [request] is worth alerting [donor] about: still pending and
+     * not a routine "Normal" request.
      *
      * Only Urgent and Critical requests alert. A Normal request is not worth
      * waking someone for, and alerting on every one of them would train donors
      * to ignore the notifications.
+     *
+     * There is deliberately no compatibility check here: every donor is
+     * alerted, not just the ones whose group matches. A donor who cannot
+     * give to this patient may still know someone off the app who can, and
+     * can pass the word on. [donor] stays a parameter so the worker and the
+     * tests keep calling it the same way, and because a future rule may
+     * need it again.
      *
      * The donor's own eligibility (age, weight, 90-day gap) is checked once per
      * run by the worker, not per request, because it does not vary by request.
      */
     fun matches(donor: Donor, request: BloodRequest): Boolean =
         request.status == "Pending" &&
-            request.urgency != "Normal" &&
-            BloodCompatibility.isCompatible(donor.bloodGroup, request.bloodGroup)
+            request.urgency != "Normal"
 
     /** Creates the channel once; a no-op afterwards. */
     fun ensureChannel(context: Context) {
@@ -56,7 +62,7 @@ object RequestAlerts {
             "Urgent blood requests",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Blood requests that match your blood group"
+            description = "Urgent blood requests"
             enableVibration(true)
         }
         manager.createNotificationChannel(channel)

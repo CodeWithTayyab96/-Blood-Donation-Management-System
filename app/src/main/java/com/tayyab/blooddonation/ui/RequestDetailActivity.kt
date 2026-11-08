@@ -336,6 +336,20 @@ class RequestDetailActivity : AppCompatActivity() {
 
         val existing = db.getOffer(req.id, donorId)
         if (existing == null) {
+            // Everyone sees every request now, but only a matching group can
+            // offer to give blood directly. A donor whose group cannot give
+            // can still help by sharing the request with someone who can,
+            // so the Offer button stays hidden for them instead of failing
+            // on tap. offerHelp keeps its own compatibility check as well.
+            val donor = db.getDonor(donorId)
+            if (donor != null && !BloodCompatibility.isCompatible(donor.bloodGroup, req.bloodGroup)) {
+                btnOffer.visibility = View.GONE
+                tvState.visibility = View.VISIBLE
+                tvState.text = "Your group (${donor.bloodGroup}) can't give to ${req.bloodGroup}, " +
+                    "but you can share this request with someone who can."
+                findViewById<Button>(R.id.btnComplete).visibility = View.GONE
+                return
+            }
             btnOffer.visibility = View.VISIBLE
             btnOffer.setOnClickListener { offerHelp(req) }
             btnOffer.isEnabled = true
@@ -459,7 +473,7 @@ class RequestDetailActivity : AppCompatActivity() {
         val offers = db.getOffersForRequest(req.id)
         if (offers.isEmpty()) {
             val tv = TextView(this)
-            tv.text = "No offers yet. Donors whose group matches will see this request."
+            tv.text = "No offers yet. Every donor can see this request."
             tv.textSize = 14f
             container.addView(tv)
             findViewById<Button>(R.id.btnComplete).visibility = View.GONE

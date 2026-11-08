@@ -9,9 +9,9 @@ import com.tayyab.blooddonation.model.Donor
 
 /**
  * Polls for blood activity the signed-in donor or requester has not been
- * told about: urgent requests their group can serve (the classic v1.6 alerts),
- * and — only when push is NOT configured, because then nothing tells them
- * otherwise — new offers on their requests and acceptances of their offers.
+ * told about: urgent requests (the classic v1.6 alerts), and — only when
+ * push is NOT configured, because then nothing tells them otherwise — new
+ * offers on their requests and acceptances of their offers.
  *
  * Scheduled by [RequestAlertScheduler] roughly every 15 minutes, with a
  * network constraint so it never runs offline. Delivery is therefore

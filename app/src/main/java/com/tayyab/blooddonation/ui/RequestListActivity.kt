@@ -24,11 +24,13 @@ import com.tayyab.blooddonation.util.SupabaseSync
 /**
  * P2P: one screen, two views.
  *
- * - **Browse** — open requests other people posted, that this donor's group
- *   can actually give to, nearest city first. Requests with no
- *   `requester_id` (the manager's own, and every row created before P2P) are
- *   deliberately left out: they are fulfilled from blood-bank stock by the
- *   manager, not offered on by peers.
+ * - **Browse** — every open request other people posted, nearest city
+ *   first, with the ones this donor's group can give to first. Everyone
+ *   sees everything: a donor whose group does not match may still know
+ *   someone off the app who can give, and can share the request with them.
+ *   Requests with no `requester_id` (the manager's own, and every row
+ *   created before P2P) are deliberately left out: they are fulfilled from
+ *   blood-bank stock by the manager, not offered on by peers.
  * - **My requests** — this user's own requests, any status, with Cancel.
  *
  * Managers skip both and get the plain full list, exactly as before.
@@ -206,10 +208,7 @@ class RequestListActivity : AppCompatActivity() {
             Session.isManager -> "No requests yet."
             mode == Mode.MINE ->
                 "You have not posted a request yet. Use New request to ask for blood."
-            else ->
-                "No open requests you can help with right now. " +
-                    "Only requests other people posted, matching your blood " +
-                    "group, appear here."
+            else -> "No open requests right now."
         }
         // Bottom navigation badges: live pending and low-stock counts.
         BottomNav.updateBadges(this)
@@ -221,7 +220,8 @@ class RequestListActivity : AppCompatActivity() {
         return db.getAllRequests().filter { it.requesterId == me }
     }
 
-    /** Open peer requests from other people, compatible first, nearest first. */
+    /** Open peer requests from other people: every one of them, compatible
+     *  first, nearest first. */
     private fun browseRequests(me: String?): List<BloodRequest> {
         val donor = Session.donorId?.let { db.getDonor(it) }
         val myCity = donor?.city
@@ -233,15 +233,18 @@ class RequestListActivity : AppCompatActivity() {
             // Never my own request — I cannot offer to help myself.
             .filter { me.isNullOrBlank() || it.requesterId != me }
             .filter { P2pRules.isOpenRequest(it.status) }
-            // Only requests my blood group can actually give to. Without a
-            // donor profile there is no group to check against, so show all.
-            .filter { donor == null || BloodCompatibility.isCompatible(donor.bloodGroup, it.bloodGroup) }
+            // No compatibility filter here on purpose: everyone sees every
+            // request. A donor whose group cannot give to this patient may
+            // still know someone off the app who can, and can share the
+            // request with them. Compatibility only orders the list: the
+            // requests this donor can give to directly come first.
             // Lazy expiry: a request past its needed-by date and still open is
             // Expired. There is no pg_cron, so this is evaluated on read.
             .map { it.copy(status = P2pRules.requestStatusOnRead(it.status, it.neededBy, today)) }
-            // City-first, then most urgent, then newest.
+            // City-first, then compatible-first, then most urgent, then newest.
             .sortedWith(
                 compareByDescending<BloodRequest> { !myCity.isNullOrBlank() && it.city == myCity }
+                    .thenByDescending { donor != null && BloodCompatibility.isCompatible(donor.bloodGroup, it.bloodGroup) }
                     .thenByDescending { urgencyRank(it.urgency) }
                     .thenByDescending { it.id }
             )
