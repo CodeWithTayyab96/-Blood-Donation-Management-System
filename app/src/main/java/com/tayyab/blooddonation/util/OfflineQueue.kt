@@ -28,6 +28,12 @@ object OfflineQueue {
         return true
     }
 
+    /** Drops one queued request, after it was sent. A request that fails to send stays queued. */
+    fun remove(prefs: SharedPreferences, p: PendingRequest) {
+        val kept = all(prefs).filter { it != p }
+        prefs.edit().putStringSet(KEY, kept.map { encode(it) }.toSet()).apply()
+    }
+
     fun clear(prefs: SharedPreferences) = prefs.edit().remove(KEY).apply()
 
     private fun encode(p: PendingRequest): String =

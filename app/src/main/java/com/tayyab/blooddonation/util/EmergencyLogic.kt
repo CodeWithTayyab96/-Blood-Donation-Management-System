@@ -7,8 +7,8 @@ import com.tayyab.blooddonation.model.BloodRequest
  *
  * When the network is unavailable the app still opens to a cached list of the most
  * urgent recent requests, and any new request the user composes is queued locally
- * and flushed on reconnect. Pure so the queue / de-dup rules are unit tested
- * without a device or a network.
+ * and flushed on reconnect (see [EmergencyFlush]). Pure so the queue / de-dup
+ * rules are unit tested without a device or a network.
  */
 object EmergencyLogic {
 
@@ -34,6 +34,34 @@ object EmergencyLogic {
                 it.units == candidate.units &&
                 it.hospital == candidate.hospital
         }
+
+    /**
+     * The real request a queued emergency request becomes when it is sent.
+     *
+     * The offline form collects no patient name, because in an emergency
+     * there is no time for a full form — so the request is posted as an
+     * emergency request from the signed-in user, with their phone as the
+     * contact so donors can reach them. [today] is the day it is actually
+     * posted, not the day it was queued.
+     */
+    fun toRequest(
+        pending: PendingRequest,
+        requesterId: String,
+        contact: String,
+        today: String
+    ): BloodRequest =
+        BloodRequest(
+            patientName = "Emergency patient",
+            hospital = pending.hospital,
+            bloodGroup = pending.bloodGroup,
+            unitsNeeded = pending.units,
+            urgency = pending.urgency,
+            contact = contact,
+            status = "Pending",
+            createdAt = today,
+            requesterId = requesterId,
+            city = pending.city
+        )
 }
 
 /**

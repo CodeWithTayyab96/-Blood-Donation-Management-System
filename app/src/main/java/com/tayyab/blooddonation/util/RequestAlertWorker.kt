@@ -53,6 +53,10 @@ class RequestAlertWorker(
         }
 
         val count = try {
+            // A request queued on the Emergency screen while offline is sent
+            // now that the network is back, even if the user never reopens
+            // that screen.
+            EmergencyFlush.flush(context)
             (Session.donorId?.let { alertUrgentRequests(context, it) } ?: 0) +
                 alertOffers(context, DbHelper(context))
         } catch (e: Exception) {

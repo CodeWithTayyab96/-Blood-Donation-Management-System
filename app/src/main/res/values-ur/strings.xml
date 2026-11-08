@@ -280,16 +280,26 @@
     <string name="forecast_stock_label">%1$d یونٹ اسٹاک میں</string>
 
     <!-- Phase 3: offline emergency mode -->
-    <string name="title_emergency">ایمرجنسی (آف لائن)</string>
+    <string name="title_emergency">ایمرجنسی</string>
     <string name="emergency_cached_note">اس فون پر محفوظ سب سے ہنگامی حالیہ درخواستیں دکھا رہا ہے۔</string>
     <string name="emergency_empty">اس فون پر کوئی کیش درخواست نہیں۔</string>
+    <string name="emergency_recent_title">حالیہ ہنگامی درخواستیں</string>
     <string name="emergency_compose_title">درخواست لکھیں (آف لائن قطار میں)</string>
+    <string name="emergency_compose_title_online">درخواست لکھیں</string>
+    <string name="emergency_status_online">آپ آن لائن ہیں۔ نئی درخواستیں فوراً بھیج دی جائیں گی۔</string>
+    <string name="emergency_status_offline">آپ آف لائن ہیں۔ درخواستیں اس فون پر محفوظ ہو جائیں گی اور آن لائن آتے ہی بھیج دی جائیں گی۔</string>
+    <string name="emergency_status_checking">کنکشن چیک کیا جا رہا ہے…</string>
     <string name="emergency_bg_hint">بلڈ گروپ *</string>
     <string name="emergency_units_hint">یونٹس *</string>
     <string name="emergency_city_hint">شہر *</string>
     <string name="emergency_hospital_hint">ہسپتال *</string>
     <string name="emergency_urgency_hint">ہنگامی</string>
     <string name="label_queue_request">درخواست قطار میں ڈالیں</string>
+    <string name="label_post_request">درخواست بھیجیں</string>
+    <string name="emergency_posted_toast">درخواست بھیج دی گئی</string>
+    <string name="emergency_flushed">%1$d قطار والی درخواستیں بھیج دی گئیں۔</string>
+    <string name="emergency_sign_in_needed">درخواست بھیجنے کے لیے ای میل سے سائن ان ضروری ہے۔</string>
+    <string name="emergency_cap">آپ کی پہلے سے %1$d کھلی درخواستیں ہیں۔ نئی بھیجنے سے پہلے ایک منسوخ کریں۔</string>
     <string name="emergency_queued">%1$d درخواستیں قطار میں — جب آپ آن لائن آئیں گے تو بھیجی جائیں گی۔</string>
     <string name="emergency_queued_toast">درخواست قطار میں ڈال دی گئی۔ جب آپ آن لائن آئیں گے تو بھیجی جائے گی۔</string>
     <string name="emergency_duplicate">یہ درخواست پہلے ہی قطار میں ہے۔</string>
@@ -299,6 +309,6 @@
     <string name="nav_camps">بلڈ کیمپس</string>
     <string name="nav_slots">اپائنٹمنٹ سلیٹس</string>
     <string name="nav_forecast">اسٹاک پیشن گوئی</string>
-    <string name="nav_emergency">ایمرجنسی (آف لائن)</string>
+    <string name="nav_emergency">ایمرجنسی</string>
     <string name="nav_verify">✓ ڈونر کی تصدیق</string>
 </resources>

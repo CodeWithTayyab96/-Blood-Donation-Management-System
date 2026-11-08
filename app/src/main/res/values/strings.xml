@@ -294,16 +294,26 @@
     <string name="forecast_stock_label">%1$d units in stock</string>
 
     <!-- Phase 3: offline emergency mode -->
-    <string name="title_emergency">Emergency (Offline)</string>
+    <string name="title_emergency">Emergency</string>
     <string name="emergency_cached_note">Showing the most urgent recent requests saved on this phone.</string>
     <string name="emergency_empty">No cached requests on this phone.</string>
+    <string name="emergency_recent_title">Recent urgent requests</string>
     <string name="emergency_compose_title">Compose a request (queued offline)</string>
+    <string name="emergency_compose_title_online">Compose a request</string>
+    <string name="emergency_status_online">You\'re online. New requests send right away.</string>
+    <string name="emergency_status_offline">You\'re offline. Requests are saved on this phone and sent when you\'re back online.</string>
+    <string name="emergency_status_checking">Checking connection…</string>
     <string name="emergency_bg_hint">Blood group *</string>
     <string name="emergency_units_hint">Units *</string>
     <string name="emergency_city_hint">City *</string>
     <string name="emergency_hospital_hint">Hospital *</string>
     <string name="emergency_urgency_hint">Urgency</string>
     <string name="label_queue_request">Queue request</string>
+    <string name="label_post_request">Post request</string>
+    <string name="emergency_posted_toast">Request posted</string>
+    <string name="emergency_flushed">%1$d queued request(s) sent.</string>
+    <string name="emergency_sign_in_needed">Posting a request needs an email sign-in.</string>
+    <string name="emergency_cap">You already have %1$d open requests. Cancel one before posting another.</string>
     <string name="emergency_queued">%1$d request(s) queued — they will send when you are back online.</string>
     <string name="emergency_queued_toast">Request queued. It will send when you are back online.</string>
     <string name="emergency_duplicate">This request is already queued.</string>
@@ -313,6 +323,6 @@
     <string name="nav_camps">Blood Camps</string>
     <string name="nav_slots">Appointment Slots</string>
     <string name="nav_forecast">Stock Forecast</string>
-    <string name="nav_emergency">Emergency (Offline)</string>
+    <string name="nav_emergency">Emergency</string>
     <string name="nav_verify">✓ Verify Donor</string>
 </resources>

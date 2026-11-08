@@ -48,4 +48,29 @@ class EmergencyLogicTest {
         assertFalse(EmergencyLogic.isDuplicate(pending,
             PendingRequest("O-", 3, "Lahore", "H2", "Critical", "2026-11-08")))
     }
+
+    @Test
+    fun `queued request becomes a postable emergency request`() {
+        val p = PendingRequest("A+", 2, "Faisalabad", "Allied", "Urgent", "2026-11-07")
+        val req = EmergencyLogic.toRequest(p, "auth-1", "0300-1234567", "2026-11-08")
+        assertEquals("Emergency patient", req.patientName)
+        assertEquals("A+", req.bloodGroup)
+        assertEquals(2, req.unitsNeeded)
+        assertEquals("Faisalabad", req.city)
+        assertEquals("Allied", req.hospital)
+        assertEquals("Urgent", req.urgency)
+        assertEquals("0300-1234567", req.contact)
+        assertEquals("Pending", req.status)
+        assertEquals("auth-1", req.requesterId)
+        // Created on the day it is actually posted, not the day it was queued.
+        assertEquals("2026-11-08", req.createdAt)
+    }
+
+    @Test
+    fun `queued request without a known phone still posts`() {
+        val p = PendingRequest("O-", 1, "Lahore", "H1", "Critical", "2026-11-08")
+        val req = EmergencyLogic.toRequest(p, "auth-1", "", "2026-11-08")
+        assertEquals("", req.contact)
+        assertEquals("O-", req.bloodGroup)
+    }
 }
