@@ -262,11 +262,13 @@ class RequestDetailActivity : AppCompatActivity() {
         }
         val rv = findViewById<RecyclerView>(R.id.rvCompatDonors)
         rv.layoutManager = LinearLayoutManager(this)
-        rv.adapter = DonorAdapter(donors) { donor ->
+        val compatAdapter = DonorAdapter { donor ->
             val i = Intent(this, DonorDetailActivity::class.java)
             i.putExtra("donorId", donor.id)
             startActivity(i)
         }
+        compatAdapter.submit(donors)
+        rv.adapter = compatAdapter
 
         renderPeerSections(req)
     }
