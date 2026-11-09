@@ -51,7 +51,8 @@ class CampDetailActivity : AppCompatActivity() {
         val attendance = db.getAttendance(campId)
         findViewById<TextView>(R.id.tvAttendance).text =
             getString(R.string.camp_attendance_count, attendance.size)
-        val names = attendance.mapNotNull { db.getDonor(it.donorId)?.name }
+        val donorMap = db.getDonorsByIds(attendance.map { it.donorId })
+        val names = attendance.mapNotNull { donorMap[it.donorId]?.name }
         findViewById<TextView>(R.id.tvAttendees).text =
             if (names.isEmpty()) getString(R.string.camp_no_attendance) else names.joinToString("\n")
 

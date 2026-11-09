@@ -9,6 +9,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.AppointmentSlot
 import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 
 /** Phase 3: manager-only creation of an appointment slot with a capacity guard. */
@@ -18,6 +19,8 @@ class AddSlotActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.load(this)
+        if (!Session.isManager) { finish(); return }
         setContentView(R.layout.activity_add_slot)
         title = getString(R.string.label_add_slot)
         db = DbHelper(this)

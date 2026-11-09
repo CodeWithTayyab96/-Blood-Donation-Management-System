@@ -116,7 +116,7 @@ class ForgotPasswordActivity : AppCompatActivity() {
         val second = etConfirmPassword.text.toString()
 
         when {
-            code.length != 6 ->
+            code.length != 6 || !code.all { it.isDigit() } ->
                 Toast.makeText(this, "The code is 6 digits.", Toast.LENGTH_SHORT).show()
             first.length < MIN_PASSWORD_LENGTH ->
                 Toast.makeText(

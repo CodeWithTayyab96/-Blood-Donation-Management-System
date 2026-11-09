@@ -69,8 +69,7 @@ class RequestDetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "Already fulfilled.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            try {
-                if (SupabaseSync.isOnline) {
+            if (SupabaseSync.isOnline) {
                 // Online stock is the source of truth when reachable:
                 // a short online stock means "not enough", full stop.
                 // An online error falls back to the old local behaviour.
@@ -80,14 +79,14 @@ class RequestDetailActivity : AppCompatActivity() {
                             db.fulfillRequest(req, result.movementId)
                             runOnUiThread {
                                 if (isFinishing || isDestroyed) return@runOnUiThread
+                                btnFulfill.isEnabled = true
                                 Toast.makeText(this, "Request fulfilled from stock.", Toast.LENGTH_LONG).show()
                                 refresh()
                             }
                         }
                         is SupabaseSync.FulfilResult.Insufficient -> runOnUiThread {
                             if (isFinishing || isDestroyed) return@runOnUiThread
-                            // Name the server's number: the count on screen is
-                            // the local copy, and the two can disagree.
+                            btnFulfill.isEnabled = true
                             Toast.makeText(
                                 this,
                                 "Not enough ${req.bloodGroup} units — the server has " +
@@ -97,12 +96,11 @@ class RequestDetailActivity : AppCompatActivity() {
                             refresh()
                         }
                         is SupabaseSync.FulfilResult.StockUnknown -> {
-                            // The server's count is unknown. Fall back to the
-                            // local copy, but never claim the server is short.
                             val ok = db.fulfillRequest(req)
                             val local = db.stockLevels()[req.bloodGroup] ?: 0
                             runOnUiThread {
                                 if (isFinishing || isDestroyed) return@runOnUiThread
+                                btnFulfill.isEnabled = true
                                 Toast.makeText(
                                     this,
                                     if (ok) {
@@ -117,12 +115,11 @@ class RequestDetailActivity : AppCompatActivity() {
                             }
                         }
                         is SupabaseSync.FulfilResult.Error -> {
-                            // The count was readable but the write was rejected —
-                            // a different situation again, and worth saying so.
                             val ok = db.fulfillRequest(req)
                             val local = db.stockLevels()[req.bloodGroup] ?: 0
                             runOnUiThread {
                                 if (isFinishing || isDestroyed) return@runOnUiThread
+                                btnFulfill.isEnabled = true
                                 Toast.makeText(
                                     this,
                                     if (ok) {
@@ -140,6 +137,7 @@ class RequestDetailActivity : AppCompatActivity() {
                 }
             } else {
                 val ok = db.fulfillRequest(req)
+                btnFulfill.isEnabled = true
                 Toast.makeText(
                     this,
                     if (ok) "Request fulfilled from stock." else "Not enough ${req.bloodGroup} units in stock.",
@@ -147,9 +145,6 @@ class RequestDetailActivity : AppCompatActivity() {
                 ).show()
                 refresh()
             }
-        } finally {
-            btnFulfill.isEnabled = true
-        }
     }
 
         findViewById<Button>(R.id.btnReport).setOnClickListener { showReportDialog() }
@@ -212,13 +207,9 @@ class RequestDetailActivity : AppCompatActivity() {
     private fun refresh() {
         renderFromLocal()
         if (SupabaseSync.isOnline) {
-            try {
-                sync("Updating request…") {
-                    SupabaseSync.pullRequestDetail(db, requestId)
-                    UISync.safePost(this) { renderFromLocal() }
-                }
-            } finally {
-                findViewById<Button>(R.id.btnFulfill).isEnabled = true
+            sync("Updating request…") {
+                SupabaseSync.pullRequestDetail(db, requestId)
+                UISync.safePost(this) { renderFromLocal() }
             }
         }
     }
@@ -434,28 +425,25 @@ class RequestDetailActivity : AppCompatActivity() {
         val btnOffer = findViewById<Button>(R.id.btnOffer)
         if (isFinishing || isDestroyed) return
         btnOffer.isEnabled = false
-        try {
-            sync("Sending offer…") {
-                val remoteId = SupabaseSync.addOfferRemote(offer)
-                val error = SupabaseClient.lastError
-                runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    if (remoteId == null) {
-                        Toast.makeText(
-                            this,
-                            "The server did not accept the offer" +
-                                (error?.let { ": $it" } ?: "."),
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@runOnUiThread
-                    }
-                    db.upsertOffer(offer.copy(id = remoteId))
-                    Toast.makeText(this, "Offer sent", Toast.LENGTH_SHORT).show()
-                    renderFromLocal()
+        sync("Sending offer…") {
+            val remoteId = SupabaseSync.addOfferRemote(offer)
+            val error = SupabaseClient.lastError
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                btnOffer.isEnabled = true
+                if (remoteId == null) {
+                    Toast.makeText(
+                        this,
+                        "The server did not accept the offer" +
+                            (error?.let { ": $it" } ?: "."),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@runOnUiThread
                 }
+                db.upsertOffer(offer.copy(id = remoteId))
+                Toast.makeText(this, "Offer sent", Toast.LENGTH_SHORT).show()
+                renderFromLocal()
             }
-        } finally {
-            btnOffer.isEnabled = true
         }
     }
 
@@ -524,24 +512,27 @@ class RequestDetailActivity : AppCompatActivity() {
         if (isFinishing || isDestroyed) return
         btnAccept.isEnabled = false
         btnDecline.isEnabled = false
-        try {
-            // Only one accepted offer per request. The server enforces this with a
-            // partial unique index; this is the friendly local check.
-            val alreadyAccepted = db.getOffersForRequest(req.id).any { it.status == "Accepted" }
-            if (alreadyAccepted) {
-                Toast.makeText(this, "You have already accepted an offer.", Toast.LENGTH_SHORT).show()
-                return
-            }
-            db.setOfferStatus(offer.id, "Accepted")
-            db.setRequestStatus(req.id, "Matched")
-            renderFromLocal()
-            if (SupabaseSync.isOnline) {
-                sync("Accepting offer…") {
-                    SupabaseSync.updateOfferStatusRemote(offer.id, "Accepted")
-                    pushRequestStatusOnline(req.id, "Matched")
+        val alreadyAccepted = db.getOffersForRequest(req.id).any { it.status == "Accepted" }
+        if (alreadyAccepted) {
+            btnAccept.isEnabled = true
+            btnDecline.isEnabled = true
+            Toast.makeText(this, "You have already accepted an offer.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        db.setOfferStatus(offer.id, "Accepted")
+        db.setRequestStatus(req.id, "Matched")
+        renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            sync("Accepting offer…") {
+                SupabaseSync.updateOfferStatusRemote(offer.id, "Accepted")
+                pushRequestStatusOnline(req.id, "Matched")
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    btnAccept.isEnabled = true
+                    btnDecline.isEnabled = true
                 }
             }
-        } finally {
+        } else {
             btnAccept.isEnabled = true
             btnDecline.isEnabled = true
         }
@@ -550,15 +541,17 @@ class RequestDetailActivity : AppCompatActivity() {
     private fun declineOffer(offer: Offer, btnDecline: Button) {
         if (isFinishing || isDestroyed) return
         btnDecline.isEnabled = false
-        try {
-            db.setOfferStatus(offer.id, "Declined")
-            renderFromLocal()
-            if (SupabaseSync.isOnline) {
-                sync("Declining offer…") {
-                    SupabaseSync.updateOfferStatusRemote(offer.id, "Declined")
+        db.setOfferStatus(offer.id, "Declined")
+        renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            sync("Declining offer…") {
+                SupabaseSync.updateOfferStatusRemote(offer.id, "Declined")
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    btnDecline.isEnabled = true
                 }
             }
-        } finally {
+        } else {
             btnDecline.isEnabled = true
         }
     }
@@ -627,45 +620,41 @@ class RequestDetailActivity : AppCompatActivity() {
         val btnComplete = findViewById<Button>(R.id.btnComplete)
         if (isFinishing || isDestroyed) return
         btnComplete.isEnabled = false
-        try {
-            val today = LocalDate.now().toString()
-            val donorAt = if (asDonor) today else offer.donorConfirmedAt
-            val requesterAt = if (asDonor) offer.requesterConfirmedAt else today
+        val today = LocalDate.now().toString()
+        val donorAt = if (asDonor) today else offer.donorConfirmedAt
+        val requesterAt = if (asDonor) offer.requesterConfirmedAt else today
 
-            if (asDonor) db.setOfferDonorConfirmed(offer.id, today)
-            else db.setOfferRequesterConfirmed(offer.id, today)
+        if (asDonor) db.setOfferDonorConfirmed(offer.id, today)
+        else db.setOfferRequesterConfirmed(offer.id, today)
 
-            val both = P2pRules.bothConfirmed(donorAt, requesterAt)
+        val both = P2pRules.bothConfirmed(donorAt, requesterAt)
 
-            if (SupabaseSync.isOnline) {
-                sync("Completing donation…") {
-                    SupabaseSync.updateOfferConfirmedRemote(offer.id, donorAt, requesterAt)
-                    val done = if (both) SupabaseSync.completePeerDonationRemote(offer.id) else false
-                    if (done || both) completeLocally(req, offer)
-                    UISync.safePost(this) {
-                        Toast.makeText(
-                            this,
-                            if (both) "Donation recorded. Thank you!" else
-                                "Marked done on your side. Waiting for the other side.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        renderFromLocal()
-                    }
+        if (SupabaseSync.isOnline) {
+            sync("Completing donation…") {
+                SupabaseSync.updateOfferConfirmedRemote(offer.id, donorAt, requesterAt)
+                val done = if (both) SupabaseSync.completePeerDonationRemote(offer.id) else false
+                if (done || both) completeLocally(req, offer)
+                UISync.safePost(this) {
+                    btnComplete.isEnabled = true
+                    Toast.makeText(
+                        this,
+                        if (both) "Donation recorded. Thank you!" else
+                            "Marked done on your side. Waiting for the other side.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    renderFromLocal()
                 }
-            } else {
-                // Offline: the local copy still records both halves, but nothing
-                // reaches the server yet — the next online confirm retries it.
-                if (both) completeLocally(req, offer)
-                Toast.makeText(
-                    this,
-                    if (both) "Donation recorded on this phone (not synced)." else
-                        "Marked done on your side (offline).",
-                    Toast.LENGTH_LONG
-                ).show()
-                renderFromLocal()
             }
-        } finally {
+        } else {
+            if (both) completeLocally(req, offer)
             btnComplete.isEnabled = true
+            Toast.makeText(
+                this,
+                if (both) "Donation recorded on this phone (not synced)." else
+                    "Marked done on your side (offline).",
+                Toast.LENGTH_LONG
+            ).show()
+            renderFromLocal()
         }
     }
 

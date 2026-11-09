@@ -35,6 +35,8 @@ object CertificatePdf {
             Log.e(TAG, "Could not create the certificate cache directory")
             return null
         }
+        dir.listFiles()?.filter { it.name.startsWith("donation_certificate_") && it.extension == "pdf" }
+            ?.forEach { it.delete() }
         val file = File(dir, "donation_certificate_${System.currentTimeMillis()}.pdf")
         val document = PdfDocument()
         return try {

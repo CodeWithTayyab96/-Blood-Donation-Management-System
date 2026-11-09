@@ -30,7 +30,7 @@ class CampListActivity : AppCompatActivity() {
 
         val rv = findViewById<RecyclerView>(R.id.rvCamps)
         rv.layoutManager = LinearLayoutManager(this)
-        adapter = CampAdapter(emptyList()) { camp -> openDetail(camp.id) }
+        adapter = CampAdapter { camp -> openDetail(camp.id) }
         rv.adapter = adapter
 
         Session.load(this)

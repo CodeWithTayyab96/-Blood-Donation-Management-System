@@ -107,7 +107,7 @@
     <string name="hint_btn_pick_date">Last donation date: never</string>
     <string name="hint_login_username">Email or username *</string>
     <string name="hint_login_password">Password *</string>
-    <string name="safety_ask_donate_note">This helper only uses your first name, donation count, days since your last donation and blood group as context for a local spellcheck/wording helper, and nothing is stored on this phone or sent anywhere else.</string>
+    <string name="safety_ask_donate_note">Only your question is sent. No personal data (name, donation history, blood group) is included or stored.</string>
     <string name="hint_login_password_comment">Keyboard-worker artifact placeholder.</string>
     <!-- Settings sub-labels -->
     <string name="settings_notifications_heading">Notifications</string>

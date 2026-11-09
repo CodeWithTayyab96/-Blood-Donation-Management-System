@@ -824,6 +824,11 @@ object SupabaseClient {
         return insertRow("reports", body)
     }
 
+    fun resolveReport(reportId: Long, resolvedAt: String): Boolean {
+        val body = JSONObject().apply { put("resolved_at", resolvedAt) }
+        return patchRows("reports", "id=eq.$reportId", body)
+    }
+
     fun getReports(): List<Report>? {
         val array = getArray("/reports?select=*&order=id.desc") ?: return null
         val out = ArrayList<Report>()
@@ -935,6 +940,30 @@ object SupabaseClient {
         val out = ArrayList<CampAttendance>()
         for (i in 0 until array.length()) {
             array.optJSONObject(i)?.let { out.add(attendanceFromJson(it)) }
+        }
+        return out
+    }
+
+    /** All camp check-ins, for batch pull. */
+    fun getAllCampAttendance(): List<CampAttendance>? {
+        val array = getArray(
+            "/camp_attendance?select=$ATTENDANCE_COLUMNS&order=attended_at.asc,id.asc"
+        ) ?: return null
+        val out = ArrayList<CampAttendance>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(attendanceFromJson(it)) }
+        }
+        return out
+    }
+
+    /** All donor verification records, for batch pull. */
+    fun getAllVerifications(): List<Verification>? {
+        val array = getArray(
+            "/donor_verifications?select=$VERIFICATION_COLUMNS&order=id.asc"
+        ) ?: return null
+        val out = ArrayList<Verification>()
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { out.add(verificationFromJson(it)) }
         }
         return out
     }

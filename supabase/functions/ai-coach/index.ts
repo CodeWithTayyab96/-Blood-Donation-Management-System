@@ -175,9 +175,32 @@ function parseQuotes(raw: string): string[] {
 
 // ------------------------------------------------------------------ quota
 
-/** Calls the project has made today, and a +1. False when over [limit]. */
+/** Atomically increments today's call count. False when over [limit]. */
 async function consumeGlobal(limit: number): Promise<boolean> {
   const day = new Date().toISOString().slice(0, 10);
+
+  // Atomic increment: a single statement that only bumps the counter when
+  // it is still under the cap, so two concurrent callers cannot both read
+  // the same value and both proceed.
+  const { data, error } = await supabase.rpc("increment_provider_calls", {
+    p_day: day,
+    p_cap: limit,
+  });
+  if (error) {
+    // Fall back to the old read-then-upsert if the RPC does not exist yet
+    // (the migration has not been applied). This keeps the function
+    // deployable before the SQL change lands.
+    if (error.code === "42883") {
+      return consumeGlobalFallback(limit, day);
+    }
+    throw new Error(`provider usage increment failed: ${error.message}`);
+  }
+  // The RPC returns the new call count, or -1 when the cap was reached.
+  return Number(data ?? -1) >= 0;
+}
+
+/** Pre-migration fallback: non-atomic read-then-upsert. */
+async function consumeGlobalFallback(limit: number, day: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("ai_provider_calls")
     .select("calls")

@@ -42,7 +42,7 @@ class UpdateWorker(
             AppUpdater.markChecked(applicationContext)
             Result.success()
         } catch (_: Exception) {
-            Result.success()
+            Result.retry()
         }
     }
 

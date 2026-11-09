@@ -153,11 +153,15 @@ object SupabaseSync {
         if (pullCamps(db)) ok = true
         if (pullSlots(db)) ok = true
         if (pullMovements(db)) ok = true
-        for (camp in db.getAllCamps()) {
-            if (pullCampAttendance(db, camp.id)) ok = true
+        val allAttendance = SupabaseClient.getAllCampAttendance()
+        if (allAttendance != null) {
+            for (a in allAttendance) db.upsertCampAttendance(a)
+            ok = true
         }
-        for (donor in db.getAllDonors()) {
-            if (pullVerifications(db, donor.id)) ok = true
+        val allVerifications = SupabaseClient.getAllVerifications()
+        if (allVerifications != null) {
+            for (v in allVerifications) db.upsertVerification(v)
+            ok = true
         }
         return ok
     }
@@ -251,6 +255,9 @@ object SupabaseSync {
 
     fun insertReportRemote(requestId: Long, reporterId: String?, reason: String): Long? =
         SupabaseClient.insertReport(requestId, reporterId, reason)
+
+    fun resolveReportRemote(reportId: Long, resolvedAt: String): Boolean =
+        SupabaseClient.resolveReport(reportId, resolvedAt)
 
     /** P2P: runs the atomic both-confirmed completion on the server. */
     fun completePeerDonationRemote(offerId: Long): Boolean =

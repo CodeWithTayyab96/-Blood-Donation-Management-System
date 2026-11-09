@@ -25,7 +25,9 @@ class StockActivity : AppCompatActivity() {
         rv.layoutManager = GridLayoutManager(this, 2)
         // Local stock first, then a quiet online refresh (unreachable
         // Supabase = local stock stays, same rule as everywhere else).
-        rv.adapter = StockAdapter(db.stockLevels().toList())
+        val stockAdapter = StockAdapter()
+        rv.adapter = stockAdapter
+        stockAdapter.submitList(db.stockLevels().toList())
         if (SupabaseSync.isOnline) {
             val spinner = findViewById<android.widget.ProgressBar>(R.id.progressSync)
             val label = findViewById<android.widget.TextView>(R.id.syncLabel)
@@ -34,9 +36,10 @@ class StockActivity : AppCompatActivity() {
             label.text = "Updating stock…"
             Background.run {
                 SupabaseSync.pullStock(db)
+                val fresh = db.stockLevels().toList()
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
-                    rv.adapter = StockAdapter(db.stockLevels().toList())
+                    stockAdapter.submitList(fresh)
                     BottomNav.updateBadges(this)
                     spinner.visibility = android.view.View.GONE
                     label.visibility = android.view.View.GONE
@@ -47,7 +50,11 @@ class StockActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Bottom navigation badges: live pending and low-stock counts.
+        val db = DbHelper(this)
+        val rv = findViewById<RecyclerView>(R.id.rvStock)
+        val stockAdapter = StockAdapter()
+        rv.adapter = stockAdapter
+        stockAdapter.submitList(db.stockLevels().toList())
         BottomNav.updateBadges(this)
     }
 

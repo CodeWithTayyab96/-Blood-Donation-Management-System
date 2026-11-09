@@ -34,7 +34,7 @@ class SlotListActivity : AppCompatActivity() {
 
         val rv = findViewById<RecyclerView>(R.id.rvSlots)
         rv.layoutManager = LinearLayoutManager(this)
-        adapter = SlotAdapter(emptyList()) { slot -> bookSlot(slot) }
+        adapter = SlotAdapter { slot -> bookSlot(slot) }
         rv.adapter = adapter
 
         Session.load(this)

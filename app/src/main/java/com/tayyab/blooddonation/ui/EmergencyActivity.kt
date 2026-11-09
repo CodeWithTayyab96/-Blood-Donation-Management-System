@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
+import com.tayyab.blooddonation.util.BloodCompatibility
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.tayyab.blooddonation.R
@@ -53,12 +54,15 @@ class EmergencyActivity : AppCompatActivity() {
         prefs = getSharedPreferences("blood_donation", MODE_PRIVATE)
         container = findViewById(R.id.containerCached)
 
+        val spBg = findViewById<Spinner>(R.id.spEmBg)
+        spBg.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, BloodCompatibility.ALL_GROUPS)
+
         val urgencies = listOf("Normal", "Urgent", "Critical")
         val sp = findViewById<Spinner>(R.id.spEmUrgency)
         sp.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, urgencies)
         sp.setSelection(1) // default Urgent
 
-        findViewById<Button>(R.id.btnQueue).setOnClickListener { queueRequest(sp) }
+        findViewById<Button>(R.id.btnQueue).setOnClickListener { queueRequest(spBg, sp) }
     }
 
     override fun onResume() {
@@ -136,8 +140,8 @@ class EmergencyActivity : AppCompatActivity() {
         tvQueued.text = getString(R.string.emergency_queued, queued.size)
     }
 
-    private fun queueRequest(sp: Spinner) {
-        val bg = findViewById<EditText>(R.id.etEmBg).text.toString().trim()
+    private fun queueRequest(spBg: Spinner, sp: Spinner) {
+        val bg = spBg.selectedItem as String
         val units = findViewById<EditText>(R.id.etEmUnits).text.toString().toIntOrNull() ?: 0
         val city = findViewById<EditText>(R.id.etEmCity).text.toString().trim()
         val hospital = findViewById<EditText>(R.id.etEmHospital).text.toString().trim()
@@ -156,6 +160,19 @@ class EmergencyActivity : AppCompatActivity() {
         if (onlineNow == true) {
             postNow(p)
             return
+        }
+        val requesterId = Session.authUserId
+        if (requesterId != null) {
+            val openRemote = db.openRequestCountForRequester(requesterId)
+            val queued = OfflineQueue.all(prefs).size
+            if (openRemote + queued >= P2pRules.MAX_OPEN_REQUESTS) {
+                Toast.makeText(
+                    this,
+                    getString(R.string.emergency_cap, P2pRules.MAX_OPEN_REQUESTS),
+                    Toast.LENGTH_LONG
+                ).show()
+                return
+            }
         }
         if (OfflineQueue.add(prefs, p)) {
             Toast.makeText(this, R.string.emergency_queued_toast, Toast.LENGTH_SHORT).show()
@@ -211,7 +228,7 @@ class EmergencyActivity : AppCompatActivity() {
     }
 
     private fun clearForm() {
-        findViewById<EditText>(R.id.etEmBg).text.clear()
+        findViewById<Spinner>(R.id.spEmBg).setSelection(0)
         findViewById<EditText>(R.id.etEmUnits).text.clear()
         findViewById<EditText>(R.id.etEmCity).text.clear()
         findViewById<EditText>(R.id.etEmHospital).text.clear()

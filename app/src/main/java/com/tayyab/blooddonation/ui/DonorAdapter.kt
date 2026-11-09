@@ -5,15 +5,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.BloodCompatibility
 
 class DonorAdapter(
-    private var donors: List<Donor>,
     private val onClick: (Donor) -> Unit
-) : RecyclerView.Adapter<DonorAdapter.VH>() {
+) : ListAdapter<Donor, DonorAdapter.VH>(DIFF) {
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<Donor>() {
+            override fun areItemsTheSame(old: Donor, new: Donor) = old.id == new.id
+            override fun areContentsTheSame(old: Donor, new: Donor) = old == new
+        }
+    }
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val badge: TextView = v.findViewById(R.id.tvGroupBadge)
@@ -27,10 +34,8 @@ class DonorAdapter(
         return VH(v)
     }
 
-    override fun getItemCount() = donors.size
-
     override fun onBindViewHolder(h: VH, pos: Int) {
-        val d = donors[pos]
+        val d = getItem(pos)
         h.badge.text = d.bloodGroup
         h.name.text = d.name
         h.meta.text = "${d.city} • ${d.age} yrs"
@@ -49,7 +54,6 @@ class DonorAdapter(
     }
 
     fun submit(list: List<Donor>) {
-        donors = list
-        notifyDataSetChanged()
+        submitList(list)
     }
 }

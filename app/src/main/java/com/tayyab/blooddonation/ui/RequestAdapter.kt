@@ -6,7 +6,8 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.model.BloodRequest
 
@@ -16,11 +17,17 @@ import com.tayyab.blooddonation.model.BloodRequest
  * Cancelled or Expired request is terminal and must not offer the button.
  */
 class RequestAdapter(
-    private var items: List<BloodRequest>,
     private val onClick: (BloodRequest) -> Unit,
     private val showCancel: Boolean = false,
     private val onCancel: ((BloodRequest) -> Unit)? = null
-) : RecyclerView.Adapter<RequestAdapter.VH>() {
+) : ListAdapter<BloodRequest, RequestAdapter.VH>(DIFF) {
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<BloodRequest>() {
+            override fun areItemsTheSame(old: BloodRequest, new: BloodRequest) = old.id == new.id
+            override fun areContentsTheSame(old: BloodRequest, new: BloodRequest) = old == new
+        }
+    }
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val group: TextView = v.findViewById(R.id.tvReqGroup)
@@ -35,13 +42,10 @@ class RequestAdapter(
         return VH(v)
     }
 
-    override fun getItemCount() = items.size
-
     override fun onBindViewHolder(h: VH, pos: Int) {
-        val r = items[pos]
+        val r = getItem(pos)
         h.group.text = r.bloodGroup
         h.patient.text = r.patientName
-        // P2P: the city drives "nearby first", so it belongs on the row.
         val city = r.city.takeIf { it.isNotBlank() }?.let { "$it • " } ?: ""
         h.meta.text = "$city${r.hospital} • ${r.unitsNeeded} unit(s) • ${r.urgency}"
         h.status.text = r.status
@@ -50,7 +54,6 @@ class RequestAdapter(
 
         if (showCancel && isOpen(r.status)) {
             h.cancel.visibility = View.VISIBLE
-            // Consume the click so it does not also open the detail screen.
             h.cancel.setOnClickListener { onCancel?.invoke(r) }
         } else {
             h.cancel.visibility = View.GONE
@@ -80,7 +83,6 @@ class RequestAdapter(
     }
 
     fun submit(list: List<BloodRequest>) {
-        items = list
-        notifyDataSetChanged()
+        submitList(list)
     }
 }

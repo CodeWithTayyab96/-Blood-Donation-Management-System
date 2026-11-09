@@ -16,25 +16,39 @@ object OfflineQueue {
     private const val KEY = "offline_request_queue"
     private const val SEP = "|"
 
-    fun all(prefs: SharedPreferences): List<PendingRequest> =
-        prefs.getStringSet(KEY, emptySet()).orEmpty().mapNotNull { decode(it) }
+    private const val KEY_LIST = "offline_request_queue_list"
+
+    fun all(prefs: SharedPreferences): List<PendingRequest> {
+        val json = prefs.getString(KEY_LIST, null)
+        if (json != null) {
+            return json.split("\n").filter { it.isNotBlank() }.mapNotNull { decode(it) }
+        }
+        return prefs.getStringSet(KEY, emptySet()).orEmpty().mapNotNull { decode(it) }
+    }
 
     /** Adds [p]; returns false (and stores nothing) when it duplicates a queued one. */
     fun add(prefs: SharedPreferences, p: PendingRequest): Boolean {
         val current = all(prefs).toMutableList()
         if (EmergencyLogic.isDuplicate(current, p)) return false
         current.add(p)
-        prefs.edit().putStringSet(KEY, current.map { encode(it) }.toSet()).apply()
+        save(prefs, current)
         return true
     }
 
     /** Drops one queued request, after it was sent. A request that fails to send stays queued. */
     fun remove(prefs: SharedPreferences, p: PendingRequest) {
         val kept = all(prefs).filter { it != p }
-        prefs.edit().putStringSet(KEY, kept.map { encode(it) }.toSet()).apply()
+        save(prefs, kept)
     }
 
-    fun clear(prefs: SharedPreferences) = prefs.edit().remove(KEY).apply()
+    fun clear(prefs: SharedPreferences) = prefs.edit().remove(KEY).remove(KEY_LIST).apply()
+
+    private fun save(prefs: SharedPreferences, items: List<PendingRequest>) {
+        prefs.edit()
+            .remove(KEY)
+            .putString(KEY_LIST, items.joinToString("\n") { encode(it) })
+            .apply()
+    }
 
     private fun encode(p: PendingRequest): String =
         listOf(

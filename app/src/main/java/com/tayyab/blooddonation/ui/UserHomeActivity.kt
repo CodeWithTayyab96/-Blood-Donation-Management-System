@@ -138,15 +138,20 @@ class UserHomeActivity : AppCompatActivity() {
 
     /** Phase 2: milestones from the local donation history. */
     private fun showBadges() {
-        val tv = findViewById<TextView>(R.id.tvBadges)
         val donorId = Session.donorId
         if (donorId == null) {
-            tv.visibility = View.GONE
+            findViewById<TextView>(R.id.tvBadges).visibility = View.GONE
             return
         }
-        val stats = DonationStats.from(db.donationsForDonor(donorId).map { it.date })
-        tv.visibility = View.VISIBLE
-        tv.text = BadgeUi.text(this, stats.earnedBadges)
+        Background.run {
+            val badges = DonationStats.from(db.donationsForDonor(donorId).map { it.date }).earnedBadges
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val tv = findViewById<TextView>(R.id.tvBadges)
+                tv.visibility = View.VISIBLE
+                tv.text = BadgeUi.text(this@UserHomeActivity, badges)
+            }
+        }
     }
 
     /**
@@ -193,53 +198,55 @@ class UserHomeActivity : AppCompatActivity() {
      * that cannot work is worse than no switch.
      */
     private fun renderAvailability() {
-        val card = findViewById<View>(R.id.cardAvailability)
-        val sw = findViewById<SwitchCompat>(R.id.swUserAvailable)
-        val info = findViewById<TextView>(R.id.tvUserEligibility)
-
-        val donor = Session.donorId?.let { db.getDonor(it) }
-        if (donor == null) {
-            card.visibility = View.GONE
+        val donorId = Session.donorId
+        if (donorId == null) {
+            findViewById<View>(R.id.cardAvailability).visibility = View.GONE
             return
         }
-        card.visibility = View.VISIBLE
+        Background.run {
+            val donor = db.getDonor(donorId)
+            val eligibility = donor?.let { BloodCompatibility.eligibility(it) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val card = findViewById<View>(R.id.cardAvailability)
+                val sw = findViewById<SwitchCompat>(R.id.swUserAvailable)
+                val info = findViewById<TextView>(R.id.tvUserEligibility)
 
-        // Detach first: setting isChecked while a listener is attached would
-        // fire it and push a write nobody asked for.
-        sw.setOnCheckedChangeListener(null)
-        sw.isChecked = donor.availableToDonate
-        sw.setOnCheckedChangeListener { _, checked -> setAvailability(donor, checked, sw) }
+                if (donor == null) {
+                    card.visibility = View.GONE
+                    return@runOnUiThread
+                }
+                card.visibility = View.VISIBLE
 
-        val (eligible, reason) = BloodCompatibility.eligibility(donor)
-        info.text = if (eligible) "✓ $reason" else "✗ $reason"
-        info.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
-        info.setBackgroundResource(
-            if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
-        )
+                sw.setOnCheckedChangeListener(null)
+                sw.isChecked = donor.availableToDonate
+                sw.setOnCheckedChangeListener { _, checked -> setAvailability(donor, checked, sw) }
+
+                val (eligible, reason) = eligibility!!
+                info.text = if (eligible) "✓ $reason" else "✗ $reason"
+                info.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+                info.setBackgroundResource(
+                    if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
+                )
+            }
+        }
     }
 
     private fun setAvailability(donor: Donor, available: Boolean, sw: SwitchCompat) {
+        val updated = donor.copy(availableToDonate = available)
+        db.insertDonorWithId(updated)
+
         if (!SupabaseSync.isOnline) {
-            // Online-only: revert the switch rather than save a half-state that
-            // the server does not know about.
-            sw.setOnCheckedChangeListener(null)
-            sw.isChecked = donor.availableToDonate
-            sw.setOnCheckedChangeListener { _, checked -> setAvailability(donor, checked, sw) }
             Toast.makeText(
                 this,
-                "Changing your availability needs an internet connection.",
-                Toast.LENGTH_LONG
+                "Saved on this phone (not synced to Supabase).",
+                Toast.LENGTH_SHORT
             ).show()
             return
         }
-        val updated = donor.copy(availableToDonate = available)
         Background.run {
             val ok = SupabaseSync.setAvailabilityRemote(donor.id, available)
             if (ok) {
-                db.insertDonorWithId(updated)
-                // Switching on also makes sure the phone number exists in
-                // contact_details, so an accepted offer can reach them. It
-                // stays hidden until then.
                 val authId = updated.authId ?: Session.authUserId
                 if (available && authId != null && donor.phone.isNotBlank()) {
                     SupabaseSync.upsertContactDetailsRemote(authId, donor.phone)

@@ -57,7 +57,8 @@ object StockForecast {
     fun daysOfStockRemaining(stock: Int, burnPerDay: Double): Int? =
         if (burnPerDay <= 0.0) null else (stock / burnPerDay).toInt()
 
-    fun statusFor(daysRemaining: Int?): Status = when {
+    fun statusFor(stock: Int, daysRemaining: Int?): Status = when {
+        stock == 0 -> Status.CRITICAL
         daysRemaining == null -> Status.SURPLUS
         daysRemaining < CRITICAL_DAYS -> Status.CRITICAL
         daysRemaining < LOW_DAYS -> Status.LOW
@@ -73,6 +74,6 @@ object StockForecast {
     ): List<GroupForecast> = currentStock.map { (group, stock) ->
         val burn = dailyBurnRate(movements, group, asOf, windowDays)
         val days = daysOfStockRemaining(stock, burn)
-        GroupForecast(group, stock, burn, days, statusFor(days))
+        GroupForecast(group, stock, burn, days, statusFor(stock, days))
     }.sortedBy { it.group }
 }

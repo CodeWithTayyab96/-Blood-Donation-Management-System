@@ -11,9 +11,9 @@ import java.time.LocalDate
  */
 object CampRules {
 
-    /** A camp is upcoming when its date is strictly after [asOf]. */
+    /** A camp is upcoming when its date is today or later. */
     fun isUpcoming(camp: Camp, asOf: LocalDate): Boolean =
-        runCatching { LocalDate.parse(camp.campDate) }.getOrNull()?.isAfter(asOf) ?: false
+        runCatching { LocalDate.parse(camp.campDate) }.getOrNull()?.let { !it.isBefore(asOf) } ?: false
 
     /** A camp is past when its date is strictly before [asOf]. */
     fun isPast(camp: Camp, asOf: LocalDate): Boolean =

@@ -5,7 +5,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.model.AppointmentSlot
 import com.tayyab.blooddonation.util.AppointmentRules
@@ -17,10 +18,17 @@ import com.tayyab.blooddonation.util.AppointmentRules
  * DB would reject.
  */
 class SlotAdapter(
-    private var slots: List<AppointmentSlot>,
-    private var bookedIds: Set<Long> = emptySet(),
     private val onBook: (AppointmentSlot) -> Unit
-) : RecyclerView.Adapter<SlotAdapter.VH>() {
+) : ListAdapter<AppointmentSlot, SlotAdapter.VH>(DIFF) {
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<AppointmentSlot>() {
+            override fun areItemsTheSame(old: AppointmentSlot, new: AppointmentSlot) = old.id == new.id
+            override fun areContentsTheSame(old: AppointmentSlot, new: AppointmentSlot) = old == new
+        }
+    }
+
+    private var bookedIds: Set<Long> = emptySet()
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val time: TextView = v.findViewById(R.id.tvSlotTime)
@@ -34,10 +42,8 @@ class SlotAdapter(
         return VH(v)
     }
 
-    override fun getItemCount() = slots.size
-
     override fun onBindViewHolder(h: VH, pos: Int) {
-        val s = slots[pos]
+        val s = getItem(pos)
         val ctx = h.itemView.context
         h.time.text = s.slotTime
         h.capacity.text = ctx.getString(R.string.slot_capacity_label, s.booked, s.capacity)
@@ -56,8 +62,7 @@ class SlotAdapter(
     }
 
     fun submit(list: List<AppointmentSlot>, booked: Set<Long> = bookedIds) {
-        slots = list
         bookedIds = booked
-        notifyDataSetChanged()
+        submitList(list)
     }
 }

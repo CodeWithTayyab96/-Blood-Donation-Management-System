@@ -5,7 +5,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.util.StockForecast
 
@@ -13,8 +14,16 @@ import com.tayyab.blooddonation.util.StockForecast
  * Phase 3: one per-blood-group forecast row. Colour follows the same thresholds
  * the [StockForecast] rules derive, so the worst groups stand out at a glance.
  */
-class ForecastAdapter(private var items: List<StockForecast.GroupForecast>) :
-    RecyclerView.Adapter<ForecastAdapter.VH>() {
+class ForecastAdapter : ListAdapter<StockForecast.GroupForecast, ForecastAdapter.VH>(DIFF) {
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<StockForecast.GroupForecast>() {
+            override fun areItemsTheSame(old: StockForecast.GroupForecast, new: StockForecast.GroupForecast) =
+                old.group == new.group
+            override fun areContentsTheSame(old: StockForecast.GroupForecast, new: StockForecast.GroupForecast) =
+                old == new
+        }
+    }
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val group: TextView = v.findViewById(R.id.tvForecastGroup)
@@ -28,10 +37,8 @@ class ForecastAdapter(private var items: List<StockForecast.GroupForecast>) :
         return VH(v)
     }
 
-    override fun getItemCount() = items.size
-
     override fun onBindViewHolder(h: VH, pos: Int) {
-        val f = items[pos]
+        val f = getItem(pos)
         val ctx = h.itemView.context
         h.group.text = f.group
         h.status.text = statusLabel(ctx, f.status)
@@ -63,7 +70,6 @@ class ForecastAdapter(private var items: List<StockForecast.GroupForecast>) :
         )
 
     fun submit(list: List<StockForecast.GroupForecast>) {
-        items = list
-        notifyDataSetChanged()
+        submitList(list)
     }
 }

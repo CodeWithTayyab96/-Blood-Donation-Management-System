@@ -155,7 +155,7 @@ object RequestAlerts {
         val ids = notifiedIds(context).toMutableSet()
         ids.add(requestId.toString())
         val kept = if (ids.size > MAX_REMEMBERED) {
-            ids.toList().takeLast(MAX_REMEMBERED).toSet()
+            ids.sorted().takeLast(MAX_REMEMBERED).toSet()
         } else {
             ids
         }

@@ -27,11 +27,15 @@ class VerifyDonorActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.load(this)
+        if (!Session.isManager) {
+            finish()
+            return
+        }
         setContentView(R.layout.activity_verify_donor)
         title = getString(R.string.title_verify)
         db = DbHelper(this)
         donorId = intent.getLongExtra("donorId", -1)
-        Session.load(this)
 
         findViewById<TextView>(R.id.tvVerifyName).text = db.getDonor(donorId)?.name ?: getString(R.string.title_verify)
         renderStatus()

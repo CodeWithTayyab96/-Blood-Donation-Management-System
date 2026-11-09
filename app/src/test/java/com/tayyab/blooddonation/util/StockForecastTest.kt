@@ -36,10 +36,11 @@ class StockForecastTest {
 
     @Test
     fun `status thresholds`() {
-        assertSame(StockForecast.Status.SURPLUS, StockForecast.statusFor(null))
-        assertSame(StockForecast.Status.CRITICAL, StockForecast.statusFor(3))
-        assertSame(StockForecast.Status.LOW, StockForecast.statusFor(10))
-        assertSame(StockForecast.Status.OK, StockForecast.statusFor(20))
+        assertSame(StockForecast.Status.SURPLUS, StockForecast.statusFor(10, null))
+        assertSame(StockForecast.Status.CRITICAL, StockForecast.statusFor(0, null))
+        assertSame(StockForecast.Status.CRITICAL, StockForecast.statusFor(5, 3))
+        assertSame(StockForecast.Status.LOW, StockForecast.statusFor(10, 10))
+        assertSame(StockForecast.Status.OK, StockForecast.statusFor(50, 20))
     }
 
     @Test
@@ -48,7 +49,7 @@ class StockForecastTest {
         val stock = mapOf("O-" to 30, "A+" to 0)
         val f = StockForecast.forecast(m, stock, asOf)
         assertEquals(listOf("A+", "O-"), f.map { it.group })
-        assertSame(StockForecast.Status.SURPLUS, f[0].status)   // A+ no burn
+        assertSame(StockForecast.Status.CRITICAL, f[0].status)   // A+ stock=0
         assertSame(StockForecast.Status.OK, f[1].status)        // O- ~180 days
     }
 }

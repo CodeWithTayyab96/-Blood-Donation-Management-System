@@ -419,7 +419,7 @@ object Session {
             .apply()
     }
 
-    fun label(): String = when (_role) {
+    fun label(): String = when (_jwtRole ?: _role) {
         ROLE_MANAGER -> "$_username • Manager"
         ROLE_DONOR -> "$_username • Donor"
         else -> _username ?: "Guest"

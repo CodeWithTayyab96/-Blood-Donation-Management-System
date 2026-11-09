@@ -195,59 +195,74 @@ class ProfileActivity : AppCompatActivity() {
 
     private fun renderFromLocal() {
         val donorId = Session.donorId
-        if (donorId == null) {
-            // Manager account: no donor profile, show account + overall counts.
-            findViewById<TextView>(R.id.tvProfileName).text = Session.username ?: "Manager"
-            findViewById<TextView>(R.id.tvProfileInfo).text =
-                "Role: Manager (full access)\n" +
-                "Registered donors: ${db.donorCount()}\n" +
-                "Units in stock: ${db.totalUnitsInStock()}\n" +
-                "Pending requests: ${db.pendingRequestCount()}"
-            findViewById<TextView>(R.id.tvProfileEligibility).text =
-                "Managers manage donors, stock and requests from the dashboard."
-            findViewById<TextView>(R.id.tvProfileEligibility)
-                .setBackgroundResource(R.drawable.bg_pill_grey)
-            findViewById<TextView>(R.id.tvProfileNext).visibility = View.GONE
-            findViewById<TextView>(R.id.tvNoHistory).visibility = View.GONE
-            findViewById<TextView>(R.id.tvBadges).visibility = View.GONE
-            return
+        Background.run {
+            if (donorId == null) {
+                val username = Session.username ?: "Manager"
+                val donorCount = db.donorCount()
+                val totalUnits = db.totalUnitsInStock()
+                val pending = db.pendingRequestCount()
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    findViewById<TextView>(R.id.tvProfileName).text = username
+                    findViewById<TextView>(R.id.tvProfileInfo).text =
+                        "Role: Manager (full access)\n" +
+                        "Registered donors: $donorCount\n" +
+                        "Units in stock: $totalUnits\n" +
+                        "Pending requests: $pending"
+                    findViewById<TextView>(R.id.tvProfileEligibility).text =
+                        "Managers manage donors, stock and requests from the dashboard."
+                    findViewById<TextView>(R.id.tvProfileEligibility)
+                        .setBackgroundResource(R.drawable.bg_pill_grey)
+                    findViewById<TextView>(R.id.tvProfileNext).visibility = View.GONE
+                    findViewById<TextView>(R.id.tvNoHistory).visibility = View.GONE
+                    findViewById<TextView>(R.id.tvBadges).visibility = View.GONE
+                }
+                return@run
+            }
+
+            val donor = db.getDonor(donorId)
+            val eligibility = donor?.let { BloodCompatibility.eligibility(it) }
+            val nextDate = donor?.let { BloodCompatibility.nextEligibleDate(it) }
+            val history = db.donationsForDonor(donorId)
+            val badges = DonationStats.from(history.map { it.date }).earnedBadges
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (donor == null) { finish(); return@runOnUiThread }
+                val (eligible, reason) = eligibility!!
+                findViewById<TextView>(R.id.tvProfileName).text = "${donor.name}  (${donor.bloodGroup})"
+                findViewById<TextView>(R.id.tvProfileInfo).text =
+                    "Age: ${donor.age} years\n" +
+                    "Gender: ${donor.gender}\n" +
+                    "Weight: ${donor.weightKg} kg\n" +
+                    "Phone: ${donor.phone}\n" +
+                    "City: ${donor.city}\n" +
+                    "Last donation: ${donor.lastDonationDate ?: "Never"}"
+                val tv = findViewById<TextView>(R.id.tvProfileEligibility)
+                tv.text = (if (eligible) "✓ " else "✗ ") + reason
+                tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+                tv.setBackgroundResource(
+                    if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
+                )
+                findViewById<TextView>(R.id.tvProfileNext).text =
+                    if (nextDate == null) "Next eligible date: now — you can donate today."
+                    else "Next eligible date: $nextDate (90 days after your last donation)"
+
+                setupAvailabilitySwitch(donor, eligible)
+
+                val tvBadges = findViewById<TextView>(R.id.tvBadges)
+                tvBadges.visibility = View.VISIBLE
+                tvBadges.text = BadgeUi.text(
+                    this@ProfileActivity,
+                    badges
+                )
+                val rv = findViewById<RecyclerView>(R.id.rvHistory)
+                rv.layoutManager = LinearLayoutManager(this@ProfileActivity)
+                val donationAdapter = DonationAdapter()
+                rv.adapter = donationAdapter
+                donationAdapter.submitList(history)
+                findViewById<TextView>(R.id.tvNoHistory).visibility =
+                    if (history.isEmpty()) View.VISIBLE else View.GONE
+            }
         }
-
-        val donor = db.getDonor(donorId) ?: run { finish(); return }
-        findViewById<TextView>(R.id.tvProfileName).text = "${donor.name}  (${donor.bloodGroup})"
-        findViewById<TextView>(R.id.tvProfileInfo).text =
-            "Age: ${donor.age} years\n" +
-            "Gender: ${donor.gender}\n" +
-            "Weight: ${donor.weightKg} kg\n" +
-            "Phone: ${donor.phone}\n" +
-            "City: ${donor.city}\n" +
-            "Last donation: ${donor.lastDonationDate ?: "Never"}"
-        val (eligible, reason) = BloodCompatibility.eligibility(donor)
-        val tv = findViewById<TextView>(R.id.tvProfileEligibility)
-        tv.text = (if (eligible) "✓ " else "✗ ") + reason
-        tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
-        tv.setBackgroundResource(
-            if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
-        )
-        val next = BloodCompatibility.nextEligibleDate(donor)
-        findViewById<TextView>(R.id.tvProfileNext).text =
-            if (next == null) "Next eligible date: now — you can donate today."
-            else "Next eligible date: $next (90 days after your last donation)"
-
-        setupAvailabilitySwitch(donor, eligible)
-
-        val history = db.donationsForDonor(donorId)
-        // Phase 2: badges are computed from the same local history.
-        val tvBadges = findViewById<TextView>(R.id.tvBadges)
-        tvBadges.visibility = View.VISIBLE
-        tvBadges.text = BadgeUi.text(
-            this,
-            DonationStats.from(history.map { it.date }).earnedBadges
-        )
-        val rv = findViewById<RecyclerView>(R.id.rvHistory)
-        rv.layoutManager = LinearLayoutManager(this)
-        rv.adapter = DonationAdapter(history)
-        findViewById<TextView>(R.id.tvNoHistory).visibility =
-            if (history.isEmpty()) View.VISIBLE else View.GONE
     }
 }

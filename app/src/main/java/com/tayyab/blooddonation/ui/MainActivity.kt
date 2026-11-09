@@ -364,57 +364,61 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderFromLocal() {
-        findViewById<TextView>(R.id.tvStatDonors).text = db.donorCount().toString()
-        findViewById<TextView>(R.id.tvStatUnits).text = db.totalUnitsInStock().toString()
-        val pending = db.pendingRequestCount()
-        findViewById<TextView>(R.id.tvStatRequests).text = pending.toString()
-        findViewById<TextView>(R.id.tvStatMonth).text = db.donationsThisMonth().toString()
-        // Urgent banner: live pending count only, shown when there is work to do.
-        val banner = findViewById<MaterialCardView>(R.id.cardUrgentBanner)
-        banner.visibility = if (pending > 0) View.VISIBLE else View.GONE
-        if (pending > 0) {
-            findViewById<TextView>(R.id.tvUrgentBanner).text =
-                if (pending == 1) "Urgent: 1 pending blood request"
-                else "Urgent: $pending pending blood requests"
-        }
-        val stock = db.stockLevels()
-        findViewById<TextView>(R.id.tvStockSummary).text =
-            BloodCompatibility.ALL_GROUPS.joinToString("\n") { g -> "$g : ${stock[g] ?: 0} unit(s)" }
-
-        // Daily motivation card: the personalised AI line for today when one
-        // was already fetched and cached (and it IS today's), otherwise the
-        // plain local fact of the day — which is what appears offline too.
-        val prefs = getSharedPreferences(AI_PREFS, MODE_PRIVATE)
-        val aiText = prefs.getString(KEY_AI_MSG_TEXT, null)
-        val today = LocalDate.now().toEpochDay()
-        findViewById<TextView>(R.id.tvFact).text =
-            if (aiText != null && prefs.getLong(KEY_AI_MSG_DAY, -1L) == today) aiText
-            else MotivationFacts.factFor(today)
-
-        // Donor milestones, computed from the local donation history. Only a
-        // signed-in donor has a profile to count; managers without one skip it.
-        val card = findViewById<android.view.View>(R.id.cardMilestones)
-        val tvMilestones = findViewById<TextView>(R.id.tvMilestones)
-        val donorId = Session.donorId
-        if (donorId != null) {
-            val stats = DonationStats.from(db.donationsForDonor(donorId).map { it.date })
-            card.visibility = android.view.View.VISIBLE
-            val badges = if (stats.earnedMilestones.isEmpty()) "none yet"
-            else stats.earnedMilestones.joinToString(", ") { ordinal(it) }
-            val next = stats.nextMilestone?.let { "Next milestone: your ${ordinal(it)} donation." }
-                ?: "You have earned every milestone — thank you!"
-            tvMilestones.text = buildString {
-                append("Total donations: ${stats.totalDonations}\n")
-                append("Current streak: ${stats.streak}\n")
-                append("You may have helped up to ${stats.mayHaveHelped} people\n")
-                append("Badges earned: $badges\n")
-                append(next)
+        Background.run {
+            val donorCount = db.donorCount()
+            val totalUnits = db.totalUnitsInStock()
+            val pending = db.pendingRequestCount()
+            val donationsMonth = db.donationsThisMonth()
+            val stock = db.stockLevels()
+            val donorId = Session.donorId
+            val stats = donorId?.let {
+                DonationStats.from(db.donationsForDonor(it).map { d -> d.date })
             }
-        } else {
-            card.visibility = android.view.View.GONE
+            val prefs = getSharedPreferences(AI_PREFS, MODE_PRIVATE)
+            val aiText = prefs.getString(KEY_AI_MSG_TEXT, null)
+            val today = LocalDate.now().toEpochDay()
+            val aiDay = prefs.getLong(KEY_AI_MSG_DAY, -1L)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                findViewById<TextView>(R.id.tvStatDonors).text = donorCount.toString()
+                findViewById<TextView>(R.id.tvStatUnits).text = totalUnits.toString()
+                findViewById<TextView>(R.id.tvStatRequests).text = pending.toString()
+                findViewById<TextView>(R.id.tvStatMonth).text = donationsMonth.toString()
+                val banner = findViewById<MaterialCardView>(R.id.cardUrgentBanner)
+                banner.visibility = if (pending > 0) View.VISIBLE else View.GONE
+                if (pending > 0) {
+                    findViewById<TextView>(R.id.tvUrgentBanner).text =
+                        if (pending == 1) "Urgent: 1 pending blood request"
+                        else "Urgent: $pending pending blood requests"
+                }
+                findViewById<TextView>(R.id.tvStockSummary).text =
+                    BloodCompatibility.ALL_GROUPS.joinToString("\n") { g -> "$g : ${stock[g] ?: 0} unit(s)" }
+
+                findViewById<TextView>(R.id.tvFact).text =
+                    if (aiText != null && aiDay == today) aiText
+                    else MotivationFacts.factFor(today)
+
+                val card = findViewById<android.view.View>(R.id.cardMilestones)
+                val tvMilestones = findViewById<TextView>(R.id.tvMilestones)
+                if (donorId != null && stats != null) {
+                    card.visibility = android.view.View.VISIBLE
+                    val badges = if (stats.earnedMilestones.isEmpty()) "none yet"
+                    else stats.earnedMilestones.joinToString(", ") { ordinal(it) }
+                    val next = stats.nextMilestone?.let { "Next milestone: your ${ordinal(it)} donation." }
+                        ?: "You have earned every milestone — thank you!"
+                    tvMilestones.text = buildString {
+                        append("Total donations: ${stats.totalDonations}\n")
+                        append("Current streak: ${stats.streak}\n")
+                        append("You may have helped up to ${stats.mayHaveHelped} people\n")
+                        append("Badges earned: $badges\n")
+                        append(next)
+                    }
+                } else {
+                    card.visibility = android.view.View.GONE
+                }
+                BottomNav.updateBadges(this@MainActivity)
+            }
         }
-        // Bottom navigation badges: live pending and low-stock counts.
-        BottomNav.updateBadges(this)
     }
 
     /** 1 -> "1st", 3 -> "3rd", 11 -> "11th", 21 -> "21st". */

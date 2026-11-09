@@ -209,70 +209,71 @@ class DonorDetailActivity : AppCompatActivity() {
     }
 
     private fun renderFromLocal() {
-        val donor = db.getDonor(donorId) ?: run { finish(); return }
-        findViewById<TextView>(R.id.tvDetailName).text = "${donor.name}  (${donor.bloodGroup})"
-        findViewById<TextView>(R.id.tvDetailInfo).text =
-            "Age: ${donor.age} years\n" +
-            "Gender: ${donor.gender}\n" +
-            "Weight: ${donor.weightKg} kg\n" +
-            // The phone is not a readable column: it is fetched by the pull
-            // above when this account may see it (the manager, or the donor
-            // themselves), and blank means "not yours to see".
-            "Phone: ${donor.phone.ifBlank { "hidden" }}\n" +
-            "City: ${donor.city}\n" +
-            "Last donation: ${donor.lastDonationDate ?: "Never"}"
-        val (eligible, reason) = BloodCompatibility.eligibility(donor)
-        val tv = findViewById<TextView>(R.id.tvDetailEligibility)
-        tv.text = (if (eligible) "✓ " else "✗ ") + reason
-        tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
-        tv.setBackgroundResource(
-            if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
-        )
-
-        // Phase 3: donor verification status (set by a manager) and a manager-only
-        // action to change it. The badge uses the same isDonorVerified() rule the
-        // manager screen writes through, so the two never disagree.
-        val verified = db.isDonorVerified(donorId)
-        val tvVerified = findViewById<TextView>(R.id.tvVerified)
-        tvVerified.visibility = View.VISIBLE
-        if (verified) {
-            tvVerified.text = getString(R.string.verify_badge)
-            tvVerified.setTextColor(getColor(R.color.status_ok))
-            tvVerified.setBackgroundResource(R.drawable.bg_pill_green)
-        } else {
-            tvVerified.text = getString(R.string.verify_not_verified)
-            tvVerified.setTextColor(getColor(R.color.text_secondary))
-            tvVerified.setBackgroundResource(R.drawable.bg_pill_grey)
-        }
-        val btnVerify = findViewById<Button>(R.id.btnVerify)
-        if (Session.isManager) {
-            btnVerify.visibility = View.VISIBLE
-            btnVerify.setOnClickListener {
-                startActivity(
-                    Intent(this, VerifyDonorActivity::class.java).putExtra("donorId", donorId)
+        Background.run {
+            val donor = db.getDonor(donorId)
+            val eligibility = donor?.let { BloodCompatibility.eligibility(it) }
+            val verified = db.isDonorVerified(donorId)
+            val history = db.donationsForDonor(donorId)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (donor == null) { finish(); return@runOnUiThread }
+                val (eligible, reason) = eligibility!!
+                findViewById<TextView>(R.id.tvDetailName).text = "${donor.name}  (${donor.bloodGroup})"
+                findViewById<TextView>(R.id.tvDetailInfo).text =
+                    "Age: ${donor.age} years\n" +
+                    "Gender: ${donor.gender}\n" +
+                    "Weight: ${donor.weightKg} kg\n" +
+                    "Phone: ${donor.phone.ifBlank { "hidden" }}\n" +
+                    "City: ${donor.city}\n" +
+                    "Last donation: ${donor.lastDonationDate ?: "Never"}"
+                val tv = findViewById<TextView>(R.id.tvDetailEligibility)
+                tv.text = (if (eligible) "✓ " else "✗ ") + reason
+                tv.setTextColor(getColor(if (eligible) R.color.status_ok else R.color.status_warn))
+                tv.setBackgroundResource(
+                    if (eligible) R.drawable.bg_pill_green else R.drawable.bg_pill_amber
                 )
+
+                val tvVerified = findViewById<TextView>(R.id.tvVerified)
+                tvVerified.visibility = View.VISIBLE
+                if (verified) {
+                    tvVerified.text = getString(R.string.verify_badge)
+                    tvVerified.setTextColor(getColor(R.color.status_ok))
+                    tvVerified.setBackgroundResource(R.drawable.bg_pill_green)
+                } else {
+                    tvVerified.text = getString(R.string.verify_not_verified)
+                    tvVerified.setTextColor(getColor(R.color.text_secondary))
+                    tvVerified.setBackgroundResource(R.drawable.bg_pill_grey)
+                }
+                val btnVerify = findViewById<Button>(R.id.btnVerify)
+                if (Session.isManager) {
+                    btnVerify.visibility = View.VISIBLE
+                    btnVerify.setOnClickListener {
+                        startActivity(
+                            Intent(this, VerifyDonorActivity::class.java).putExtra("donorId", donorId)
+                        )
+                    }
+                } else {
+                    btnVerify.visibility = View.GONE
+                }
+
+                ContactActions.bind(
+                    this,
+                    findViewById<View>(R.id.contactActions),
+                    findViewById<Button>(R.id.btnCall),
+                    findViewById<Button>(R.id.btnWhatsApp),
+                    donor.phone
+                )
+
+                findViewById<Button>(R.id.btnCertificate).visibility =
+                    if (history.isEmpty()) View.GONE else View.VISIBLE
+                val rv = findViewById<RecyclerView>(R.id.rvHistory)
+                rv.layoutManager = LinearLayoutManager(this)
+                val donationAdapter = DonationAdapter()
+                rv.adapter = donationAdapter
+                donationAdapter.submitList(history)
+                findViewById<TextView>(R.id.tvNoHistory).visibility =
+                    if (history.isEmpty()) View.VISIBLE else View.GONE
             }
-        } else {
-            btnVerify.visibility = View.GONE
         }
-
-        // A blank phone means "not yours to see" (RLS), so both buttons hide.
-        ContactActions.bind(
-            this,
-            findViewById<View>(R.id.contactActions),
-            findViewById<Button>(R.id.btnCall),
-            findViewById<Button>(R.id.btnWhatsApp),
-            donor.phone
-        )
-
-        val history = db.donationsForDonor(donorId)
-        // A certificate needs at least one recorded donation.
-        findViewById<Button>(R.id.btnCertificate).visibility =
-            if (history.isEmpty()) View.GONE else View.VISIBLE
-        val rv = findViewById<RecyclerView>(R.id.rvHistory)
-        rv.layoutManager = LinearLayoutManager(this)
-        rv.adapter = DonationAdapter(history)
-        findViewById<TextView>(R.id.tvNoHistory).visibility =
-            if (history.isEmpty()) View.VISIBLE else View.GONE
     }
 }

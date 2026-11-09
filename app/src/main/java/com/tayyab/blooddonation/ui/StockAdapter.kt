@@ -7,11 +7,20 @@ import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import com.tayyab.blooddonation.R
 
-class StockAdapter(private val rows: List<Pair<String, Int>>) :
-    RecyclerView.Adapter<StockAdapter.VH>() {
+class StockAdapter : ListAdapter<Pair<String, Int>, StockAdapter.VH>(DIFF) {
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<Pair<String, Int>>() {
+            override fun areItemsTheSame(old: Pair<String, Int>, new: Pair<String, Int>) =
+                old.first == new.first
+            override fun areContentsTheSame(old: Pair<String, Int>, new: Pair<String, Int>) =
+                old == new
+        }
+    }
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val group: TextView = v.findViewById(R.id.tvStockGroup)
@@ -25,13 +34,10 @@ class StockAdapter(private val rows: List<Pair<String, Int>>) :
         return VH(v)
     }
 
-    override fun getItemCount() = rows.size
-
     override fun onBindViewHolder(h: VH, pos: Int) {
-        val (g, u) = rows[pos]
+        val (g, u) = getItem(pos)
         h.group.text = g
         h.units.text = u.toString()
-        // Warm Clinical Sanguine status colours; bar scale is 0-10 units.
         val (label, colorRes, pill) = when {
             u == 0 -> Triple("OUT OF STOCK", R.color.status_red, R.drawable.bg_pill_red)
             u <= 2 -> Triple("LOW", R.color.status_amber, R.drawable.bg_pill_amber)

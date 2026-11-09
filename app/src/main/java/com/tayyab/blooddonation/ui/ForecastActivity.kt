@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.StockForecast
 import java.time.LocalDate
 
@@ -29,7 +30,7 @@ class ForecastActivity : AppCompatActivity() {
 
         val rv = findViewById<RecyclerView>(R.id.rvForecast)
         rv.layoutManager = LinearLayoutManager(this)
-        adapter = ForecastAdapter(emptyList())
+        adapter = ForecastAdapter()
         rv.adapter = adapter
     }
 
@@ -39,12 +40,17 @@ class ForecastActivity : AppCompatActivity() {
     }
 
     private fun render() {
-        val movements = db.getAllMovements()
-        val stock = db.stockLevels()
-        val asOf = LocalDate.now()
-        val data = StockForecast.forecast(movements, stock, asOf)
-        adapter.submit(data)
-        findViewById<View>(R.id.tvEmpty).visibility =
-            if (data.isEmpty()) View.VISIBLE else View.GONE
+        Background.run {
+            val movements = db.getAllMovements()
+            val stock = db.stockLevels()
+            val asOf = LocalDate.now()
+            val data = StockForecast.forecast(movements, stock, asOf)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                adapter.submit(data)
+                findViewById<View>(R.id.tvEmpty).visibility =
+                    if (data.isEmpty()) View.VISIBLE else View.GONE
+            }
+        }
     }
 }

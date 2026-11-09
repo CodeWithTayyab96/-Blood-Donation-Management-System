@@ -9,6 +9,7 @@ import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.db.DbHelper
 import com.tayyab.blooddonation.model.Camp
 import com.tayyab.blooddonation.util.Background
+import com.tayyab.blooddonation.util.Session
 import com.tayyab.blooddonation.util.SupabaseSync
 import java.time.LocalDate
 
@@ -19,6 +20,8 @@ class AddCampActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.load(this)
+        if (!Session.isManager) { finish(); return }
         setContentView(R.layout.activity_add_camp)
         title = getString(R.string.label_add_camp)
         db = DbHelper(this)

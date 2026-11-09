@@ -181,11 +181,17 @@ async function sendEach(
   returnedStats: { sent: number; stale: number; failed: number },
 ): Promise<void> {
   const accessToken = await getAccessToken(sa);
-  for (const r of recipients) {
-    const result = await sendToToken(sa, accessToken, r.token, data);
-    if (result === "ok") returnedStats.sent++;
-    else if (result === "gone") returnedStats.stale++;
-    else returnedStats.failed++;
+  const BATCH = 500;
+  for (let i = 0; i < recipients.length; i += BATCH) {
+    const batch = recipients.slice(i, i + BATCH);
+    const results = await Promise.all(
+      batch.map((r) => sendToToken(sa, accessToken, r.token, data)),
+    );
+    for (const result of results) {
+      if (result === "ok") returnedStats.sent++;
+      else if (result === "gone") returnedStats.stale++;
+      else returnedStats.failed++;
+    }
   }
 }
 

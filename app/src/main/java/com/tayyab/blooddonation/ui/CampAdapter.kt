@@ -4,6 +4,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.model.Camp
@@ -15,13 +17,21 @@ sealed class CampRow {
 }
 
 class CampAdapter(
-    private var rows: List<CampRow>,
     private val onClick: (Camp) -> Unit
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+) : ListAdapter<CampRow, RecyclerView.ViewHolder>(DIFF) {
 
     companion object {
         private const val VIEW_HEADER = 0
         private const val VIEW_CAMP = 1
+
+        private val DIFF = object : DiffUtil.ItemCallback<CampRow>() {
+            override fun areItemsTheSame(old: CampRow, new: CampRow) = when {
+                old is CampRow.Header && new is CampRow.Header -> old.text == new.text
+                old is CampRow.Item && new is CampRow.Item -> old.camp.id == new.camp.id
+                else -> false
+            }
+            override fun areContentsTheSame(old: CampRow, new: CampRow) = old == new
+        }
     }
 
     class HeaderVH(v: View) : RecyclerView.ViewHolder(v) {
@@ -35,7 +45,7 @@ class CampAdapter(
         val date: TextView = v.findViewById(R.id.tvCampDate)
     }
 
-    override fun getItemViewType(pos: Int): Int = when (rows[pos]) {
+    override fun getItemViewType(pos: Int): Int = when (getItem(pos)) {
         is CampRow.Header -> VIEW_HEADER
         is CampRow.Item -> VIEW_CAMP
     }
@@ -49,10 +59,8 @@ class CampAdapter(
         }
     }
 
-    override fun getItemCount() = rows.size
-
     override fun onBindViewHolder(h: RecyclerView.ViewHolder, pos: Int) {
-        when (val row = rows[pos]) {
+        when (val row = getItem(pos)) {
             is CampRow.Header -> (h as HeaderVH).text.text = row.text
             is CampRow.Item -> {
                 val c = row.camp
@@ -67,7 +75,6 @@ class CampAdapter(
     }
 
     fun submit(list: List<CampRow>) {
-        rows = list
-        notifyDataSetChanged()
+        submitList(list)
     }
 }

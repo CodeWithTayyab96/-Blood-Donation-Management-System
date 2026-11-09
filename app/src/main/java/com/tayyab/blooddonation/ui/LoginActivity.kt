@@ -63,7 +63,8 @@ class LoginActivity : AppCompatActivity() {
         title = "Sign In"
         val db = DbHelper(this)
 
-        findViewById<Button>(R.id.btnLogin).setOnClickListener {
+        val btnLogin = findViewById<Button>(R.id.btnLogin)
+        btnLogin.setOnClickListener {
             val input = findViewById<EditText>(R.id.etUsername).text.toString().trim()
             val password = findViewById<EditText>(R.id.etPassword).text.toString()
             if (input.isEmpty() || password.isEmpty()) {
@@ -83,6 +84,7 @@ class LoginActivity : AppCompatActivity() {
             }
             // (a) Supabase Auth login (email). Network on a background thread.
             val email = input
+            btnLogin.isEnabled = false
             Background.run {
                 val auth = if (SupabaseSync.isOnline) SupabaseAuth.signIn(email, password) else null
                 val authError = SupabaseAuth.lastError
@@ -141,6 +143,7 @@ class LoginActivity : AppCompatActivity() {
                             }
                         } else {
                             runOnUiThread {
+                                btnLogin.isEnabled = true
                                 Toast.makeText(
                                     this, "No donor profile linked to this account",
                                     Toast.LENGTH_LONG
@@ -189,7 +192,10 @@ class LoginActivity : AppCompatActivity() {
                             networkFailed -> "Sign-in needs an internet connection"
                             else -> authError ?: "Sign-in failed"
                         }
-                        runOnUiThread { offerResendIfUnconfirmed(email, message) }
+                        runOnUiThread {
+                            btnLogin.isEnabled = true
+                            offerResendIfUnconfirmed(email, message)
+                        }
                     }
                 }
             }

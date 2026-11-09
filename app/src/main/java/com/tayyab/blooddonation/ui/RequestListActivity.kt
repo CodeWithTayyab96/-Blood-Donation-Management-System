@@ -64,7 +64,6 @@ class RequestListActivity : AppCompatActivity() {
         val rv = findViewById<RecyclerView>(R.id.rvRequests)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = RequestAdapter(
-            items = emptyList(),
             onClick = { req -> openDetail(req) },
             showCancel = false,
             onCancel = { req -> confirmCancel(req) }
@@ -113,7 +112,6 @@ class RequestListActivity : AppCompatActivity() {
         // Rebuild with cancel buttons only in "My requests".
         val rv = findViewById<RecyclerView>(R.id.rvRequests)
         adapter = RequestAdapter(
-            items = emptyList(),
             onClick = { req -> openDetail(req) },
             showCancel = (next == Mode.MINE),
             onCancel = { req -> confirmCancel(req) }
@@ -196,22 +194,28 @@ class RequestListActivity : AppCompatActivity() {
 
     private fun renderFromLocal() {
         val me = Session.authUserId
-        val items = when {
-            Session.isManager -> db.getAllRequests()
-            mode == Mode.MINE -> myRequests(me)
-            else -> browseRequests(me)
+        val isManager = Session.isManager
+        val currentMode = mode
+        Background.run {
+            val items = when {
+                isManager -> db.getAllRequests()
+                currentMode == Mode.MINE -> myRequests(me)
+                else -> browseRequests(me)
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                adapter.submit(items)
+                val empty = findViewById<TextView>(R.id.tvEmptyRequests)
+                empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+                empty.text = when {
+                    isManager -> "No requests yet."
+                    currentMode == Mode.MINE ->
+                        "You have not posted a request yet. Use New request to ask for blood."
+                    else -> "No open requests right now."
+                }
+                BottomNav.updateBadges(this@RequestListActivity)
+            }
         }
-        adapter.submit(items)
-        val empty = findViewById<TextView>(R.id.tvEmptyRequests)
-        empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
-        empty.text = when {
-            Session.isManager -> "No requests yet."
-            mode == Mode.MINE ->
-                "You have not posted a request yet. Use New request to ask for blood."
-            else -> "No open requests right now."
-        }
-        // Bottom navigation badges: live pending and low-stock counts.
-        BottomNav.updateBadges(this)
     }
 
     /** Requests this user posted, any status, newest first. */

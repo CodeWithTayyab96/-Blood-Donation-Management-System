@@ -44,7 +44,7 @@ class DonorListActivity : AppCompatActivity() {
 
         val rv = findViewById<RecyclerView>(R.id.rvDonors)
         rv.layoutManager = LinearLayoutManager(this)
-        adapter = DonorAdapter(emptyList()) { donor ->
+        adapter = DonorAdapter { donor ->
             val i = Intent(this, DonorDetailActivity::class.java)
             i.putExtra("donorId", donor.id)
             startActivity(i)
@@ -114,11 +114,16 @@ class DonorListActivity : AppCompatActivity() {
     }
 
     private fun renderFromLocal() {
-        allDonors = db.getAllDonors()
-        refreshCityFilter()
-        applyFilters()
-        // Bottom navigation badges: live pending and low-stock counts.
-        BottomNav.updateBadges(this)
+        Background.run {
+            val donors = db.getAllDonors()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                allDonors = donors
+                refreshCityFilter()
+                applyFilters()
+                BottomNav.updateBadges(this@DonorListActivity)
+            }
+        }
     }
 
     /** City list comes from the donors themselves, so it always matches real data. */

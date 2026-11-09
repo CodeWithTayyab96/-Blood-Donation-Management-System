@@ -131,6 +131,9 @@ class ModerationActivity : AppCompatActivity() {
     private fun resolveReport(reportId: Long) {
         db.markReportResolved(reportId, LocalDate.now().toString())
         renderFromLocal()
+        if (SupabaseSync.isOnline) {
+            Background.run { SupabaseSync.resolveReportRemote(reportId, LocalDate.now().toString()) }
+        }
         Toast.makeText(this, "Report marked resolved", Toast.LENGTH_SHORT).show()
     }
 }

@@ -25,7 +25,7 @@ object DonationReminderNotifier {
 
     private const val TAG = "DonationReminder"
     private const val CHANNEL_ID = "donation_reminders"
-    private const val NOTIFICATION_ID = 4300
+    private const val NOTIFICATION_ID = 4302
 
     private fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return

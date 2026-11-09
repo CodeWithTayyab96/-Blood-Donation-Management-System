@@ -45,7 +45,7 @@ object PeerAlerts {
         val ids = (prefs.getStringSet(KEY_SHOWN, emptySet()) ?: emptySet()).toMutableSet()
         if (!ids.add(dedupKey(kind, offerId))) return  // already there, untouched
         val kept = if (ids.size > MAX_REMEMBERED) {
-            ids.toList().takeLast(MAX_REMEMBERED).toSet()
+            ids.sorted().takeLast(MAX_REMEMBERED).toSet()
         } else {
             ids
         }

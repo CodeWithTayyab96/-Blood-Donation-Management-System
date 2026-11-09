@@ -56,7 +56,8 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         // v10 (Phase 3): camps, camp_attendance, appointment_slots,
         // appointment_bookings, donor_verifications, stock_movements. All CREATE
         // TABLE — additive, no existing row is touched or dropped.
-        private const val DB_VERSION = 10
+        // v11: indexes on high-traffic foreign-key columns.
+        private const val DB_VERSION = 11
 
         /**
          * Explicit column lists. `SELECT *` plus positional access silently
@@ -289,6 +290,14 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             // v10 (Phase 3): additive only. Six new tables, no existing row
             // touched. A jump from v8 -> v10 still runs v9 then this.
             createPhase3Tables(db)
+        }
+        if (oldVersion < 11) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_donations_donor_id ON donations(donor_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_offers_request_id ON offers(request_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_offers_donor_id ON offers(donor_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_status_history_request_id ON request_status_history(request_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_camp_attendance_camp_id ON camp_attendance(camp_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_appointment_bookings_slot_id ON appointment_bookings(slot_id)")
         }
     }
 
@@ -623,6 +632,22 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         ).use { c ->
             return if (c.moveToFirst()) readDonor(c) else null
         }
+    }
+
+    fun getDonorsByIds(ids: List<Long>): Map<Long, Donor> {
+        if (ids.isEmpty()) return emptyMap()
+        val placeholders = ids.joinToString(",") { "?" }
+        val args = ids.map { it.toString() }.toTypedArray()
+        val out = mutableMapOf<Long, Donor>()
+        readableDatabase.rawQuery(
+            "SELECT $DONOR_COLUMNS FROM donors WHERE id IN ($placeholders)", args
+        ).use { c ->
+            while (c.moveToNext()) {
+                val d = readDonor(c)
+                out[d.id] = d
+            }
+        }
+        return out
     }
 
     fun donorCount(): Int =
@@ -1322,8 +1347,14 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
     }
 
     /** True when the donor's latest verification record is "verified". */
-    fun isDonorVerified(donorId: Long): Boolean =
-        getVerifications(donorId).maxByOrNull { it.id }?.status == VerificationRules.VERIFIED
+    fun isDonorVerified(donorId: Long): Boolean {
+        readableDatabase.rawQuery(
+            "SELECT status FROM donor_verifications WHERE donor_id = ? ORDER BY id DESC LIMIT 1",
+            arrayOf(donorId.toString())
+        ).use { c ->
+            return c.moveToFirst() && c.getString(0) == VerificationRules.VERIFIED
+        }
+    }
 
     // -------------------------------------------- Phase 3: stock movements
     fun insertMovement(m: Movement): Long {
