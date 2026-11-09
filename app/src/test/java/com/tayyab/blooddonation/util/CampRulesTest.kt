@@ -13,7 +13,8 @@ class CampRulesTest {
     fun `upcoming and past split on asOf`() {
         val asOf = LocalDate.of(2026, 11, 7)
         assertTrue(CampRules.isUpcoming(camp("2026-11-20"), asOf))
-        assertFalse(CampRules.isUpcoming(camp("2026-11-07"), asOf))  // same day is not "upcoming"
+        assertTrue(CampRules.isUpcoming(camp("2026-11-07"), asOf))  // same day counts as upcoming, so it shows in the list
+        assertFalse(CampRules.isPast(camp("2026-11-07"), asOf))  // and it is not past either: the split is a partition
         assertTrue(CampRules.isPast(camp("2026-11-01"), asOf))
     }
 
