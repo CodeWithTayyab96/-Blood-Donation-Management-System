@@ -1,21 +1,15 @@
 package com.tayyab.blooddonation.util
 
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * The app's single background worker.
+ * The app's background thread pool.
  *
- * Every network call, every Supabase pull and every multi-step write used to
- * spawn its own `Thread`. Nothing cancelled or coalesced them, so tapping
- * between screens quickly stacked up several pulls all writing to SQLite at
- * once. This is one serial queue instead: work runs in the order it was
- * submitted, and a screen can be left or re-entered without leaking a thread.
- *
- * It is deliberately single-threaded. The work here is I/O-bound and short,
- * and serialising it means the local SQLite copy is never written by two
- * threads at the same moment. The one long task — downloading an update APK —
- * is already behind a non-cancellable progress dialog, so queuing behind it
- * is not a problem the user can notice.
+ * A small fixed pool (3 threads) so independent I/O-bound work — Supabase
+ * pulls, DB reads, APK downloads — can overlap instead of queuing behind
+ * each other. SQLiteOpenHelper handles its own locking, so concurrent
+ * writers are safe.
  *
  * Callers must still post UI updates back with `runOnUiThread`; nothing here
  * touches the main thread. A task must not throw: the Supabase clients and
@@ -24,12 +18,19 @@ import java.util.concurrent.Executors
  */
 object Background {
 
-    private val executor = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "blood-donation-bg").apply { isDaemon = true }
+    private val counter = AtomicInteger()
+
+    private val executor = Executors.newFixedThreadPool(3) { runnable ->
+        Thread(runnable, "blood-bg-${counter.getAndIncrement()}").apply { isDaemon = true }
     }
 
-    /** Queues [task] on the shared worker. Safe to call from the UI thread. */
+    /** Queues [task] on the shared pool. Safe to call from the UI thread. */
     fun run(task: () -> Unit) {
+        executor.execute(task)
+    }
+
+    /** Alias for [run], for call sites where the I/O intent is worth naming. */
+    fun runIo(task: () -> Unit) {
         executor.execute(task)
     }
 }

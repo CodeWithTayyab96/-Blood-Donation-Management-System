@@ -11,10 +11,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.tayyab.blooddonation.R
 import com.tayyab.blooddonation.model.Donor
 import com.tayyab.blooddonation.util.BloodCompatibility
+import java.time.LocalDate
 
 class DonorAdapter(
     private val onClick: (Donor) -> Unit
 ) : ListAdapter<Donor, DonorAdapter.VH>(DIFF) {
+
+    private var today: LocalDate = LocalDate.now()
+
 
     companion object {
         private val DIFF = object : DiffUtil.ItemCallback<Donor>() {
@@ -40,7 +44,7 @@ class DonorAdapter(
         h.badge.text = d.bloodGroup
         h.name.text = d.name
         h.meta.text = "${d.city} • ${d.age} yrs"
-        val (eligible, reason) = BloodCompatibility.eligibility(d)
+        val (eligible, reason) = BloodCompatibility.eligibility(d, today)
         h.status.text = if (eligible) "✓ Eligible" else "✗ $reason"
         h.status.setTextColor(
             ContextCompat.getColor(
@@ -55,6 +59,7 @@ class DonorAdapter(
     }
 
     fun submit(list: List<Donor>) {
+        today = LocalDate.now()
         submitList(list)
     }
 }

@@ -45,6 +45,7 @@ import java.time.LocalDate
 class RequestDetailActivity : AppCompatActivity() {
 
     private lateinit var db: DbHelper
+    private lateinit var compatAdapter: DonorAdapter
     private var requestId: Long = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +55,16 @@ class RequestDetailActivity : AppCompatActivity() {
         db = DbHelper(this)
         requestId = intent.getLongExtra("requestId", -1)
         Session.load(this)
+
+        val rv = findViewById<RecyclerView>(R.id.rvCompatDonors)
+        rv.layoutManager = LinearLayoutManager(this)
+        compatAdapter = DonorAdapter { donor ->
+            val i = Intent(this, DonorDetailActivity::class.java)
+            i.putExtra("donorId", donor.id)
+            startActivity(i)
+        }
+        rv.adapter = compatAdapter
+
         // Fulfilling a request moves stock, which is a manager action. Hiding
         // the button is a UI guard only — supabase_role_policies.sql is what
         // actually enforces it on the server.
@@ -224,53 +235,50 @@ class RequestDetailActivity : AppCompatActivity() {
         if (raw.length >= 10 && raw[4] == '-' && raw[7] == '-') raw.substring(0, 10) else raw
 
     private fun renderFromLocal() {
-        val req = db.getRequest(requestId) ?: run { finish(); return }
-        val city = req.city.takeIf { it.isNotBlank() }?.let { "City: $it\n" } ?: ""
-        val neededBy = req.neededBy?.let { "Needed by: ${displayDate(it)}\n" } ?: ""
-        findViewById<TextView>(R.id.tvReqDetailTitle).text =
-            "${req.patientName}  (${req.bloodGroup})"
-        findViewById<TextView>(R.id.tvReqDetailInfo).text =
-            "Hospital: ${req.hospital}\n" +
-            city +
-            "Units needed: ${req.unitsNeeded}\n" +
-            "Urgency: ${req.urgency}\n" +
-            // Same rule: the requester and the manager see the number,
-            // everyone else is told when it becomes visible.
-            "Contact: ${req.contact.ifBlank { "shared after you accept an offer" }}\n" +
-            "Requested on: ${displayDate(req.createdAt)}\n" +
-            neededBy +
-            "Status: ${req.status}\n" +
-            "In stock (${req.bloodGroup}): ${db.stockLevels()[req.bloodGroup] ?: 0} unit(s)"
-
-        // Re-bound on every render: a sync can arrive without a contact this
-        // account is allowed to see, in which case both buttons disappear.
-        ContactActions.bind(
-            this,
-            findViewById<View>(R.id.contactActions),
-            findViewById<Button>(R.id.btnCall),
-            findViewById<Button>(R.id.btnWhatsApp),
-            req.contact
-        )
-
-        val compatibleGroups = BloodCompatibility.donorGroupsFor(req.bloodGroup)
-        findViewById<TextView>(R.id.tvCompatNote).text =
-            "A ${req.bloodGroup} patient can receive from: ${compatibleGroups.joinToString(", ")}"
-
-        val donors = db.getAllDonors().filter { d ->
-            BloodCompatibility.isCompatible(d.bloodGroup, req.bloodGroup) &&
+        Background.run {
+            val req = db.getRequest(requestId)
+            if (req == null) {
+                runOnUiThread { if (!isFinishing && !isDestroyed) finish() }
+                return@run
+            }
+            val stockForGroup = db.stockLevels()[req.bloodGroup] ?: 0
+            val compatGroups = BloodCompatibility.donorGroupsFor(req.bloodGroup)
+            val donors = db.getDonorsByBloodGroups(compatGroups).filter { d ->
                 BloodCompatibility.eligibility(d).first
-        }
-        val rv = findViewById<RecyclerView>(R.id.rvCompatDonors)
-        rv.layoutManager = LinearLayoutManager(this)
-        val compatAdapter = DonorAdapter { donor ->
-            val i = Intent(this, DonorDetailActivity::class.java)
-            i.putExtra("donorId", donor.id)
-            startActivity(i)
-        }
-        compatAdapter.submit(donors)
-        rv.adapter = compatAdapter
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val city = req.city.takeIf { it.isNotBlank() }?.let { "City: $it\n" } ?: ""
+                val neededBy = req.neededBy?.let { "Needed by: ${displayDate(it)}\n" } ?: ""
+                findViewById<TextView>(R.id.tvReqDetailTitle).text =
+                    "${req.patientName}  (${req.bloodGroup})"
+                findViewById<TextView>(R.id.tvReqDetailInfo).text =
+                    "Hospital: ${req.hospital}\n" +
+                    city +
+                    "Units needed: ${req.unitsNeeded}\n" +
+                    "Urgency: ${req.urgency}\n" +
+                    "Contact: ${req.contact.ifBlank { "shared after you accept an offer" }}\n" +
+                    "Requested on: ${displayDate(req.createdAt)}\n" +
+                    neededBy +
+                    "Status: ${req.status}\n" +
+                    "In stock (${req.bloodGroup}): $stockForGroup unit(s)"
 
-        renderPeerSections(req)
+                ContactActions.bind(
+                    this,
+                    findViewById<View>(R.id.contactActions),
+                    findViewById<Button>(R.id.btnCall),
+                    findViewById<Button>(R.id.btnWhatsApp),
+                    req.contact
+                )
+
+                val compatibleGroups = BloodCompatibility.donorGroupsFor(req.bloodGroup)
+                findViewById<TextView>(R.id.tvCompatNote).text =
+                    "A ${req.bloodGroup} patient can receive from: ${compatibleGroups.joinToString(", ")}"
+
+                compatAdapter.submit(donors)
+                renderPeerSections(req)
+            }
+        }
     }
 
     // ----------------------------------------------------------------- P2P

@@ -58,8 +58,16 @@ object BottomNav {
     fun updateBadges(activity: AppCompatActivity) {
         val nav = activity.findViewById<BottomNavigationView>(R.id.bottomNav) ?: return
         val db = DbHelper(activity)
-        setBadge(nav, R.id.nav_stock, LowStock.groups(db.stockLevels()).size)
-        setBadge(nav, R.id.nav_requests, db.pendingRequestCount())
+        Background.run {
+            val stockBadge = LowStock.groups(db.stockLevels()).size
+            val requestBadge = db.pendingRequestCount()
+            activity.runOnUiThread {
+                if (!activity.isFinishing && !activity.isDestroyed) {
+                    setBadge(nav, R.id.nav_stock, stockBadge)
+                    setBadge(nav, R.id.nav_requests, requestBadge)
+                }
+            }
+        }
     }
 
     private fun setBadge(nav: BottomNavigationView, itemId: Int, count: Int) {

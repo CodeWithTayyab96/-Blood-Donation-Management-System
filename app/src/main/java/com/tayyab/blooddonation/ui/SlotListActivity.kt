@@ -33,6 +33,7 @@ class SlotListActivity : AppCompatActivity() {
         db = DbHelper(this)
 
         val rv = findViewById<RecyclerView>(R.id.rvSlots)
+        rv.setHasFixedSize(true)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = SlotAdapter { slot -> bookSlot(slot) }
         rv.adapter = adapter
@@ -50,9 +51,7 @@ class SlotListActivity : AppCompatActivity() {
 
     private fun render() {
         val slots = db.getAllSlots()
-        val booked = Session.donorId?.let { id ->
-            slots.filter { db.hasBooking(it.id, id) }.map { it.id }.toSet()
-        } ?: emptySet()
+        val booked = Session.donorId?.let { db.getBookedSlotIds(it) } ?: emptySet()
         adapter.submit(slots, booked)
         findViewById<View>(R.id.tvEmpty).visibility =
             if (slots.isEmpty()) View.VISIBLE else View.GONE

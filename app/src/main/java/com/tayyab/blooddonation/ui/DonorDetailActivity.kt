@@ -25,6 +25,7 @@ import com.tayyab.blooddonation.util.SupabaseSync
 class DonorDetailActivity : AppCompatActivity() {
 
     private lateinit var db: DbHelper
+    private lateinit var donationAdapter: DonationAdapter
     private var donorId: Long = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,6 +35,12 @@ class DonorDetailActivity : AppCompatActivity() {
         db = DbHelper(this)
         donorId = intent.getLongExtra("donorId", -1)
         Session.load(this)
+
+        val rv = findViewById<RecyclerView>(R.id.rvHistory)
+        rv.layoutManager = LinearLayoutManager(this)
+        donationAdapter = DonationAdapter()
+        rv.adapter = donationAdapter
+
         // Only managers delete donors; a donor may only record their own donation.
         if (!Session.isManager) {
             findViewById<Button>(R.id.btnDeleteDonor).visibility = View.GONE
@@ -266,10 +273,6 @@ class DonorDetailActivity : AppCompatActivity() {
 
                 findViewById<Button>(R.id.btnCertificate).visibility =
                     if (history.isEmpty()) View.GONE else View.VISIBLE
-                val rv = findViewById<RecyclerView>(R.id.rvHistory)
-                rv.layoutManager = LinearLayoutManager(this)
-                val donationAdapter = DonationAdapter()
-                rv.adapter = donationAdapter
                 donationAdapter.submitList(history)
                 findViewById<TextView>(R.id.tvNoHistory).visibility =
                     if (history.isEmpty()) View.VISIBLE else View.GONE

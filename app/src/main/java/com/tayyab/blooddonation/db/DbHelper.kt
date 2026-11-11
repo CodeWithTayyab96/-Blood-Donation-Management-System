@@ -57,7 +57,9 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         // appointment_bookings, donor_verifications, stock_movements. All CREATE
         // TABLE — additive, no existing row is touched or dropped.
         // v11: indexes on high-traffic foreign-key columns.
-        private const val DB_VERSION = 11
+        // v12: indexes on requests.requester_id, requests.status,
+        // donations.date — queried by the browse/filter/report paths.
+        private const val DB_VERSION = 12
 
         /**
          * Explicit column lists. `SELECT *` plus positional access silently
@@ -128,6 +130,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         createReportsTable(db)
         createStatusHistoryTable(db)
         createPhase3Tables(db)
+        createIndexes(db)
         for (g in BloodCompatibility.ALL_GROUPS) {
             db.execSQL("INSERT INTO stock(blood_group, units) VALUES('$g', 0)")
         }
@@ -230,6 +233,18 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         )
     }
 
+    private fun createIndexes(db: SQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_donations_donor_id ON donations(donor_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_offers_request_id ON offers(request_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_offers_donor_id ON offers(donor_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_status_history_request_id ON request_status_history(request_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_camp_attendance_camp_id ON camp_attendance(camp_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_appointment_bookings_slot_id ON appointment_bookings(slot_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_requests_requester_id ON requests(requester_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_donations_date ON donations(date)")
+    }
+
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         // Sequential, additive steps: an install that jumps several versions
         // (v1 -> v4) runs every step it missed, instead of only the first
@@ -298,6 +313,11 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_status_history_request_id ON request_status_history(request_id)")
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_camp_attendance_camp_id ON camp_attendance(camp_id)")
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_appointment_bookings_slot_id ON appointment_bookings(slot_id)")
+        }
+        if (oldVersion < 12) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_requests_requester_id ON requests(requester_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_donations_date ON donations(date)")
         }
     }
 
@@ -650,10 +670,38 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         return out
     }
 
+    fun getDonorsByBloodGroups(groups: List<String>): List<Donor> {
+        if (groups.isEmpty()) return emptyList()
+        val placeholders = groups.joinToString(",") { "?" }
+        val out = mutableListOf<Donor>()
+        readableDatabase.rawQuery(
+            "SELECT $DONOR_COLUMNS FROM donors WHERE blood_group IN ($placeholders) ORDER BY name",
+            groups.toTypedArray()
+        ).use { c ->
+            while (c.moveToNext()) out.add(readDonor(c))
+        }
+        return out
+    }
+
     fun donorCount(): Int =
         readableDatabase.rawQuery("SELECT COUNT(*) FROM donors", null).use { c ->
             if (c.moveToFirst()) c.getInt(0) else 0
         }
+
+    fun eligibleDonorCount(today: LocalDate = LocalDate.now()): Int {
+        val cutoff = today.minusDays(BloodCompatibility.MIN_GAP_DAYS).toString()
+        return readableDatabase.rawQuery(
+            """SELECT COUNT(*) FROM donors
+               WHERE age >= ? AND age <= ? AND weight >= ?
+               AND (last_donation_date IS NULL OR last_donation_date <= ?)""",
+            arrayOf(
+                BloodCompatibility.MIN_AGE.toString(),
+                BloodCompatibility.MAX_AGE.toString(),
+                BloodCompatibility.MIN_WEIGHT_KG.toString(),
+                cutoff
+            )
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+    }
 
     /** Removes a donor; their donations go with them (ON DELETE CASCADE, DB v4). */
     fun deleteDonor(id: Long) {
@@ -787,15 +835,17 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         return BloodCompatibility.ALL_GROUPS.associateWith { out[it] ?: 0 }
     }
 
-    fun totalUnitsInStock(): Int = stockLevels().values.sum()
+    fun totalUnitsInStock(): Int =
+        readableDatabase.rawQuery("SELECT COALESCE(SUM(units),0) FROM stock", null)
+            .use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     fun donationsThisMonth(): Int {
-        val ym = LocalDate.now().toString().substring(0, 7) // yyyy-MM
-        // Bound parameter rather than string interpolation: the value is safe
-        // today, but it should stay safe if its source ever changes.
+        val today = LocalDate.now()
+        val from = today.withDayOfMonth(1).toString()
+        val until = today.withDayOfMonth(1).plusMonths(1).toString()
         return readableDatabase.rawQuery(
-            "SELECT COALESCE(SUM(units),0) FROM donations WHERE date LIKE ?",
-            arrayOf("$ym%")
+            "SELECT COALESCE(SUM(units),0) FROM donations WHERE date >= ? AND date < ?",
+            arrayOf(from, until)
         ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
     }
 
@@ -819,6 +869,52 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         readableDatabase.rawQuery(
             "SELECT $REQUEST_COLUMNS FROM requests ORDER BY id DESC", null
         ).use { c ->
+            while (c.moveToNext()) out.add(readRequest(c))
+        }
+        return out
+    }
+
+    fun getRequestsByIds(ids: List<Long>): Map<Long, BloodRequest> {
+        if (ids.isEmpty()) return emptyMap()
+        val out = mutableMapOf<Long, BloodRequest>()
+        val batchSize = 500
+        for (chunk in ids.chunked(batchSize)) {
+            val placeholders = chunk.joinToString(",") { "?" }
+            val args = chunk.map { it.toString() }.toTypedArray()
+            readableDatabase.rawQuery(
+                "SELECT $REQUEST_COLUMNS FROM requests WHERE id IN ($placeholders)", args
+            ).use { c ->
+                while (c.moveToNext()) {
+                    val r = readRequest(c)
+                    out[r.id] = r
+                }
+            }
+        }
+        return out
+    }
+
+    fun getRequestsForRequester(requesterId: String): List<BloodRequest> {
+        val out = mutableListOf<BloodRequest>()
+        readableDatabase.rawQuery(
+            "SELECT $REQUEST_COLUMNS FROM requests WHERE requester_id = ? ORDER BY id DESC",
+            arrayOf(requesterId)
+        ).use { c ->
+            while (c.moveToNext()) out.add(readRequest(c))
+        }
+        return out
+    }
+
+    fun getOpenPeerRequests(excludeRequesterId: String?): List<BloodRequest> {
+        val out = mutableListOf<BloodRequest>()
+        val sql = buildString {
+            append("SELECT $REQUEST_COLUMNS FROM requests ")
+            append("WHERE requester_id IS NOT NULL AND requester_id != '' ")
+            append("AND status NOT IN ('Fulfilled','Cancelled','Expired') ")
+            if (excludeRequesterId != null) append("AND requester_id != ? ")
+            append("ORDER BY id DESC")
+        }
+        val args = if (excludeRequesterId != null) arrayOf(excludeRequesterId) else null
+        readableDatabase.rawQuery(sql, args).use { c ->
             while (c.moveToNext()) out.add(readRequest(c))
         }
         return out
@@ -1200,6 +1296,19 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
         return out
     }
 
+    fun getCamp(id: Long): Camp? {
+        readableDatabase.rawQuery(
+            "SELECT id, name, location, city, camp_date, organizer FROM camps WHERE id = ?",
+            arrayOf(id.toString())
+        ).use { c ->
+            if (!c.moveToFirst()) return null
+            return Camp(
+                id = c.getLong(0), name = c.getString(1), location = c.getString(2),
+                city = c.getString(3), campDate = c.getString(4), organizer = c.getString(5)
+            )
+        }
+    }
+
     /** Records (or ignores) a donor's check-in at a camp. */
     fun recordAttendance(campId: Long, donorId: Long, attendedAt: String): Boolean {
         val v = ContentValues().apply {
@@ -1311,6 +1420,17 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, null, DB_V
                     createdAt = c.getString(3)
                 )
             )
+        }
+        return out
+    }
+
+    fun getBookedSlotIds(donorId: Long): Set<Long> {
+        val out = mutableSetOf<Long>()
+        readableDatabase.rawQuery(
+            "SELECT slot_id FROM appointment_bookings WHERE donor_id = ?",
+            arrayOf(donorId.toString())
+        ).use { c ->
+            while (c.moveToNext()) out.add(c.getLong(0))
         }
         return out
     }

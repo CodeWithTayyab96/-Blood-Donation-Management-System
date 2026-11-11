@@ -29,6 +29,7 @@ class CampListActivity : AppCompatActivity() {
         db = DbHelper(this)
 
         val rv = findViewById<RecyclerView>(R.id.rvCamps)
+        rv.setHasFixedSize(true)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = CampAdapter { camp -> openDetail(camp.id) }
         rv.adapter = adapter

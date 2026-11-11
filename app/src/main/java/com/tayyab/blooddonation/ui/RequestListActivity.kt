@@ -62,6 +62,7 @@ class RequestListActivity : AppCompatActivity() {
         BottomNav.setupChatFab(this)
 
         val rv = findViewById<RecyclerView>(R.id.rvRequests)
+        rv.setHasFixedSize(true)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = RequestAdapter(
             onClick = { req -> openDetail(req) },
@@ -221,7 +222,7 @@ class RequestListActivity : AppCompatActivity() {
     /** Requests this user posted, any status, newest first. */
     private fun myRequests(me: String?): List<BloodRequest> {
         if (me.isNullOrBlank()) return emptyList()
-        return db.getAllRequests().filter { it.requesterId == me }
+        return db.getRequestsForRequester(me)
     }
 
     /** Open peer requests from other people: every one of them, compatible
@@ -230,21 +231,12 @@ class RequestListActivity : AppCompatActivity() {
         val donor = Session.donorId?.let { db.getDonor(it) }
         val myCity = donor?.city
         val today = java.time.LocalDate.now().toString()
-        return db.getAllRequests()
+        return db.getOpenPeerRequests(me)
             .asSequence()
-            // Peer requests only: a null requester_id is a manager row.
-            .filter { !it.requesterId.isNullOrBlank() }
-            // Never my own request — I cannot offer to help myself.
-            .filter { me.isNullOrBlank() || it.requesterId != me }
-            .filter { P2pRules.isOpenRequest(it.status) }
-            // No compatibility filter here on purpose: everyone sees every
-            // request. A donor whose group cannot give to this patient may
-            // still know someone off the app who can, and can share the
-            // request with them. Compatibility only orders the list: the
-            // requests this donor can give to directly come first.
             // Lazy expiry: a request past its needed-by date and still open is
             // Expired. There is no pg_cron, so this is evaluated on read.
             .map { it.copy(status = P2pRules.requestStatusOnRead(it.status, it.neededBy, today)) }
+            .filter { P2pRules.isOpenRequest(it.status) }
             // City-first, then compatible-first, then most urgent, then newest.
             .sortedWith(
                 compareByDescending<BloodRequest> { !myCity.isNullOrBlank() && it.city == myCity }

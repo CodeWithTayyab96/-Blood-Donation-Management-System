@@ -13,6 +13,9 @@ import com.tayyab.blooddonation.model.Offer
 import com.tayyab.blooddonation.model.Report
 import com.tayyab.blooddonation.model.Verification
 import java.time.LocalDate
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 /**
  * Bridges the local SQLite copy ([DbHelper]) and Supabase ([SupabaseClient]).
@@ -54,13 +57,9 @@ object SupabaseSync {
     /** Downloads all donors and merges them into SQLite. False on failure. */
     fun pullDonors(db: DbHelper): Boolean {
         val donors = SupabaseClient.getDonors() ?: return false
+        val localMap = db.getDonorsByIds(donors.map { it.id })
         for (d in donors) {
-            // The list query carries no phone: that column is not readable.
-            // Keep the number this phone already knows only when it is the
-            // viewer's own row or the viewer is the manager — for everyone
-            // else the cached copy is cleared, so a number learned under the
-            // old permissive policies does not linger.
-            val local = db.getDonor(d.id)
+            val local = localMap[d.id]
             val keep = local != null && local.phone.isNotBlank() &&
                 (Session.isManager || (local.authId != null && local.authId == Session.authUserId))
             db.upsertDonor(if (keep) d.copy(phone = local!!.phone) else d)
@@ -76,10 +75,9 @@ object SupabaseSync {
     // not be allowed to see — re-check this logic whenever `REQUEST_COLUMNS` changes.
     fun pullRequests(db: DbHelper): Boolean {
         val requests = SupabaseClient.getRequests() ?: return false
+        val localMap = db.getRequestsByIds(requests.map { it.id })
         for (r in requests) {
-            // Same rule as the donor phone: keep a cached contact number only
-            // for your own request, or when you are the manager.
-            val local = db.getRequest(r.id)
+            val local = localMap[r.id]
             val keep = local != null && local.contact.isNotBlank() &&
                 (Session.isManager || (local.requesterId != null && local.requesterId == Session.authUserId))
             db.upsertRequest(if (keep) r.copy(contact = local!!.contact) else r)
@@ -149,21 +147,26 @@ object SupabaseSync {
      * rest of the pull.
      */
     fun pullPhase3(db: DbHelper): Boolean {
-        var ok = false
-        if (pullCamps(db)) ok = true
-        if (pullSlots(db)) ok = true
-        if (pullMovements(db)) ok = true
-        val allAttendance = SupabaseClient.getAllCampAttendance()
-        if (allAttendance != null) {
-            for (a in allAttendance) db.upsertCampAttendance(a)
-            ok = true
+        val pool = Executors.newFixedThreadPool(5)
+        try {
+            val fCamps = pool.submit(Callable { pullCamps(db) })
+            val fSlots = pool.submit(Callable { pullSlots(db) })
+            val fMovements = pool.submit(Callable { pullMovements(db) })
+            val fAttendance = pool.submit(Callable {
+                val rows = SupabaseClient.getAllCampAttendance() ?: return@Callable false
+                for (a in rows) db.upsertCampAttendance(a)
+                true
+            })
+            val fVerifications = pool.submit(Callable {
+                val rows = SupabaseClient.getAllVerifications() ?: return@Callable false
+                for (v in rows) db.upsertVerification(v)
+                true
+            })
+            return safeGet(fCamps) or safeGet(fSlots) or safeGet(fMovements) or
+                safeGet(fAttendance) or safeGet(fVerifications)
+        } finally {
+            pool.shutdown()
         }
-        val allVerifications = SupabaseClient.getAllVerifications()
-        if (allVerifications != null) {
-            for (v in allVerifications) db.upsertVerification(v)
-            ok = true
-        }
-        return ok
     }
 
     /** Downloads stock levels and writes them into SQLite. False on failure. */
@@ -197,23 +200,36 @@ object SupabaseSync {
         return true
     }
 
-    /** Downloads donors, requests, stock and everything Phase 3. True if at least one landed. */
+    /** Downloads donors, requests, stock and Phase 3 in parallel. True if at least one landed. */
     fun pullAll(db: DbHelper): Boolean {
-        var ok = false
-        if (pullDonors(db)) ok = true
-        if (pullRequests(db)) ok = true
-        if (pullStock(db)) ok = true
-        if (pullPhase3(db)) ok = true
-        return ok
+        val pool = Executors.newFixedThreadPool(4)
+        try {
+            val fDonors = pool.submit(Callable { pullDonors(db) })
+            val fRequests = pool.submit(Callable { pullRequests(db) })
+            val fStock = pool.submit(Callable { pullStock(db) })
+            val fPhase3 = pool.submit(Callable { pullPhase3(db) })
+            val ok = safeGet(fDonors) or safeGet(fRequests) or safeGet(fStock) or safeGet(fPhase3)
+            return ok
+        } finally {
+            pool.shutdown()
+        }
     }
 
-    /** Downloads one request, plus the stock and donors its screen needs. */
+    private fun safeGet(f: Future<Boolean>): Boolean = try { f.get() } catch (_: Exception) { false }
+
+    /** Downloads one request, plus stock, donors and offers in parallel. */
     fun pullRequestDetail(db: DbHelper, requestId: Long): Boolean {
         val req = SupabaseClient.getRequest(requestId) ?: return false
         db.upsertRequest(req)
-        pullStock(db)
-        pullDonors(db)
-        pullOffersForRequest(db, requestId)
+        val pool = Executors.newFixedThreadPool(3)
+        try {
+            val fStock = pool.submit(Callable { pullStock(db) })
+            val fDonors = pool.submit(Callable { pullDonors(db) })
+            val fOffers = pool.submit(Callable { pullOffersForRequest(db, requestId) })
+            safeGet(fStock); safeGet(fDonors); safeGet(fOffers)
+        } finally {
+            pool.shutdown()
+        }
         return true
     }
 

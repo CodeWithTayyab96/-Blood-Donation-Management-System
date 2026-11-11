@@ -13,7 +13,12 @@
         android:text="Units available per blood group"
         android:textAppearance="@style/TextAppearance.Blood.Secondary"
         android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
-        android:layout_marginTop="2dp" android:layout_marginBottom="8dp" />
+        android:layout_marginTop="2dp" android:layout_marginBottom="4dp" />
+    <TextView android:id="@+id/tvLowStockWarning"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textSize="13sp" android:textColor="@color/status_warn"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp" android:visibility="gone" />
     <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvStock"
         android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
         android:clipToPadding="false" android:padding="10dp"

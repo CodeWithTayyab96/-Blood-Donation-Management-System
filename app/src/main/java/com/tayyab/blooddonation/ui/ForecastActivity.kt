@@ -29,6 +29,7 @@ class ForecastActivity : AppCompatActivity() {
         db = DbHelper(this)
 
         val rv = findViewById<RecyclerView>(R.id.rvForecast)
+        rv.setHasFixedSize(true)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = ForecastAdapter()
         rv.adapter = adapter

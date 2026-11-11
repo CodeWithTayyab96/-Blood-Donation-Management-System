@@ -37,7 +37,7 @@ class CampDetailActivity : AppCompatActivity() {
     }
 
     private fun render() {
-        val camp = db.getAllCamps().firstOrNull { it.id == campId } ?: run {
+        val camp = db.getCamp(campId) ?: run {
             finish()
             return
         }

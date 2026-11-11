@@ -43,6 +43,7 @@ class DonorListActivity : AppCompatActivity() {
         BottomNav.setupChatFab(this)
 
         val rv = findViewById<RecyclerView>(R.id.rvDonors)
+        rv.setHasFixedSize(true)
         rv.layoutManager = LinearLayoutManager(this)
         adapter = DonorAdapter { donor ->
             val i = Intent(this, DonorDetailActivity::class.java)

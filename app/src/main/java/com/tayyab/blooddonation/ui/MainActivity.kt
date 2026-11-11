@@ -366,6 +366,7 @@ class MainActivity : AppCompatActivity() {
     private fun renderFromLocal() {
         Background.run {
             val donorCount = db.donorCount()
+            val eligibleCount = db.eligibleDonorCount()
             val totalUnits = db.totalUnitsInStock()
             val pending = db.pendingRequestCount()
             val donationsMonth = db.donationsThisMonth()
@@ -380,7 +381,7 @@ class MainActivity : AppCompatActivity() {
             val aiDay = prefs.getLong(KEY_AI_MSG_DAY, -1L)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                findViewById<TextView>(R.id.tvStatDonors).text = donorCount.toString()
+                findViewById<TextView>(R.id.tvStatDonors).text = "$donorCount ($eligibleCount eligible)"
                 findViewById<TextView>(R.id.tvStatUnits).text = totalUnits.toString()
                 findViewById<TextView>(R.id.tvStatRequests).text = pending.toString()
                 findViewById<TextView>(R.id.tvStatMonth).text = donationsMonth.toString()
