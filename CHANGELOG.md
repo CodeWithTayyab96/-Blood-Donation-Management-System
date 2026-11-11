@@ -3,6 +3,10 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.27 — 2026-11-11
+
+versionCode 28. A performance pass: 10 full-table scans replaced with targeted SQL queries plus 3 new indexes (DB version 12), the three sync paths (pullAll, pullPhase3, pullRequestDetail) now run in parallel, and the N+1 per-row lookups in donor and request sync are batched into single queries. The background pool grows from 1 thread to 3, and the remaining database reads on the main thread (bottom-nav badges, Stock screen, request detail) moved to background. Lists reuse their adapters and layout managers instead of recreating them on every render, and six RecyclerViews skip redundant layout passes. Two small features: the Stock screen now warns when a blood group falls below the low threshold, and the dashboard donor count shows how many donors are currently eligible.
+
 ## 1.26 — 2026-11-09
 
 versionCode 27. A full code audit (4 High, 12 Medium, 13 Low findings) and every one of them fixed. The Emergency screen no longer takes a typed blood group: it is a Spinner of the 8 standard groups, so an invalid group can never be queued, and the offline queue now respects the 3-open-requests cap. The Verify Donor screen and the camp/slot screens check the manager role before they draw anything. Resolving a moderation report now syncs to the server instead of being overwritten on the next pull. The AI helper's daily quota is enforced atomically on the server (a new `increment_provider_calls` function, applied as a migration), so two calls at once can no longer both slip under the cap. Release builds now use R8 with ProGuard rules, and six database indexes (DB version 11) speed up the donor, offer, history, attendance and booking lookups. The urgent-request trigger no longer sends the requester's phone number to the notification pipeline (migration file only, applied separately). Push notifications send in batches of 500 instead of one by one. All lists use DiffUtil, and database reads moved off the main thread. The "Can I donate?" note now says honestly that only the question is sent to the AI.
