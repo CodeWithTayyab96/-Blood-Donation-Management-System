@@ -113,6 +113,8 @@
     <string name="settings_notifications_heading">Notifications</string>
     <string name="settings_connection_heading">Connection</string>
     <string name="settings_account_heading">Account</string>
+    <string name="settings_updates_heading">App updates</string>
+    <string name="settings_updates_summary">Check whether a newer version is available, and install it from here.</string>
     <string name="settings_tip_summary">One short tip a day, during the day. Off by default, and you can turn it off again at any time.</string>
     <string name="settings_alert_note">Urgent blood request alerts are separate from tips and are not affected by this switch.</string>
     <string name="settings_connection_summary">Is this build configured, is the server reachable, is your session valid, and do the database helpers answer? The first failing check is usually the whole story.</string>

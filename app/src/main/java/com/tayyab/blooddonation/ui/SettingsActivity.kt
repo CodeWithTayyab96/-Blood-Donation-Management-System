@@ -9,13 +9,18 @@ import android.provider.Settings
 import android.widget.Button
 import android.widget.RadioGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import com.tayyab.blooddonation.BuildConfig
 import com.tayyab.blooddonation.R
+import com.tayyab.blooddonation.util.AppUpdater
+import com.tayyab.blooddonation.util.Background
 import com.tayyab.blooddonation.util.LanguagePrefs
 import com.tayyab.blooddonation.util.ThemePrefs
 import com.tayyab.blooddonation.util.TipSchedule
 import com.tayyab.blooddonation.util.TipScheduler
+import com.tayyab.blooddonation.util.UpdatePrompt
 
 /**
  * Settings. Currently one switch — the optional daily tip — plus a way through
@@ -82,6 +87,15 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(android.content.Intent(this, ConnectionCheckActivity::class.java))
         }
 
+        // App updates. Any logged-in user can check: the manager dashboard
+        // is not reachable for ordinary users, so Settings is where the
+        // button lives for them.
+        findViewById<TextView>(R.id.tvAppVersion).text =
+            "Installed version: v${BuildConfig.VERSION_NAME}"
+        findViewById<Button>(R.id.btnCheckUpdate).setOnClickListener {
+            checkForUpdate()
+        }
+
         findViewById<Button>(R.id.btnDeleteAccount).setOnClickListener {
             // Managers are refused server-side, so they are not stopped here —
             // the refusal message explains why, which is more useful than a
@@ -102,6 +116,39 @@ class SettingsActivity : AppCompatActivity() {
         super.onResume()
         // The permission may have been granted while the user was away.
         updateState()
+    }
+
+    /**
+     * Manual update check, same as the manager dashboard's button.
+     * Runs the network check off the UI thread and reports all three
+     * outcomes: an update is offered, you are up to date, or it failed.
+     */
+    private fun checkForUpdate() {
+        val button = findViewById<Button>(R.id.btnCheckUpdate)
+        button.isEnabled = false
+        Toast.makeText(this, "Checking for updates...", Toast.LENGTH_SHORT).show()
+        Background.run {
+            when (val result = AppUpdater.checkForUpdate()) {
+                is AppUpdater.CheckResult.UpdateAvailable -> runOnUiThread {
+                    UpdatePrompt.show(this, result.info)
+                }
+                is AppUpdater.CheckResult.UpToDate -> runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "You are up to date (v${BuildConfig.VERSION_NAME}).",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                is AppUpdater.CheckResult.Error -> runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "Update check failed: ${result.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+            runOnUiThread { button.isEnabled = true }
+        }
     }
 
     private fun updateState() {
