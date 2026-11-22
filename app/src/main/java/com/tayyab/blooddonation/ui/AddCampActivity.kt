@@ -36,7 +36,7 @@ class AddCampActivity : AppCompatActivity() {
             val name = etName.text.toString().trim()
             val location = etLocation.text.toString().trim()
             val city = etCity.text.toString().trim()
-            val date = etDate.text.toString().trim()
+            val date = etDate.text.toString().trim().replace('/', '-')
             val organizer = etOrganizer.text.toString().trim()
             val validDate = runCatching { LocalDate.parse(date) }.isSuccess
             if (name.isBlank() || location.isBlank() || city.isBlank() || !validDate) {
