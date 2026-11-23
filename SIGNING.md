@@ -1,14 +1,10 @@
 # Signing and releasing new versions
 
-Read this before you release v1.2. The short version: **generate the
-signing key once, keep it safe forever, then every release after that is
-just a tag push.**
-
 ## Why a signing key matters
 
 Android only lets an app update itself in place if the new APK is signed
 with the **same key** as the installed APK. If the key changes, or is
-lost, users get a signature error and must uninstall first — and
+lost, users get a signature error and must uninstall first, and
 uninstalling deletes all their donor data, because this app stores
 everything locally in SQLite.
 
@@ -17,69 +13,43 @@ That is why:
 - The keystore is **never** committed to git (see `.gitignore`).
 - The release workflow fails if the signing secrets are missing,
   instead of publishing an unsigned APK.
-- The generate-key workflow refuses to run if a key already exists.
+- A second key must never be generated: it would break in-place updates
+  for everyone who already installed the app.
 
-## One-time setup (do this once, before v1.2)
+## The key (already set up)
 
-1. Push this code to GitHub, including
-   `.github/workflows/generate-key.yml`.
-2. On GitHub, go to **Actions > Generate Release Signing Key >
-   Run workflow** and run it once.
-3. Download the `release-signing-key` artifact immediately. It
-   contains:
-   - `release.keystore` — the actual signing key
-   - `signing-secrets.txt` — the alias and both passwords
-4. On GitHub, go to **Settings > Secrets and variables > Actions >
-   New repository secret** and add these four secrets:
-   - `RELEASE_KEYSTORE_BASE64` — run `base64 -w0 release.keystore`
-     on the downloaded keystore and paste the whole output
-     (on macOS: `base64 -i release.keystore`)
-   - `RELEASE_KEY_ALIAS` — `blooddonation`
-   - `RELEASE_STORE_PASSWORD` — from `signing-secrets.txt`
-   - `RELEASE_KEY_PASSWORD` — from `signing-secrets.txt`
-5. **Delete the workflow artifact** (Actions > the run > Artifacts >
-   delete).
-6. **Back up `release.keystore` + `signing-secrets.txt` somewhere safe
-   and offline** — a USB drive, not just this laptop. If you lose
-   them, in-place updates are gone for good.
-7. Never share the keystore or passwords in chat, screenshots, or a
-   public repo.
+The release key already exists and is stored as four GitHub Secrets
+(repo > Settings > Secrets and variables > Actions):
 
-## Releasing a new version (every time after that)
+- `RELEASE_KEYSTORE_BASE64` — base64 of `release.keystore`
+- `RELEASE_KEY_ALIAS` — `blooddonation`
+- `RELEASE_STORE_PASSWORD` — the keystore password
+- `RELEASE_KEY_PASSWORD` — the key password
+
+Key facts: RSA 2048, alias `blooddonation`, valid to 2054. Keep a backup
+of the keystore and both passwords somewhere safe and offline. If the
+key is lost, in-place updates are gone for good. Never share the
+keystore or passwords in chat, screenshots, or a public repo.
+
+## Releasing a new version
 
 1. Bump `versionCode` (+1) and `versionName` in
    `app/build.gradle.kts`. Never reuse a versionCode.
-2. Commit and push to `main`.
-3. Tag and push the tag, matching the versionName:
-   ```
-   git tag v1.2
-   git push origin v1.2
-   ```
-4. The **Release APK** workflow builds a signed `app-release.apk`,
-   writes `update.json` (with the exact versionCode), and publishes
-   both as a **pre-release** with the same tag. Nothing is offered to
-   phones yet.
-5. Test the APK from the release page, then promote it:
-   `gh release edit v1.6 --prerelease=false`. Only then do users on the
-   old version get a prompt from **Check for Updates**. Android will ask
-   them once to allow installs from this app — that is normal.
-   Full tag/promote/rollback steps: `RELEASING.md`.
-
-## Important: the first signed release
-
-v1.1 was published as a **debug** APK, signed with Android's debug
-key. The first signed release (v1.2) uses a **different** key, so
-Android will refuse to install it over v1.1. Users on v1.1 must
-uninstall v1.1 first, then install v1.2 fresh. After v1.2, every
-later version uses the same key, so in-app updates will work
-without uninstalling.
+2. Add a `## <versionName>` section to `CHANGELOG.md` in the same
+   commit. The workflow uses it as the release notes.
+3. Commit and push to `main`.
+4. The **Release APK** workflow runs the SQL checks and the unit tests,
+   builds the signed APK, tags `v<versionName>` and publishes a normal
+   release that shows as **Latest**. There is no manual tagging and no
+   pre-release step. Full gates and rollback: `RELEASING.md`.
 
 ## If a release fails
 
-- "RELEASE_KEYSTORE_BASE64 secret is missing" — you have not done
-  the one-time setup above yet.
-- "A release key already exists" from the generate-key workflow —
-  do not generate a second key. Use the existing secrets.
-- Install fails with a signature error on a phone — the phone has
-  an APK signed with a different key (usually the old debug build).
+- "RELEASE_KEYSTORE_BASE64 secret is missing" — one of the four
+  secrets above is missing. Add it and push again.
+- "Tag vX already exists" or "versionCode is not greater than the last
+  release's" — the version was not bumped. Bump `versionName` and
+  `versionCode` in the same commit and push again.
+- Install fails with a signature error on a phone — the phone has an
+  APK signed with a different key (usually an old debug build).
   Uninstall that build first, then install the release build.
