@@ -13,7 +13,7 @@ declare
 begin
   -- Upsert with a locked read so concurrent calls serialise on the row.
   insert into ai_provider_calls (day, calls)
-    values (p_day, 1)
+    values (p_day::date, 1)
   on conflict (day) do update
     set calls = ai_provider_calls.calls + 1
     where ai_provider_calls.calls < p_cap
