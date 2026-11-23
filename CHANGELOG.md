@@ -3,6 +3,10 @@
 Notable changes to the Blood Donation Management System. Versions follow the
 `versionName` in `app/build.gradle.kts`.
 
+## 1.28 — 2026-11-23
+
+versionCode 29. Two small fixes. The Add Camp form now accepts dates typed with slashes (2026/11/26): the date is converted to dashes before it is parsed, so the form no longer rejects a valid date. And every user can now check for updates from Settings: an App updates card was added there, because the only Check for Updates button lived on the manager dashboard, which ordinary users never see.
+
 ## 1.27 — 2026-11-11
 
 versionCode 28. A performance pass: 10 full-table scans replaced with targeted SQL queries plus 3 new indexes (DB version 12), the three sync paths (pullAll, pullPhase3, pullRequestDetail) now run in parallel, and the N+1 per-row lookups in donor and request sync are batched into single queries. The background pool grows from 1 thread to 3, and the remaining database reads on the main thread (bottom-nav badges, Stock screen, request detail) moved to background. Lists reuse their adapters and layout managers instead of recreating them on every render, and six RecyclerViews skip redundant layout passes. Two small features: the Stock screen now warns when a blood group falls below the low threshold, and the dashboard donor count shows how many donors are currently eligible.
