@@ -11,6 +11,14 @@ Supabase and keeps working offline on the phone's own database.
 **Platform:** Android 8.0 (API 26) and above
 **Language:** Kotlin
 
+## Download
+
+[Download the latest APK](https://github.com/CodeWithTayyab96/-Blood-Donation-Management-System/releases/latest/download/app-release.apk)
+
+Requires Android 8.0 or newer. On first install, Android asks once to allow
+installs from this app. All releases are on the
+[releases page](https://github.com/CodeWithTayyab96/-Blood-Donation-Management-System/releases).
+
 ## Features
 
 - **Donors** — register with name, age, gender, blood group, phone, city,
